@@ -1,0 +1,172 @@
+[
+    {
+        "Name": "Head",
+        "BodyPartType": "Head",
+        "Position": "High",
+        "MaxHealth": 100,
+        "IsVital": true,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": true,
+        "EquipmentSlots": ["Head", "Face"],
+        "SubParts": [
+            {
+                "Name": "Eye",
+                "BodyPartType": "Eye",
+                "Position": "High",
+                "MaxHealth": 50,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": false
+            },
+            {
+                "Name": "Left Eye",
+                "BodyPartType": "Eye",
+                "Position": "High",
+                "MaxHealth": 50,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": false
+            },
+            {
+                "Name": "Right Eye",
+                "BodyPartType": "Eye",
+                "Position": "High",
+                "MaxHealth": 50,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": false
+            },
+            {
+                "Name": "Horns",
+                "BodyPartType": "Horns",
+                "Position": "High",
+                "MaxHealth": 80,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": false
+            },
+            {
+                "Name": "Antenna",
+                "BodyPartType": "Antenna",
+                "Position": "High",
+                "MaxHealth": 40,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": false
+            }
+        ]
+    },
+    {
+        "Name": "Torso",
+        "BodyPartType": "Torso",
+        "Position": "Both",
+        "MaxHealth": 150,
+        "IsVital": true,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": true,
+        "EquipmentSlots": ["Body", "Neck", "Waist", "Shoulders"],
+        "SubParts": []
+    },
+    {
+        "Name": "Arm",
+        "BodyPartType": "Arm",
+        "Position": "High",
+        "MaxHealth": 80,
+        "IsVital": false,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": true,
+        "SubParts": [
+            {
+                "Name": "Hand",
+                "BodyPartType": "Hand",
+                "Position": "High",
+                "MaxHealth": 50,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": true,
+                "EquipmentSlots": ["Hands", "MainHand", "OffHand"],
+                "SubParts": [
+                    {
+                        "Name": "Finger",
+                        "BodyPartType": "Finger",
+                        "Position": "High",
+                        "MaxHealth": 30,
+                        "IsVital": false,
+                        "BasePart": false,
+                        "SubPart": true,
+                        "HasSubs": false
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "Name": "Leg",
+        "BodyPartType": "Leg",
+        "Position": "Low",
+        "MaxHealth": 100,
+        "IsVital": false,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": true,
+        "EquipmentSlots": ["Legs"],
+        "SubParts": [
+            {
+                "Name": "Foot",
+                "BodyPartType": "Foot",
+                "Position": "Low",
+                "MaxHealth": 60,
+                "IsVital": false,
+                "BasePart": false,
+                "SubPart": true,
+                "HasSubs": false,
+                "EquipmentSlots": ["Feet"]
+            }
+        ]
+    },
+    {
+        "Name": "Tail",
+        "BodyPartType": "Tail",
+        "Position": "Low",
+        "MaxHealth": 80,
+        "IsVital": false,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": false,
+        "EquipmentSlots": [],
+        "SubParts": []
+    },
+    {
+        "Name": "Wing",
+        "BodyPartType": "Wing",
+        "Position": "High",
+        "MaxHealth": 70,
+        "IsVital": false,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": false,
+        "EquipmentSlots": ["Shoulders"],
+        "SubParts": []
+    },
+    {
+        "Name": "Tentacle",
+        "BodyPartType": "Tentacle",
+        "Position": "High",
+        "MaxHealth": 60,
+        "IsVital": false,
+        "BasePart": true,
+        "SubPart": false,
+        "HasSubs": false,
+        "EquipmentSlots": [],
+        "SubParts": []
+    }
+]

@@ -1,0 +1,230 @@
+{
+  "Landmarks": [
+    {
+      "LandmarkName": "Ancient Castle",
+      "ApplicableTerrains": ["Land"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Enchanted Forest",
+      "ApplicableTerrains": ["Forest"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Ruined City",
+      "ApplicableTerrains": ["Wasteland"],
+      "ApplicableClimates": ["Arid"],
+      "Rarity": "Common"
+    },
+    {
+      "LandmarkName": "Sandy Oasis",
+      "ApplicableTerrains": ["Desert"],
+      "ApplicableClimates": ["Arid"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Frozen Peak",
+      "ApplicableTerrains": ["Mountain"],
+      "ApplicableClimates": ["Polar"],
+      "Rarity": "VeryRare"
+    },
+    {
+      "LandmarkName": "Mysterious Bog",
+      "ApplicableTerrains": ["Swamp"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Common"
+    },
+    {
+      "LandmarkName": "Ancient Obelisk",
+      "ApplicableTerrains": ["Land", "Desert", "Wasteland"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Mysterious Monolith",
+      "ApplicableTerrains": ["Land", "Forest", "Mountain"],
+      "ApplicableClimates": ["Temperate", "Polar"],
+      "Rarity": "Legendary"
+    },
+    {
+      "LandmarkName": "Forgotten Temple",
+      "ApplicableTerrains": ["Forest", "Mountain"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Sunken Ruins",
+      "ApplicableTerrains": ["Swamp", "Wasteland"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Tarpit",
+      "ApplicableTerrains": ["Wasteland", "Swamp", "Plains"],
+      "ApplicableClimates": ["Arid", "Temperate"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Sunken Temple",
+      "ApplicableTerrains": ["Swamp", "Wasteland"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Hidden Spring",
+      "ApplicableTerrains": ["Forest", "Glade"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Stone Circle",
+      "ApplicableTerrains": ["Land", "Plains"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Ruined Tower",
+      "ApplicableTerrains": ["Land", "Mountain"],
+      "ApplicableClimates": ["Temperate", "Polar"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Crystal Cavern",
+      "ApplicableTerrains": ["Mountain", "Underground"],
+      "ApplicableClimates": ["Temperate", "Polar"],
+      "Rarity": "VeryRare"
+    },
+    {
+      "LandmarkName": "Abandoned Mine",
+      "ApplicableTerrains": ["Mountain", "Hills", "Wasteland"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Fairy Grove",
+      "ApplicableTerrains": ["Forest", "Glade"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Forgotten Cemetery",
+      "ApplicableTerrains": ["Land", "Forest", "Swamp"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Giant's Footprint",
+      "ApplicableTerrains": ["Plains", "Mountain", "Land"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "Rarity": "VeryRare"
+    },
+    {
+      "LandmarkName": "Haunted Mansion",
+      "ApplicableTerrains": ["Forest", "Land"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Sacred Spring",
+      "ApplicableTerrains": ["Forest", "Glade", "Mountain"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Volcanic Crater",
+      "ApplicableTerrains": ["Volcano", "Mountain"],
+      "ApplicableClimates": ["Arid"],
+      "Rarity": "Legendary"
+    },
+    {
+      "LandmarkName": "Petrified Forest",
+      "ApplicableTerrains": ["Forest", "Wasteland"],
+      "ApplicableClimates": ["Arid", "Temperate"],
+      "Rarity": "VeryRare"
+    },
+	    {
+      "LandmarkName": "Moonlight Glade",
+      "ApplicableTerrains": ["Forest", "Swamp"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "VeryRare"
+    },
+    {
+      "LandmarkName": "Mystic Waterfall",
+      "ApplicableTerrains": ["Mountain", "Forest", "Glade"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Witches Hut",
+      "ApplicableTerrains": ["Swamp", "Forest"],
+      "ApplicableClimates": ["Temperate"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Oasis",
+      "ApplicableTerrains": ["Desert"],
+      "ApplicableClimates": ["Arid"],
+      "Rarity": "Uncommon"
+    },
+    {
+      "LandmarkName": "Ancient Ruins",
+      "ApplicableTerrains": ["Land", "Forest", "Glade"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "Rarity": "Rare"
+    },
+    {
+      "LandmarkName": "Dragon’s Lair",
+      "ApplicableTerrains": ["Mountain", "MountainPeak"],
+      "ApplicableClimates": ["Temperate", "Polar"],
+      "Rarity": "Legendary"
+    },
+    {
+      "LandmarkName": "Frozen Shipwreck",
+      "ApplicableTerrains": ["Snow", "Ice"],
+      "ApplicableClimates": ["Polar"],
+      "Rarity": "VeryRare"
+    },
+  {
+      "LandmarkName": "Lighthouse",
+      "ApplicableTerrains": ["Sand"],
+      "ApplicableClimates": ["Temperate", "Polar"],
+      "OverrideTerrain": true,
+      "TerrainToDisplay": "Lighthouse",
+      "TerrainToOverride": "Lighthouse",
+      "Rarity": "Uncommon",
+      "Basic": true
+    },
+    {
+      "LandmarkName": "Quarry",
+      "ApplicableTerrains": ["Mountain"],
+      "ApplicableClimates": ["Temperate", "Arid"],
+      "OverrideTerrain": true,
+      "TerrainToDisplay": "Quarry",
+      "TerrainToOverride": "Quarry",
+      "Rarity": "Common",
+      "Basic": true
+    },
+    {
+      "LandmarkName": "Abandoned Village",
+      "ApplicableTerrains": ["Land", "Swamp", "Wasteland"],
+      "ApplicableClimates": ["Temperate"],
+      "OverrideTerrain": true,
+      "TerrainToDisplay": "AbandonedVillage",
+      "TerrainToOverride": "AbandonedVillage",
+      "Rarity": "Common",
+      "Basic": true
+    },
+    {
+      "LandmarkName": "Secret Glade",
+      "ApplicableTerrains": ["Forest"],
+      "ApplicableClimates": ["Temperate"],
+      "OverrideTerrain": true,
+      "TerrainToDisplay": "Glade",
+      "TerrainToOverride": "Glade",
+      "Rarity": "Uncommon",
+      "Basic": true
+    }
+  ]
+}

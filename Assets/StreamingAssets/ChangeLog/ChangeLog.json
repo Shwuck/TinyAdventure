@@ -1,0 +1,272 @@
+[   
+   {
+      "title": "Anatomy & Combat Overhaul",
+      "version": "1.0.0",
+      "date": "2025-02-22",
+      "sections": [
+        {
+          "subtitle": "Anatomy System Implementation",
+          "subsections": [
+            {
+              "subtitle": "Core Mechanics",
+              "changes": [
+                "Characters now have a detailed anatomical structure.",
+                "Body parts can take damage, lose functionality, or be destroyed.",
+                "Vital body parts (e.g., Head, Torso) cause death if lost.",
+                "Limb loss affects combat (e.g., losing a hand means dropping weapons).",
+                "NPCs generate with appropriate anatomy based on their Race and BodyType.",
+                "AnatomyGenerator and NPCGenerator ensure correct anatomy assignment upon creation.",
+                "NPCs now correctly generate with full anatomy upon creation, including camp NPCs.",
+                "Anatomy-based equipment validation ensures characters can only equip items if they have the required body parts.",
+                "Equipment slots are dynamically assigned based on body structure (e.g., missing limbs prevent certain items from being equipped).",
+                "Anatomy data includes hierarchical body part relationships, allowing for complex damage effects."
+              ]
+            }
+          ]
+        },
+        {
+          "subtitle": "Combat System Overhaul",
+          "subsections": [
+            {
+              "subtitle": "Damage & Targeting Changes",
+              "changes": [
+                "Damage now targets individual body parts instead of overall health.",
+                "Lost limbs impact gameplay (e.g., dropping weapons when a hand is lost).",
+                "Critical hits can destroy body parts outright.",
+                "Resistance now applies per body part, affecting damage mitigation.",
+                "All combat logic now centralized in Character.cs for efficiency.",
+                "Magic and physical attacks now use unified damage calculations."
+              ]
+            },
+            {
+              "subtitle": "Combat Messaging & Feedback",
+              "changes": [
+                "Detailed combat messages explain exactly what happens.",
+                "Messages log to both the console and in-game combat log.",
+                "Ensures clearer battle feedback for players."
+              ]
+            }
+          ]
+        },
+        {
+          "subtitle": "Inventory & Equipment Handling",
+          "subsections": [
+            {
+              "subtitle": "Item Handling",
+              "changes": [
+                "Weapons, shields, and gear are unequipped and dropped when losing a body part.",
+                "Fixed duplication issue—items are now removed from the character before being dropped.",
+                "Dropped items correctly appear on the ground and can be picked up by others.",
+                "NPCs now verify anatomy before equipping gear to prevent invalid equipment assignments.",
+                "Equipped items are now dropped when a corresponding body part is lost (e.g., losing an arm drops a held weapon).",
+                "Loadout generation now accounts for body type limitations (e.g., a race with no legs won't receive leg armor).",
+                "Inventory UI now properly reflects anatomy-based equipment slots, preventing equipping in unavailable slots."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Map Generation Overhaul",
+      "version": "1.0.0",
+      "date": "2025-02-22",
+      "sections": [
+        {
+          "subtitle": "Bitwise Flags for Resource Placement",
+          "subsections": [
+            {
+              "subtitle": "Resource Optimization",
+              "changes": [
+                "Bitwise Flags are now assigned to map cells, improving resource and environment categorization.",
+                "ResourceTags support multi-category tagging, allowing cells to belong to multiple types.",
+                "GoldOre is now tagged as both Ore and PreciousStone for better filtering.",
+                "Improves performance in resource lookups and filtering."
+              ]
+            }
+          ]
+        },
+        {
+          "subtitle": "Underground & Cave System Expansion",
+          "subsections": [
+            {
+              "subtitle": "Water & Terrain Enhancements",
+              "changes": [
+                "WaterLevel System (0-100) tracks underground moisture.",
+                "Cells now have subterranean water based on proximity to surface water bodies.",
+                "Underground water pockets introduced for future well and aquifer use.",
+                "SubterraneanTerrain now reflects actual water presence, not just WaterLevel."
+              ]
+            },
+            {
+              "subtitle": "Cave System Improvements",
+              "changes": [
+                "Caves are now generated underground instead of appearing on the surface.",
+                "Procedural generation ensures organic cave networks with connected tunnels.",
+                "Surface cave entrances now lead into underground tunnel systems.",
+                "Cave types now include Treasure Caves, Monster Lairs, Fungi Caves, Abandoned Camps, and Collapsed Tunnels."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Civilization & Village Expansion Overhaul",
+      "version": "1.0.0",
+      "date": "2025-02-22",
+      "sections": [
+        {
+          "subtitle": "Village Expansion System",
+          "subsections": [
+            {
+              "subtitle": "Expansion Mechanics",
+              "changes": [
+                "Villages accumulate Expansion Points over time, influenced by Population size.",
+                "Villages assess nearby land for expansion based on resource availability, expansion cost, and strategic placement.",
+                "Villages can delay expansion if they lack the points for their preferred land."
+              ]
+            },
+            {
+              "subtitle": "AI Expansion Behavior",
+              "changes": [
+                "Villages now weight expansion choices instead of always selecting the optimal one.",
+                "Randomized weighting system allows for unexpected expansion decisions.",
+                "Villages prioritize adjacent expansion but will seek strategic advantages."
+              ]
+            }
+          ]
+        },
+        {
+          "subtitle": "Resource System Overhaul",
+          "subsections": [
+            {
+              "subtitle": "Resource Storage & Consumption",
+              "changes": [
+                "Villages now store Food, Water, Wood, and Stone separately from passive generation.",
+                "Food & Water decay if not replenished, scaling with population size.",
+                "High food levels increase Health over time.",
+                "Starvation & dehydration reduce Health and impact Population growth."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Code Cleanup & Optimization",
+      "version": "1.0.0",
+      "date": "2025-02-22",
+      "sections": [
+        {
+          "subtitle": "Performance Enhancements",
+          "subsections": [
+            {
+              "subtitle": "Bitwise Flags & Resource Tagging",
+              "changes": [
+                "Added Bitwise Flags for ResourceTags & EnvironmentalTags.",
+                "ResourceTags now support efficient multi-category tagging.",
+                "Allows cells to belong to multiple categories (e.g., GoldOre is both Ore and PreciousStone).",
+                "Improves performance in resource lookups & filtering."
+              ]
+            },
+            {
+              "subtitle": "Village Stats & Expansion Improvements",
+              "changes": [
+                "StoredFood, StoredWater, StoredWood, and StoredStone added to VillageStats.",
+                "FoodGain, WaterGain, WoodGain, and StoneGain now increase periodically.",
+                "Expansion cost now factors in racial expansion preferences."
+              ]
+            },
+            {
+              "subtitle": "Refactoring & Fixes",
+              "changes": [
+                "Refactored Cell Resource Tagging for better efficiency.",
+                "Updated MapGenerator resource assignments to correctly apply parent categories.",
+                "Fixed Expansion Cost retrieval errors."
+              ]
+            }
+          ]
+        }
+      ]
+ },
+  {
+    "title": "Monster System Implementation",
+    "version": "1.0.0",
+    "date": "2025-03-05",
+    "sections": [
+      {
+        "subtitle": "Monster Class & Core Functionality",
+        "subsections": [
+          {
+            "subtitle": "Introduction of Monsters",
+            "changes": [
+              "Monsters now exist as a distinct entity in the game, separate from NPCs.",
+              "Monster class introduced with unique properties, behaviors, and AI logic.",
+              "Monster generation logic integrated into the world, allowing for proper dungeon spawning."
+            ]
+          },
+          {
+            "subtitle": "Undead Monsters & Boss Variants",
+            "changes": [
+              "Skeletons and Zombies now spawn in dungeons, with Skeleton Lords and Dread Zombies serving as boss variants.",
+              "Boss monsters have enhanced stats, unique abilities, and better loot tables.",
+              "Monster attributes include health, strength, speed, awareness, and resistances."
+            ]
+          },
+          {
+            "subtitle": "Monster Placement & Spawning",
+            "changes": [
+              "Monsters now spawn dynamically in dungeons based on level and type.",
+              "MonsterManager handles placement logic to ensure valid, passable spawn points.",
+              "Boss monsters are placed separately at the lowest dungeon level."
+            ]
+          }
+        ]
+      },
+      {
+        "subtitle": "Monster Loot & Remains",
+        "subsections": [
+          {
+            "subtitle": "Loot System Integration",
+            "changes": [
+              "Monsters now drop loot upon death, including weapons, armor, and crafting materials.",
+              "Boss monsters have higher-quality loot, with a chance for enhanced equipment.",
+              "Loot rarity scales with monster level."
+            ]
+          },
+          {
+            "subtitle": "Monster Remains",
+            "changes": [
+              "Monsters now leave behind remains (e.g., 'Skeleton Remains' or 'Zombie Remains').",
+              "Remains act as a loot container, storing any dropped items.",
+              "Boss remains persist longer and have unique descriptions.",
+              "Monster level is stored in remains for future interactions (e.g., necromancy or scavenging)."
+            ]
+          }
+        ]
+      },
+      {
+        "subtitle": "Monster Interactions & Inspection",
+        "subsections": [
+          {
+            "subtitle": "Monster Inspection",
+            "changes": [
+              "Players can now inspect monsters to view their health, type, and attributes.",
+              "Inspection UI updated to display monster stats clearly.",
+              "Boss monsters have special inspection messages indicating their status."
+            ]
+          },
+          {
+            "subtitle": "Combat Integration",
+            "changes": [
+              "Monsters participate in combat using the same anatomical damage system as NPCs.",
+              "Combat log now correctly tracks damage dealt to monsters.",
+              "Monsters correctly die when vital body parts are destroyed."
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

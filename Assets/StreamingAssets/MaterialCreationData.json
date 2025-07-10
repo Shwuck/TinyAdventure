@@ -1,0 +1,402 @@
+[
+  {
+    "MaterialName": "Iron",
+    "Type": "Metal",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Tin",
+    "Type": "Metal",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Copper",
+    "Type": "Metal",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Gold",
+    "Type": "Metal",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Silver",
+    "Type": "Metal",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Adamantium",
+    "Type": "Metal",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Mythril",
+    "Type": "Metal",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Steel",
+    "Type": "Metal",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Bronze",
+    "Type": "Metal",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Platinum",
+    "Type": "Metal",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Titanium",
+    "Type": "Metal",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Electrum",
+    "Type": "Metal",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Starsteel",
+    "Type": "Metal",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Lunarite",
+    "Type": "Metal",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Aetherium",
+    "Type": "Metal",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Brass",
+    "Type": "Metal",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Pewter",
+    "Type": "Metal",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Nickel",
+    "Type": "Metal",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Zinc",
+    "Type": "Metal",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Cobalt",
+    "Type": "Metal",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Granite",
+    "Type": "Stone",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Marble",
+    "Type": "Stone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Obsidian",
+    "Type": "Stone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Quartz",
+    "Type": "Stone",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Jade",
+    "Type": "Stone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Sapphire",
+    "Type": "Stone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Emerald",
+    "Type": "Stone",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Dragonstone",
+    "Type": "Stone",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Bloodstone",
+    "Type": "Stone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Sunstone",
+    "Type": "Stone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Limestone",
+    "Type": "Stone",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Basalt",
+    "Type": "Stone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Sandstone",
+    "Type": "Stone",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Flint",
+    "Type": "Stone",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Malachite",
+    "Type": "Stone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Oak",
+    "Type": "Wood",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Yew",
+    "Type": "Wood",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Ebony",
+    "Type": "Wood",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Ironwood",
+    "Type": "Wood",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "World Tree Wood",
+    "Type": "Wood",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Mahogany",
+    "Type": "Wood",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Pine",
+    "Type": "Wood",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Maple",
+    "Type": "Wood",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Bamboo",
+    "Type": "Wood",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Cedar",
+    "Type": "Wood",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Ruby",
+    "Type": "Gemstone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Diamond",
+    "Type": "Gemstone",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Topaz",
+    "Type": "Gemstone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Amethyst",
+    "Type": "Gemstone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Opal",
+    "Type": "Gemstone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Garnet",
+    "Type": "Gemstone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Peridot",
+    "Type": "Gemstone",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Aquamarine",
+    "Type": "Gemstone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Tourmaline",
+    "Type": "Gemstone",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Alexandrite",
+    "Type": "Gemstone",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Cotton",
+    "Type": "Fabric",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Silk",
+    "Type": "Fabric",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Velvet",
+    "Type": "Fabric",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Linen",
+    "Type": "Fabric",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Wool",
+    "Type": "Fabric",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Satin",
+    "Type": "Fabric",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Brocade",
+    "Type": "Fabric",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Cowhide",
+    "Type": "Leather",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Deerhide",
+    "Type": "Leather",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Swineskin",
+    "Type": "Leather",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Snakeskin",
+    "Type": "Leather",
+    "Rarity": "Common"
+  },
+  {
+    "MaterialName": "Boarhide",
+    "Type": "Leather",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Dragonhide",
+    "Type": "Leather",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Griffonhide",
+    "Type": "Leather",
+    "Rarity": "VeryRare"
+  },
+  {
+    "MaterialName": "Phoenix Feather",
+    "Type": "Leather",
+    "Rarity": "Legendary"
+  },
+  {
+    "MaterialName": "Bearhide",
+    "Type": "Leather",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Wolfsbane Hide",
+    "Type": "Leather",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Crocodileskin",
+    "Type": "Leather",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Elephant Hide",
+    "Type": "Leather",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Amber",
+    "Type": "Other",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Pearl",
+    "Type": "Other",
+    "Rarity": "Uncommon"
+  },
+  {
+    "MaterialName": "Ivory",
+    "Type": "Other",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Coral",
+    "Type": "Other",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Glass",
+    "Type": "Other",
+    "Rarity": "Rare"
+  },
+  {
+    "MaterialName": "Bone",
+    "Type": "Other",
+    "Rarity": "Uncommon"
+  }
+]

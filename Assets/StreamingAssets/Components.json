@@ -1,0 +1,146 @@
+[
+  {
+    "Name": "Chain",
+    "Description": "A flexible, segmented body component for weapons designed for high mobility and extended reach.",
+    "Value": 4,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Grip",
+    "Description": "A small, ergonomically designed body component for small, easily manoeuvrable weapons.",
+    "Value": 2,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Guard",
+    "Description": "A body component with a protective guard to shield the user's hand, typically found in weapons designed for close combat.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Handle",
+    "Description": "A medium weight, medium length body component suitable for one-handed weapons, providing balance and control.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Hilt",
+    "Description": "A medium weight, short length body component typically used for bladed weapons, designed for quick, precise movements.",
+    "Value": 4,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Pole",
+    "Description": "A lightweight, long length body component designed for increased reach and leverage, often used in polearms and staff weapons.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Shaft",
+    "Description": "A heavy weight, long length body component, providing greater impact and stability, commonly used in heavy melee weapons.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Staff",
+    "Description": "A medium weight, long length body component, often used in martial arts and ceremonial weapons, providing versatility and reach.",
+    "Value": 4,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Axe Head",
+    "Description": "A broad, wedge-shaped component designed for chopping and cleaving, often used in heavy, powerful weapons.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Blade",
+    "Description": "A versatile component characterized by a flat, sharp-edged surface, used for cutting and slashing.",
+    "Value": 2,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Claw Head",
+    "Description": "A component featuring curved, claw-like extensions, often used for grasping or rending.",
+    "Value": 4,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Curved Blade",
+    "Description": "A blade with a pronounced curve, designed for sweeping slashes and increased cutting efficiency.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Double Axe Head",
+    "Description": "Two opposing axe blades mounted on a single weapon, providing balance and increased chopping power.",
+    "Value": 8,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Hammer Head",
+    "Description": "A heavy, blunt component designed for delivering powerful, crushing blows.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Hook",
+    "Description": "A curved component, often sharpened, designed for hooking, pulling, or slashing.",
+    "Value": 4,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Long Blade",
+    "Description": "An elongated blade component designed for extended reach and precise thrusting or slashing.",
+    "Value": 7,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Mace Head",
+    "Description": "A heavy, rounded component with protrusions, designed for delivering impactful, crushing strikes.",
+    "Value": 6,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Pointed Head",
+    "Description": "A sharp, tapering component designed for piercing and penetrating armor.",
+    "Value": 5,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Rod",
+    "Description": "A straight, cylindrical component often used for striking or blocking, common in staff and baton weapons.",
+    "Value": 3,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Saw Blade",
+    "Description": "A circular or serrated blade designed for cutting through tough materials with a sawing motion.",
+    "Value": 8,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Short Blade",
+    "Description": "A compact blade component designed for close-quarters combat, emphasizing speed and manoeuvrability.",
+    "Value": 4,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Spiked Head",
+    "Description": "A component featuring one or more spikes, designed for puncturing and inflicting deep wounds.",
+    "Value": 7,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Thin Blade",
+    "Description": "A narrow, lightweight blade component designed for quick, precise strikes and thrusts.",
+    "Value": 3,
+    "ItemTypes": ["Component"]
+  },
+  {
+    "Name": "Forked Head",
+    "Description": "A component featuring multiple distinct points, often used in weapons designed for trapping or multiple piercing.",
+    "Value": 7,
+    "ItemTypes": ["Component"]
+  }
+]

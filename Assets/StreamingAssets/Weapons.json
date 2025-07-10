@@ -1,0 +1,647 @@
+[
+    {
+        "Name": "Sword",
+		"Description": "",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Cane",
+		"Description": "",
+        "Value": 15,
+        "WeaponType": "Blunt",
+        "AttackValue": 2,
+        "EquipmentSlots": ["MainHand"],
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Staff",
+		"Description": "",
+        "Value": 20,
+        "WeaponType": "Magic",
+        "AttackValue": 3,
+        "EquipmentSlots": ["MainHand"],
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Halberd",
+		"Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Mace",
+		"Description": "",
+        "Value": 20,
+        "WeaponType": "Blunt",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Spear",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Flail",
+        "Value": 20,
+        "WeaponType": "Blunt",
+        "DamageOutput": 18,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Short Spear",
+        "Value": 20,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "War Pick",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 22,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Great Sword",
+        "Value": 50,
+        "WeaponType": "Sharp",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Battle Axe",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Morning Star",
+        "Value": 35,
+        "WeaponType": "Blunt",
+        "DamageOutput": 28,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Pike",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Maul",
+        "Value": 30,
+        "WeaponType": "Blunt",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Glaive",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Poleaxe",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Bo Staff",
+        "Value": 15,
+        "WeaponType": "Blunt",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Naginata",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 28,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Boar Spear",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Chain-Saw",
+        "Description": "",
+        "Value": 50,
+        "WeaponType": "Serrated",
+        "DamageOutput": 40,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Claw Hammer",
+        "Description": "",
+        "Value": 20,
+        "WeaponType": "Blunt",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Claw Polearm",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Claw Staff",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Magic",
+        "AttackValue": 5,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Claw Sword",
+        "Description": "",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Claymore",
+        "Description": "",
+        "Value": 50,
+        "WeaponType": "Sharp",
+        "DamageOutput": 45,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Dagger",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Dirk",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Double Halberd",
+        "Description": "",
+        "Value": 45,
+        "WeaponType": "Sharp",
+        "DamageOutput": 40,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Double-Bladed Hatchet",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 28,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Double-Headed Axe",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 32,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Double-Sided Axe",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 32,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Estoc",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Fauchard",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Flamberge",
+        "Description": "",
+        "Value": 45,
+        "WeaponType": "Sharp",
+        "DamageOutput": 40,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Great Maul",
+        "Description": "",
+        "Value": 40,
+        "WeaponType": "Blunt",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Guardian Sword",
+        "Description": "",
+        "Value": 50,
+        "WeaponType": "Sharp",
+        "DamageOutput": 45,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Guisarme",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Heavy Battle Axe",
+        "Description": "",
+        "Value": 50,
+        "WeaponType": "Sharp",
+        "DamageOutput": 45,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Hook Hammer",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Blunt",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Hook Sword",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Hooked Staff",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Magic",
+        "AttackValue": 5,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Javelin",
+        "Description": "",
+        "Value": 20,
+        "WeaponType": "Ranged",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Knuckle Duster",
+        "Description": "",
+        "Value": 10,
+        "WeaponType": "Blunt",
+        "DamageOutput": 5,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Kukri",
+        "Description": "",
+        "Value": 20,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Kusarigama",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Lance",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Long Sword",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Morning Star Staff",
+        "Description": "",
+        "Value": 40,
+        "WeaponType": "Blunt",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Nunchucks",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Blunt",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Pole Dagger",
+        "Description": "",
+        "Value": 20,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Punch Dagger",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Rapier",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Royal Scimitar",
+        "Description": "",
+        "Value": 50,
+        "WeaponType": "Sharp",
+        "DamageOutput": 45,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Sai",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Saw Blade Halberd",
+        "Description": "",
+        "Value": 45,
+        "WeaponType": "Serrated",
+        "DamageOutput": 40,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Saw Sword",
+        "Description": "",
+        "Value": 40,
+        "WeaponType": "Serrated",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Scimitar",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Serrated Dagger",
+        "Description": "",
+        "Value": 20,
+        "WeaponType": "Serrated",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Serrated Staff",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Serrated",
+        "AttackValue": 5,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Sickle",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Spiked Flail",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Blunt",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Spiked Mace",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Blunt",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Spiked Polearm",
+        "Description": "",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Standard Sword",
+        "Description": "",
+        "Value": 20,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Stiletto",
+        "Description": "",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Tonfa",
+        "Description": "",
+        "Value": 10,
+        "WeaponType": "Blunt",
+        "DamageOutput": 5,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Trident",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Twin Axes",
+        "Description": "",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Twin Halberd",
+        "Description": "",
+        "Value": 45,
+        "WeaponType": "Sharp",
+        "DamageOutput": 40,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "War Flail",
+        "Description": "",
+        "Value": 30,
+        "WeaponType": "Blunt",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "War Hatchet",
+        "Description": "",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "War Scythe",
+        "Description": "",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Warhammer",
+        "Value": 45,
+        "WeaponType": "Blunt",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    }
+]

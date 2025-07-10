@@ -1,0 +1,196 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using System.IO;
+using System;
+
+public class MessageLogManager : MonoBehaviour
+{
+    public static MessageLogManager Instance { get; private set; }
+
+    private Queue<Message> messages = new Queue<Message>(15); // Latest 15 messages
+    private List<Message> fullLogHistory = new List<Message>(); // Full log history
+    public MessageLogUIManager messageLogUIManager;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    public void Log(string eventType, params object[] args)
+    {
+        string newMessageText = FormatMessage(eventType, args);
+        MessageType messageType = GetMessageType(eventType);
+
+        bool isStackable = IsStackable(eventType);
+
+        if (messages.Count > 0 && isStackable && messages.Last().Type == messageType && messages.Last().Text.Contains(args[0].ToString()))
+        {
+            messages.Last().UpdateCount();
+        }
+        else
+        {
+            AddMessage(new Message(GetCurrentTimeStamp(), messageType, newMessageText));
+            messageLogUIManager.Refresh();
+        }
+    }
+
+    public void AddMessage(Message message)
+    {
+        if (messages.Count >= 15)
+        {
+            messages.Dequeue();
+        }
+        messages.Enqueue(message);
+        fullLogHistory.Add(message);
+
+        messageLogUIManager.UpdateDisplay(messages.ToList());
+        UIController.Instance?.UpdateMessageLogUI();
+    }
+
+    public void SaveLogToFile()
+    {
+        string logText = string.Join("\n", fullLogHistory.Select(m => $"{m.TimeStamp}: {m.Text}"));
+        File.WriteAllText("MessageLog.txt", logText);
+    }
+
+    private string FormatMessage(string eventType, object[] args)
+    {
+        try
+        {
+            return eventType switch
+            {
+                // Combat Messages
+                "combat_hit" when args.Length >= 5 =>
+                    $"{args[0]} <color=red>hits</color> {args[1]}'s {args[3]} for <color=yellow>{args[2]}</color> {GetDamageTypeColor(args[4].ToString())}{args[4]}</color> damage.",
+
+                "combat_critical" when args.Length >= 5 =>
+                    $"<color=orange>CRITICAL!</color> {args[0]} <color=red>devastates</color> {args[1]}'s {args[3]} for <color=yellow>{args[2]}</color> {GetDamageTypeColor(args[4].ToString())}{args[4]}</color> damage!",
+
+                "combat_miss" when args.Length >= 2 =>
+                    $"{args[0]} <color=grey>misses</color> {args[1]}.",
+
+                "combat_armor_block" when args.Length >= 3 =>
+                    $"{args[1]}'s <color=blue>armor</color> absorbs <color=yellow>{args[2]}</color> damage from {args[0]}!",
+
+                "combat_status" when args.Length >= 3 =>
+                    $"{args[0]} is now <color=purple>{args[1]}</color>! ({args[2]} turns)",
+
+                "item" when args.Length >= 1 =>
+                    $"<color=yellow>You picked up {args[0]}.</color>",
+
+                "exploration" when args.Length >= 2 =>
+                    $"<color=green>{args[0]} {args[1]}.</color>",
+
+                "social" when args.Length >= 2 =>
+                    $"<color=blue>{args[0]} said: \"{args[1]}\"</color>",
+
+                "special" when args.Length >= 1 =>
+                    $"<color=purple>Special action performed: {args[0]}.</color>",
+
+                _ => $"<color=gray>Unknown event: {eventType} (args={string.Join(", ", args)})</color>"
+            };
+        }
+        catch (Exception e)
+        {
+            GameDebugger.Instance.LogError($"MessageLogManager: Error formatting message: {eventType}, {e.Message}");
+            return $"[Error processing message: {eventType}]";
+        }
+    }
+
+    private string GetDamageTypeColor(string damageType)
+    {
+        return damageType switch
+        {
+            "Fire" => "<color=orange>",
+            "Ice" => "<color=cyan>",
+            "Piercing" => "<color=lightblue>",
+            "Slashing" => "<color=red>",
+            "Bludgeoning" => "<color=yellow>",
+            _ => "<color=white>"
+        };
+    }
+
+    private MessageType GetMessageType(string eventType)
+    {
+        return eventType switch
+        {
+            "combat_hit" => MessageType.Combat,
+            "combat_critical" => MessageType.Combat,
+            "combat_miss" => MessageType.Combat,
+            "combat_status" => MessageType.StatusEffect,
+            "combat_armor_block" => MessageType.Defensive,
+            "item" => MessageType.Item,
+            "exploration" => MessageType.Exploration,
+            "social" => MessageType.Social,
+            "special" => MessageType.Special,
+            _ => MessageType.Other
+        };
+    }
+
+    private bool IsStackable(string eventType)
+    {
+        return eventType switch
+        {
+            "combat_hit" => false,
+            "combat_miss" => false,
+            "combat_critical" => false,
+            "combat_status" => false,
+            "combat_armor_block" => false,
+            _ => true  // Only stack non-combat, repeatable messages
+        };
+    }
+
+    private string GetCurrentTimeStamp()
+    {
+        return $"[{TimeManager.Instance.GetCurrentTimeFormatted()}]";
+    }
+
+    public void ClearMessages()
+    {
+        messages.Clear();
+        messageLogUIManager.UpdateDisplay(new List<Message>());
+        UIController.Instance?.UpdateMessageLogUI();
+    }
+}
+
+public class Message
+{
+    public string TimeStamp { get; private set; }
+    public MessageType Type { get; private set; }
+    public string Text { get; private set; }
+    private int stackCount = 1;
+
+    public Message(string timeStamp, MessageType type, string text)
+    {
+        TimeStamp = timeStamp;
+        Type = type;
+        Text = text;
+    }
+
+    public void UpdateCount()
+    {
+        stackCount++;
+        Text = Text.Contains("(x") ? Text.Substring(0, Text.IndexOf("(x")) : Text;
+        Text += $" (x{stackCount})";
+    }
+}
+
+public enum MessageType
+{
+    Combat,
+    StatusEffect,
+    Defensive,
+    Item,
+    Exploration,
+    Social,
+    Special,
+    Other
+}

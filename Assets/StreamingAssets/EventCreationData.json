@@ -1,0 +1,34 @@
+{
+    "Events": [
+        {
+            "EventName": "Goblin Ambush",
+            "EventType": "Minor",
+            "ApplicableTerrains": ["Forest", "Hills"]
+        },
+        {
+            "EventName": "Treasure Trove",
+            "EventType": "Medium",
+            "ApplicableTerrains": ["Desert", "Mountains"]
+        },
+        {
+            "EventName": "Dragon Attack",
+            "EventType": "Major",
+            "ApplicableTerrains": ["Volcano", "Plains"]
+        },
+        {
+            "EventName": "Meteorite Strike",
+            "EventType": "Major",
+            "ApplicableTerrains": ["Desert", "Plains", "Hills"]
+        },
+        {
+            "EventName": "Volcanic Eruption",
+            "EventType": "Major",
+            "ApplicableTerrains": ["Volcano", "Mountains", "Coastal"]
+        },
+        {
+            "EventName": "Necromancer's Tower Appears",
+            "EventType": "Major",
+            "ApplicableTerrains": ["Swamp", "Dark Forest", "Graveyard"]
+        }
+    ]
+}

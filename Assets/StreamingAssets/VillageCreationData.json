@@ -1,0 +1,54 @@
+{
+  "Villages": [
+    {
+      "VillageType": "HumanVillage",
+      "PrestigeLevel": 1,
+      "DominantRace": "Human",
+      "CommonRaces": ["Human", "Dwarf"],
+      "UncommonRaces": ["Sabren"],
+      "RareRaces": ["Elf"],
+      "PreferredTerrains": ["Plains", "Forest"],
+      "NPCRoles": ["Trader", "Blacksmith", "Farmer"]
+    },
+    {
+      "VillageType": "DwarvenHall",
+      "PrestigeLevel": 1,
+      "DominantRace": "Dwarf",
+      "CommonRaces": ["Dwarf", "Human"],
+      "UncommonRaces": ["Elf"],
+      "RareRaces": ["Sabren"],
+      "PreferredTerrains": ["Mountain"],
+      "NPCRoles": ["Miner", "Trader", "Blacksmith", "Warrior"]
+    },
+    {
+      "VillageType": "ElvenGrove",
+      "PrestigeLevel": 1,
+      "DominantRace": "Elf",
+      "CommonRaces": ["Elf", "Human"],
+      "UncommonRaces": ["Dwarf"],
+      "RareRaces": ["Sabren"],
+      "PreferredTerrains": ["Forest"],
+      "NPCRoles": ["Hunter", "Trader", "Healer"]
+    },
+    {
+      "VillageType": "SabrenCamp",
+      "PrestigeLevel": 1,
+      "DominantRace": "Sabren",
+      "CommonRaces": ["Sabren", "Human", "Elf"],
+      "UncommonRaces": ["Dwarf"],
+      "RareRaces": ["Saurosin"],
+      "PreferredTerrains": ["Desert", "Plains", "Land"],
+      "NPCRoles": ["Warrior", "Scout", "Trader"]
+    },
+	{
+  "VillageType": "CaraphraxNest",
+  "PrestigeLevel": 1,
+  "DominantRace": "Caraphrax",
+  "CommonRaces": ["Caraphrax"],
+  "UncommonRaces": ["Dwarf", "Human"],
+  "RareRaces": ["Elf", "Sabren"],
+  "PreferredTerrains": ["Underground"],
+  "NPCRoles": ["Miner", "Trader"]
+}
+  ]
+}

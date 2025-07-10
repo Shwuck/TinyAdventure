@@ -1,0 +1,789 @@
+[
+  {
+    "roles": ["Default"],
+    "personalities": [
+      {
+        "Personality": "Default",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Hello. I'm [NPC Name]. How can I assist you today?",
+            "HasMetPlayer": "Hello [Player Name], nice to see you again."
+          },
+          "Trade": {
+            "Yes": "I can trade a few things. What do you need?",
+            "No": "I'm afraid I don't have anything to trade right now."
+          },
+          "NeedAnything": {
+            "Yes": "Actually, yes. I could use some [item]. Can you help?",
+            "No": "No, I don't need anything at the moment. Thanks for asking."
+          },
+          "News": {
+            "Yes": "I've heard some things around town. Would you like to know?",
+            "No": "No news on my end. It's been quiet."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "roles": ["Villager"],
+    "personalities": [
+      {
+        "Personality": "Friendly",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Hello there! It's a pleasure to meet you. I'm [NPC Name], how can I help you today?",
+            "HasMetPlayer": "Hi [Player Name]! Great to see you again, how can I help?"
+          },
+          "Trade": {
+            "Yes": "Sure, I'd be happy to trade! What do you have in mind?",
+            "No": "Oh, I'm sorry, I don't have anything to trade right now. Maybe next time?"
+          },
+          "NeedAnything": {
+            "Yes": "Actually, yes! I could use some [item]. If you could help, I'd really appreciate it!",
+            "No": "That's kind of you to ask, but I'm all set for now. Thanks!"
+          },
+          "News": {
+            "Yes": [
+              "Oh, yes! There's something I heard recently that might interest you. Want to hear about it?",
+              "Yes, actually! There's been some chatter around town. Would you like me to fill you in?"
+            ],
+            "No": [
+              "Hmm, I haven't heard much lately. But I'm sure something interesting will come up soon!",
+              "No, not much happening here at the moment. It's been pretty quiet, but I'll keep an ear out for you!"
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Grumpy",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "What do you want? I'm [NPC Name], but don't expect much from me.",
+            "HasMetPlayer": "Oh, it's you again, [Player Name]. What do you need now?"
+          },
+          "Trade": {
+            "Yes": "Fine, let's get this over with. What do you want?",
+            "No": "Nope, not interested. Try someone else."
+          },
+          "NeedAnything": {
+            "Yes": "Yeah, I could use some [item]. Not that I'm counting on you or anything.",
+            "No": "Nope, don't need anything. Just trying to get by."
+          },
+          "News": {
+            "Yes": [
+              "Yeah, there's something. If you're interested, I can tell you about it, I suppose.",
+              "Sure, I've heard a bit of gossip. Not that it matters much, but I can share."
+            ],
+            "No": [
+              "No, nothing worth mentioning. It's just the same old stuff around here.",
+              "Nope, no news. Not that I care about the town's rumblings anyway."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Shy",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Oh, um, hi... I'm [NPC Name]. I don't usually talk to strangers.",
+            "HasMetPlayer": "Oh, it's you, [Player Name]. Nice to see you again."
+          },
+          "Trade": {
+            "Yes": "Um, okay. I have a few things... if you're interested.",
+            "No": "Oh, um, sorry, I don't have anything to trade right now."
+          },
+          "NeedAnything": {
+            "Yes": "Oh, um, yes, I could use some [item]... if it's not too much trouble.",
+            "No": "No, I'm alright, thank you for asking."
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's some news. It's a bit... um, well, interesting. Do you want to hear?",
+              "Oh, I did hear something the other day. It's a bit... uh, would you like to know?"
+            ],
+            "No": [
+              "No, I haven't heard much... but I'll let you know if I do.",
+              "I'm not sure... no, I don't think there's anything new."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Confident",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Ah, another adventurer! The name's [NPC Name]. What can I do for you?",
+            "HasMetPlayer": "Ah, [Player Name]! Back for more, I see. How can I assist?"
+          },
+          "Trade": {
+            "Yes": "Absolutely! I've got some quality items. What are you offering?",
+            "No": "No thanks, I don't need anything you've got."
+          },
+          "NeedAnything": {
+            "Yes": "Yes, actually! Some [item] would be perfect. Can you help out?",
+            "No": "No, I'm good. But thanks for offering!"
+          },
+          "News": {
+            "Yes": [
+              "Yes, I've got some news for you. It's quite the talk of the town!",
+              "Oh, indeed! There's been some interesting news. Want to hear?"
+            ],
+            "No": [
+              "No, nothing new. But I'm sure something will come up soon!",
+              "Nope, not much happening lately. I'll keep you posted if I hear anything."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Mysterious",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Greetings, traveler. Some call me [NPC Name], though names hold little power.",
+            "HasMetPlayer": "Ah, [Player Name], we meet again. The stars must be aligned."
+          },
+          "Trade": {
+            "Yes": "Ah, trading? I might have something of interest. Let's see...",
+            "No": "No, I don't think I have anything to trade. But who knows what the future holds?"
+          },
+          "NeedAnything": {
+            "Yes": "Hmm, there is something... I could use some [item]. It would help in ways you may not understand.",
+            "No": "No, nothing I need right now. The stars haven't aligned for that yet."
+          },
+          "News": {
+            "Yes": [
+              "There are whispers of news, things that are not as they seem. Interested?",
+              "Yes, there's news. But beware, not all news is to be trusted."
+            ],
+            "No": [
+              "No news that I can share. Sometimes, silence speaks the loudest.",
+              "Nothing that the stars haven't already foretold. But, maybe next time."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Cheerful",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Hey there! I'm [NPC Name], and today's a great day, isn't it?",
+            "HasMetPlayer": "Hi [Player Name]! So good to see you again! How's everything?"
+          },
+          "Trade": {
+            "Yes": "Sure thing! Trading is always fun. What do you have?",
+            "No": "Oh, I'm fresh out of tradable goods. Maybe next time!"
+          },
+          "NeedAnything": {
+            "Yes": "Yes! I'm in need of some [item]. That would be wonderful!",
+            "No": "Nope, I'm all set! But thanks for checking in!"
+          },
+          "News": {
+            "Yes": [
+              "Oh, yes! There's something fun happening! Do you want to know?",
+              "Yes, there's some great news around! I'd love to share it with you!"
+            ],
+            "No": [
+              "No, not much to report... but I'm sure something exciting will happen soon!",
+              "Nothing new, but let's keep our spirits up! You never know what's around the corner."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Sarcastic",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Oh joy, another visitor. I'm [NPC Name], as if you care.",
+            "HasMetPlayer": "Oh, look, it's [Player Name] again. Can't get enough, huh?"
+          },
+          "Trade": {
+            "Yes": "Trade with you? Sure, let's see if you have anything worth my time.",
+            "No": "Yeah, no. I don't need anything you might have."
+          },
+          "NeedAnything": {
+            "Yes": "Oh, you want to help? Sure, I could use some [item]. If it's not too much for you.",
+            "No": "Need anything? No, I'm good. But nice try!"
+          },
+          "News": {
+            "Yes": [
+              "Oh, absolutely, there's always something. Do you actually want to know, or just making conversation?",
+              "Sure, there's some news. Though I doubt it's as exciting as you'd hope."
+            ],
+            "No": [
+              "No news, which is shocking, right? I mean, when is this town ever exciting?",
+              "Nope, nothing. But you know, sometimes no news is just... no news."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Nervous",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Uh, hi! I'm [NPC Name]. Sorry, I didn't expect company.",
+            "HasMetPlayer": "Oh, [Player Name], hi again! Um, how can I help?"
+          },
+          "Trade": {
+            "Yes": "Uh, trade? Okay, I guess. Let me see what I have.",
+            "No": "Oh, um, I'm afraid I can't trade. I don't have anything."
+          },
+          "NeedAnything": {
+            "Yes": "Uh, actually, yes... I could use some [item]. If it's not too much trouble.",
+            "No": "No, um, nothing right now. But thank you for asking!"
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's some news... but, um, it's nothing too alarming, I hope.",
+              "Oh, I've heard a few things, but I don't know if it's important... want to hear?"
+            ],
+            "No": [
+              "No, I don't think there's anything new... at least, I hope not.",
+              "Nothing that I've heard... but who knows, things can change quickly!"
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Curious",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Hello! You look interesting. I'm [NPC Name]. Where are you from?",
+            "HasMetPlayer": "Hi [Player Name]! Back again? I love seeing familiar faces!"
+          },
+          "Trade": {
+            "Yes": "Trade? Interesting! Let's see what you've got.",
+            "No": "Oh, not today. But I'd love to see what others have to trade."
+          },
+          "NeedAnything": {
+            "Yes": "Yes! I need some [item]. It's for a little project I'm working on.",
+            "No": "No, I'm just curious about things. But thanks for asking!"
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's always something happening! I've heard some interesting things recently. Do you want to know more?",
+              "Oh, absolutely! There's been some buzz around town. I'd love to share it with you!"
+            ],
+            "No": [
+              "No, nothing new that I can think of... But I'm always on the lookout for something interesting!",
+              "Not much to report, I'm afraid. But I'm sure something will come up soon. I'll keep you posted!"
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Arrogant",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": "Well, well, another face in the crowd. I’m [NPC Name], not that you'd forget it.",
+            "HasMetPlayer": "Ah, [Player Name], come to bask in my glory once more?"
+          },
+          "Trade": {
+            "Yes": "Of course I'll trade. Let's see if you have anything worth my attention.",
+            "No": "Why would I trade with you? You don't have anything I need."
+          },
+          "NeedAnything": {
+            "Yes": "Yes, I need some [item]. Only the best, of course.",
+            "No": "No, I have everything I need. But it's nice of you to ask, I suppose."
+          },
+          "News": {
+            "Yes": [
+              "Yes, I've heard some news, though I doubt it's anything as grand as you might expect.",
+              "Oh, there's news alright. But is it really worth your time? Probably not."
+            ],
+            "No": [
+              "No news worth your time, I'm sure. But I'll keep you posted if something truly important comes up.",
+              "Nothing new, but then again, not everything reaches my standards of interest."
+            ]
+          }
+        },
+      {
+        "Personality": "Skittish",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Oh! You startled me... I-I'm [NPC Name]. What can I do for you?",
+              "Ah! I didn't see you there. I'm [NPC Name]. Do you need something?"
+            ],
+            "HasMetPlayer": [
+              "Oh, [Player Name]! It's you... You surprised me again. What can I help you with?",
+              "Hello, [Player Name]! I wasn't expecting you. How can I assist you today?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Uh, sure... I have a few things, I think. Please be quick.",
+              "Okay, I-I think I have something for you. Let's trade."
+            ],
+            "No": [
+              "Oh, um, I'm not trading right now. Maybe another time?",
+              "I'm sorry, I don't have anything to trade right now. Please come back later."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Actually, y-yes... I'm running low on [item]. Could you help me get some?",
+              "Yes, I could use some [item]. If it's not too much trouble..."
+            ],
+            "No": [
+              "No, I don't think I need anything right now. But thank you for asking.",
+              "No, everything's fine... for now. Thanks for checking, though."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Oh, um, yes! There's something I heard recently. Do you want to know?",
+              "Yes, there's been some talk... but I'm not sure if it's true. Do you want to hear?"
+            ],
+            "No": [
+              "No, I haven't heard much... sorry.",
+              "No news from me. I've been keeping to myself."
+            ]
+          }
+        }
+      }
+      {
+        "Personality": "Intellectual",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Ah, greetings. I'm [NPC Name], a humble seeker of knowledge. How can I assist you?",
+              "Hello, traveler. I'm [NPC Name]. Always a pleasure to engage with new faces. What can I do for you?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], good to see you again! Have you discovered anything new?",
+              "Welcome back, [Player Name]. What intellectual pursuits bring you here today?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Certainly! It's always intriguing to see what items one might exchange. What do you have?",
+              "Of course. Let's engage in a thoughtful exchange. What are you looking for?"
+            ],
+            "No": [
+              "I'm afraid I have nothing to trade at the moment. Perhaps another time?",
+              "Currently, I'm without items to trade. But do return—there's always more to discuss."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Indeed, I could use some [item] for my studies. Could you assist me with that?",
+              "Yes, acquiring some [item] would greatly aid my research. Can you help?"
+            ],
+            "No": [
+              "No, I have all that I need for now. But your offer is appreciated.",
+              "I'm currently well-stocked. But thank you for your kind offer."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's been some intriguing developments. Would you like to hear?",
+              "Oh, absolutely! There's always something happening. Let me share what I've heard."
+            ],
+            "No": [
+              "No new insights at the moment, but I'll keep you informed if I hear anything of note.",
+              "No news, but I'm always eager to learn more. Let's see what we can discover together."
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "roles": ["Trader"],
+    "personalities": [
+      {
+        "type": "Friendly",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Welcome, friend! I'm [NPC Name], and I have the best goods in town. What are you looking for?",
+              "Hi there! I'm [NPC Name], and I'd be happy to help you find what you need. What can I do for you?"
+            ],
+            "met": [
+              "Good to see you again, [Player Name]! Looking for something specific today?",
+              "Hello again, [Player Name]! Always a pleasure to see a familiar face. What can I do for you?"
+            ]
+          },
+          "trade": {
+            "yes": "Of course! Take a look at my wares and let me know what catches your eye.",
+            "no": "Sorry, I don't have anything to trade right now, but come back soon!"
+          },
+          "needAnything": {
+            "yes": "Actually, yes! I'm running low on [item]. Could you bring me some?",
+            "no": "No, I have everything I need at the moment. Thanks for asking!"
+          }
+        }
+      },
+      {
+        "type": "Grumpy",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Yeah, yeah, I'm [NPC Name]. If you're buying, get on with it.",
+              "What do you want? I'm [NPC Name]. Here to buy something or just wasting my time?"
+            ],
+            "met": [
+              "Oh, it's you again, [Player Name]. What do you want this time?",
+              "Back for more, [Player Name]? Fine, let's see what you want."
+            ]
+          },
+          "trade": {
+            "yes": "Fine, take a look. Just don't waste my time.",
+            "no": "Nope, nothing to trade right now. Come back later."
+          },
+          "needAnything": {
+            "yes": "Yeah, I could use some [item]. Not that you care.",
+            "no": "Nope, don't need anything from you."
+          }
+        }
+      },
+      {
+        "type": "Shy",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Oh, um, hi... I'm [NPC Name]. I have some things you might like...",
+              "Hello... I'm [NPC Name]. Feel free to look around."
+            ],
+            "met": [
+              "Oh, it's you again, [Player Name]. Nice to see you.",
+              "Hello, [Player Name]! How can I help you today?"
+            ]
+          },
+          "trade": {
+            "yes": "Sure, I have a few things... take a look if you want.",
+            "no": "Oh, um, I'm sorry, but I don't have anything to trade right now."
+          },
+          "needAnything": {
+            "yes": "Well, yes, I could use some [item]... if it's not too much trouble.",
+            "no": "No, I'm okay, but thank you for asking."
+          }
+        }
+      },
+      {
+        "type": "Confident",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Welcome! I'm [NPC Name], and I have the finest selection you'll find anywhere. What can I get for you?",
+              "Ah, another customer! I'm [NPC Name], here to make sure you get the best deals. What do you need?"
+            ],
+            "met": [
+              "Ah, [Player Name]! Back for more? You've got good taste.",
+              "Great to see you again, [Player Name]. What are you in the market for today?"
+            ]
+          },
+          "trade": {
+            "yes": "Absolutely! Let me show you my top products.",
+            "no": "No, not trading today. But check back soon for more stock."
+          },
+          "needAnything": {
+            "yes": "Yes, indeed! I'm looking for some [item]. Can you get it for me?",
+            "no": "No, I'm all set for now, but thanks for the offer!"
+          }
+        }
+      },
+      {
+        "type": "Mysterious",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Ah, a seeker of curiosities. I am [NPC Name]. You may find what you seek here... or perhaps something else.",
+              "Greetings, traveler. I am [NPC Name], and I have wares that might interest you. What are you looking for?"
+            ],
+            "met": [
+              "Back again, [Player Name]? The mysteries deepen each time.",
+              "Welcome back, [Player Name]. The winds whispered of your return."
+            ]
+          },
+          "trade": {
+            "yes": "Indeed, I have many things... some mundane, some rare. What do you desire?",
+            "no": "No, I have nothing to trade today. Perhaps another time."
+          },
+          "needAnything": {
+            "yes": "There is something... I require [item]. Can you procure it?",
+            "no": "No, nothing I need at the moment. But your offer is appreciated."
+          }
+        }
+      },
+      {
+        "type": "Cheerful",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Hello there! I'm [NPC Name], and I've got some great stuff for sale! What can I do for you?",
+              "Hiya! I'm [NPC Name], and it's a great day for some shopping! Looking for anything in particular?"
+            ],
+            "met": [
+              "Hey, [Player Name]! So good to see you again! What can I get for you?",
+              "Welcome back, [Player Name]! I've got some new stuff in, take a look!"
+            ]
+          },
+          "trade": {
+            "yes": "Sure thing! Take a look around and see what you like!",
+            "no": "Oh, I'm out of stock right now, but check back soon!"
+          },
+          "needAnything": {
+            "yes": "Yes, I could use some [item]. That would be wonderful!",
+            "no": "Nope, all set here, but thanks for asking!"
+          }
+        }
+      },
+      {
+        "type": "Sarcastic",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Oh great, another customer. I'm [NPC Name], here to sell you stuff. Thrilling, isn't it?",
+              "Well, aren't you lucky to meet me. I'm [NPC Name]. Now, what do you want?"
+            ],
+            "met": [
+              "Back again, [Player Name]? You must really like my stuff.",
+              "Oh, it's you again, [Player Name]. What do you need now?"
+            ]
+          },
+          "trade": {
+            "yes": "Sure, why not? Take a look, if you think you can afford it.",
+            "no": "No, I'm not in the mood for trading. Maybe later, if you're lucky."
+          },
+          "needAnything": {
+            "yes": "Oh, you're offering to help? I could use some [item], if you're up for it.",
+            "no": "Need anything? No, I'm good, but thanks for the thought."
+          }
+        }
+      },
+      {
+        "type": "Nervous",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Uh, hi! I'm [NPC Name]. I have some items... if you want to look?",
+              "Oh, hello! I'm [NPC Name]. Please, take your time browsing."
+            ],
+            "met": [
+              "Oh, hi again, [Player Name]. What can I do for you?",
+              "Hello, [Player Name]. Nice to see you again."
+            ]
+          },
+          "trade": {
+            "yes": "Um, yes, sure... I have some things here. Take a look.",
+            "no": "Oh, I'm afraid I don't have anything to trade right now."
+          },
+          "needAnything": {
+            "yes": "Actually, yes... I could use some [item]. If you don't mind.",
+            "no": "No, nothing right now, but thank you for asking!"
+          }
+        }
+      },
+      {
+        "type": "Curious",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Hello! I'm [NPC Name]. You seem interesting. Looking for anything specific?",
+              "Hi there! I'm [NPC Name]. I have a few things that might catch your eye. What brings you here?"
+            ],
+            "met": [
+              "Oh, [Player Name], you're back! What new adventures have you had?",
+              "Hi again, [Player Name]! What can I show you this time?"
+            ]
+          },
+          "trade": {
+            "yes": "Yes, let's see what we can trade! What do you have?",
+            "no": "No, not trading today. But come back soon, I might have something new!"
+          },
+          "needAnything": {
+            "yes": "Yes! I'm looking for some [item]. Can you help me find it?",
+            "no": "No, I'm good for now. But I'll keep you in mind if I think of something!"
+          }
+        }
+      },
+      {
+        "type": "Arrogant",
+        "dialogue": {
+          "greetings": {
+            "unmet": [
+              "Well, well, another face in the crowd. I’m [NPC Name], not that you'd forget it.",
+              "Ah, a new customer. I'm [NPC Name], and I'm sure you'll find something worthwhile here."
+            ],
+            "met": [
+              "Ah, [Player Name], back again? Clearly, you know where to find the best.",
+              "Welcome back, [Player Name]. It seems you appreciate quality after all."
+            ]
+          },
+          "trade": {
+            "yes": "Of course I'll trade. Let's see if you have anything worth my attention.",
+            "no": "No, I'm not interested in trading right now. You wouldn't have what I need anyway."
+          },
+          "needAnything": {
+            "yes": "Yes, I need some [item]. Only the best, of course. Can you get it?",
+            "no": "No, I have everything I need. But thanks for the offer, I suppose."
+          }
+        }
+      },
+	  {
+      "type": "Skittish",
+      "dialogue": {
+        "greetings": {
+          "unmet": [
+            "Oh! You startled me... I-I'm [NPC Name]. What can I do for you?",
+            "Ah! I didn't see you there. I'm [NPC Name]. Do you need something?"
+          ],
+          "met": [
+            "Oh, [Player Name]! It's you... You surprised me again. What can I help you with?",
+            "Hello, [Player Name]! I wasn't expecting you. How can I assist you today?"
+          ]
+        },
+        "trade": {
+          "yes": "Uh, sure... I have some things here. Take a look, but please be quick.",
+          "no": "Oh, um, I'm not trading right now. Maybe another time?"
+        },
+        "needAnything": {
+          "yes": "Actually, y-yes... I'm running low on [item]. Could you help me get some?",
+          "no": "No, I don't think I need anything right now. But thank you for asking."
+        },
+        "news": {
+          "yes": "Oh, um, yes! There's something I heard recently. Do you want to know?",
+          "no": "No, I haven't heard anything new... It's been quiet."
+        }
+      }
+    },
+    {
+      "type": "Generous",
+      "dialogue": {
+        "greetings": {
+          "unmet": [
+            "Welcome, friend! I'm [NPC Name]. If you need anything, just let me know—I'm happy to help!",
+            "Hello there! I'm [NPC Name]. It's always a pleasure to meet new faces. How can I assist you today?"
+          ],
+          "met": [
+            "Ah, [Player Name], good to see you again! How can I help you today?",
+            "Welcome back, [Player Name]! If you need anything, just ask. I'm always here to help!"
+          ]
+        },
+        "trade": {
+          "yes": "Of course! Feel free to take a look at what I have. If you need a discount, just let me know!",
+          "no": "I'm afraid I don't have anything to trade right now, but please come back later!"
+        },
+        "needAnything": {
+          "yes": "Actually, yes! If you could bring me some [item], that would be wonderful. I'd be grateful!",
+          "no": "No, I don't need anything at the moment. But thank you for offering!"
+        },
+        "news": {
+          "yes": "Yes, there's some news I've been hearing around. Would you like to know?",
+          "no": "No news from me at the moment. But I'll let you know if I hear anything!"
+        }
+      }
+    },
+    {
+      "type": "Intellectual",
+      "dialogue": {
+        "greetings": {
+          "unmet": [
+            "Ah, a curious mind! I'm [NPC Name], at your service. What knowledge or items do you seek today?",
+            "Greetings, traveler. I'm [NPC Name]. Always a pleasure to meet someone new. How can I assist your quest for knowledge?"
+          ],
+          "met": [
+            "Ah, [Player Name], good to see you again! What can I do for you this time?",
+            "Welcome back, [Player Name]. Your return suggests a pursuit of something deeper. How can I help?"
+          ]
+        },
+        "trade": {
+          "yes": "Certainly! Knowledge and goods should flow freely. What do you need?",
+          "no": "I'm afraid I have nothing to trade at the moment. Perhaps another time?"
+        },
+        "needAnything": {
+          "yes": "Indeed, I could use some [item] for my studies. Could you assist me with that?",
+          "no": "No, I have all that I need for now. But your offer is appreciated."
+        },
+        "news": {
+          "yes": "Yes, there's quite an intriguing bit of news. Shall I share it with you?",
+          "no": "No new developments, but that's often a sign of stability."
+        }
+      }
+    },
+    {
+      "type": "Pandering",
+      "dialogue": {
+        "greetings": {
+          "unmet": [
+            "Ah, a most distinguished guest! I'm [NPC Name]. How may I assist someone as remarkable as you?",
+            "Welcome, esteemed traveler! I'm [NPC Name], and it would be my honor to serve you. What do you need?"
+          ],
+          "met": [
+            "Ah, [Player Name], the pleasure is all mine to see you again! How may I be of service to you today?",
+            "Greetings, [Player Name]! Your presence graces us once more. How can I assist such a fine individual as yourself?"
+          ]
+        },
+        "trade": {
+          "yes": "Absolutely! I have the finest goods, perfect for someone of your taste. What can I show you?",
+          "no": "Oh, I am terribly sorry, but I have nothing to trade right now. I will prepare something special for your next visit!"
+        },
+        "needAnything": {
+          "yes": "Actually, yes! If someone as generous as you could provide me with some [item], I would be ever so grateful!",
+          "no": "No, no, I couldn't possibly ask anything of you. Your kindness is more than enough!"
+        },
+        "news": {
+          "yes": "Oh, yes! There's some news that would surely interest someone of your calibre. Would you like to hear?",
+          "no": "No news that could match your expectations, I'm afraid."
+        }
+      }
+    },
+    {
+      "type": "Snivelling",
+      "dialogue": {
+        "greetings": {
+          "unmet": [
+            "Oh, hello... I'm [NPC Name]. Please don't hurt me; I'm just trying to get by.",
+            "Hi, I'm [NPC Name]. I hope I can help you... please don't be mad if I can't."
+          ],
+          "met": [
+            "Oh, it's you again, [Player Name]. I hope I didn't do anything wrong last time...",
+            "Hello, [Player Name]. Is everything okay? I hope I didn't upset you before."
+          ]
+        },
+        "trade": {
+          "yes": "Yes, yes, of course! Please, take a look, and don't be angry if it's not what you want...",
+          "no": "Oh, um, I'm afraid I don't have anything to trade right now... please don't be upset!"
+        },
+        "needAnything": {
+          "yes": "Yes, if it's not too much trouble, I could use some [item]. But only if it's not a bother...",
+          "no": "No, I don't want to trouble you... I'm fine, really."
+        },
+        "news": {
+          "yes": "Yes, there's some news... but I hope it doesn't upset you...",
+          "no": "No, I don't have any news... I hope that's okay."
+        }
+      }
+    },
+    {
+      "type": "Jealous",
+      "dialogue": {
+        "greetings": {
+          "unmet": [
+            "Oh, another traveler. I'm [NPC Name]. What are you looking for that I don't already have?",
+            "Welcome, I guess. I'm [NPC Name]. I suppose you've heard of me, even if not as much as others..."
+          ],
+          "met": [
+            "Ah, [Player Name]. Back again? I bet you've been seeing other traders, haven't you?",
+            "Oh, it's you, [Player Name]. What, didn't find what you needed elsewhere?"
+          ]
+        },
+        "trade": {
+          "yes": "Sure, I can trade. Not that you'll find anything better anywhere else, even if you think you will.",
+          "no": "No, I don't have anything to trade right now. Maybe you'll find something better elsewhere, who knows?"
+        },
+        "needAnything": {
+          "yes": "Actually, yes, I could use some [item]. But I bet someone else has already asked you, huh?",
+          "no": "No, I don't need anything. I can manage on my own, unlike some others you might know."
+        },
+        "news": {
+          "yes": "Yes, there's some news, but I'm sure you've already heard it from someone else.",
+          "no": "No, nothing you would care about. Others probably have better news anyway."
+        }
+      }
+    }
+    ]
+  }
+]

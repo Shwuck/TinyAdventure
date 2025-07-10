@@ -1,0 +1,287 @@
+[
+    {
+        "Name": "Wood",
+        "Quantity": 1,
+        "Value": 2,
+        "Description": "A basic building and crafting material.",
+        "ItemTypes": ["CraftingMaterial", "BuildingMaterial"],
+        "Size": "Large"
+    },
+    {
+        "Name": "Stone",
+        "Quantity": 1,
+        "Value": 3,
+        "Description": "A solid material used in construction and crafting.",
+        "ItemTypes": ["CraftingMaterial", "BuildingMaterial"],
+        "Size": "Medium"
+    },
+	    {
+        "Name": "MetalBar",
+        "Quantity": 1,
+        "Value": 5,
+        "Description": "A solid piece of metal used in construction and crafting.",
+        "ItemTypes": ["CraftingMaterial", "BuildingMaterial"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Coin",
+        "Quantity": 1,
+        "Value": 1,
+        "Description": "Standard currency used for trading.",
+        "ItemTypes": ["Miscellaneous"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Herbs",
+        "Value": 3,
+        "Description": "A bundle of aromatic plants.",
+        "ItemTypes": ["Miscellaneous", "CraftingMaterial"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Pelt",
+        "Value": 15,
+        "Description": "A hide with fur, used in crafting.",
+        "ItemTypes": ["CraftingMaterial"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Book",
+        "Value": 10,
+        "Description": "A collection of written pages.",
+        "EquipmentSlots": ["MainHand"],
+        "ItemTypes": ["Miscellaneous"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Key",
+        "Value": 5,
+        "Description": "A small metal object used for unlocking.",
+        "ItemTypes": ["Miscellaneous"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Coal",
+        "Value": 3,
+        "Description": "A combustible mineral used for fuel.",
+        "ItemTypes": ["CraftingMaterial"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Seeds",
+        "Value": 1,
+        "Description": "Small grains used for planting.",
+        "ItemTypes": ["Miscellaneous", "CraftingMaterial"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Fertilizer",
+        "Value": 2,
+        "Description": "A substance that enhances plant growth.",
+        "ItemTypes": ["Miscellaneous", "CraftingMaterial"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Broken Sword",
+        "Value": 0,
+        "Description": "A damaged sword, no longer usable.",
+        "ItemTypes": ["Junk"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Rusty Nail",
+        "Value": 0,
+        "Description": "An old, corroded nail.",
+        "ItemTypes": ["Junk"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Torn Cloth",
+        "Value": 0,
+        "Description": "A piece of fabric, ripped and frayed.",
+        "ItemTypes": ["Junk"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Quill",
+        "Value": 1,
+        "Description": "A writing tool made from a feather.",
+        "ItemTypes": ["Miscellaneous"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Ink",
+        "Value": 2,
+        "Description": "A liquid used for writing or drawing.",
+        "ItemTypes": ["Miscellaneous"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Scroll",
+        "Value": 3,
+        "Description": "A rolled-up piece of parchment.",
+        "ItemTypes": ["Miscellaneous"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Rough Gemstone",
+        "Quantity": 1,
+        "Value": 10,
+        "Description": "A raw, uncut gemstone.",
+        "ItemTypes": ["Gemstone", "CraftingMaterial"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Polished Gemstone",
+        "Quantity": 1,
+        "Value": 25,
+        "Description": "A smooth and polished gemstone, ready to be shaped or set.",
+        "ItemTypes": ["Gemstone", "CraftingMaterial"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Cut Gemstone",
+        "Quantity": 1,
+        "Value": 50,
+        "Description": "A finely cut gemstone, showcasing its brilliance.",
+        "ItemTypes": ["Gemstone", "CraftingMaterial"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Flawed Gemstone",
+        "Quantity": 1,
+        "Value": 5,
+        "Description": "A gemstone with visible imperfections",
+        "ItemTypes": ["Gemstone", "CraftingMaterial"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Exquisite Gemstone",
+        "Quantity": 1,
+        "Value": 100,
+        "Description": "A masterfully cut gemstone, of exceptional quality and value.",
+        "ItemTypes": ["Gemstone", "CraftingMaterial"],
+        "Size": "Small"
+    },
+	{
+    "Name": "Monumental Gemstone",
+    "Quantity": 1,
+    "Value": 1000,
+    "Description": "A colossal gemstone of unparalleled size and brilliance. Its value is undeniable.",
+    "ItemTypes": ["Gemstone", "CraftingMaterial"],
+    "Size": "Large"
+	},
+	{
+    "Name": "Raw Ore",
+    "Quantity": 1,
+    "Value": 10,
+    "Description": "An unprocessed chunk of ore freshly mined.",
+    "ItemTypes": ["Ore", "CraftingMaterial"],
+    "Size": "Small"
+},
+	{
+    "Name": "Ore",
+    "Quantity": 1,
+    "Value": 10,
+    "Description": "An unprocessed chunk of ore freshly mined.",
+    "ItemTypes": ["Ore", "CraftingMaterial"],
+    "Size": "Small"
+},
+{
+    "Name": "Refined Ore",
+    "Quantity": 1,
+    "Value": 25,
+    "Description": "Ore that has been refined to remove some impurities.",
+    "ItemTypes": ["Ore", "CraftingMaterial"],
+    "Size": "Small"
+},
+{
+    "Name": "Purified Ore",
+    "Quantity": 1,
+    "Value": 50,
+    "Description": "A high-quality ore purified to a significant degree.",
+    "ItemTypes": ["Ore", "CraftingMaterial"],
+    "Size": "Small"
+},
+{
+    "Name": "Impure Ore",
+    "Quantity": 1,
+    "Value": 5,
+    "Description": "An ore containing numerous impurities, less valuable.",
+    "ItemTypes": ["Ore", "CraftingMaterial"],
+    "Size": "Small"
+},
+{
+    "Name": "Pristine Ore",
+    "Quantity": 1,
+    "Value": 100,
+    "Description": "An exceptionally pure ore, highly sought after for crafting.",
+    "ItemTypes": ["Ore", "CraftingMaterial"],
+    "Size": "Small"
+},
+	{
+    "Name": "Lute",
+    "Quantity": 1,
+    "Value": 20,
+    "Description": "A stringed instrument commonly used by bards and minstrels. Portable and versatile.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Medium"
+},
+{
+    "Name": "Accordion",
+    "Quantity": 1,
+    "Value": 25,
+    "Description": "A handheld instrument that produces sound by compressing air through reeds.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Medium"
+},
+{
+    "Name": "Flute",
+    "Quantity": 1,
+    "Value": 10,
+    "Description": "A simple woodwind instrument, easily portable and popular among travellers.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Small"
+},
+{
+    "Name": "Lyre",
+    "Quantity": 1,
+    "Value": 15,
+    "Description": "A small harp-like instrument often used for accompanying poetry or song.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Small"
+},
+{
+    "Name": "Bagpipes",
+    "Quantity": 1,
+    "Value": 30,
+    "Description": "An iconic wind instrument, known for its distinctive sound. Popular in highland regions.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Medium"
+},
+{
+    "Name": "Tambourine",
+    "Quantity": 1,
+    "Value": 5,
+    "Description": "A small handheld percussion instrument, often used for rhythm and dance.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Small"
+},
+{
+    "Name": "Drum",
+    "Quantity": 1,
+    "Value": 15,
+    "Description": "A portable drum used by musicians and warriors alike to maintain rhythm.",
+    "ItemTypes": ["Instrument", "Miscellaneous"],
+    "Size": "Medium"
+},
+{
+    "Name": "Candle",
+    "Quantity": 1,
+    "Value": 3,
+    "Description": "A small wax candle, useful for providing light in dark places. Burns for a limited time.",
+    "ItemTypes": ["Miscellaneous"],
+    "Size": "Small"
+}
+]

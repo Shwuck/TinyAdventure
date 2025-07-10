@@ -1,0 +1,228 @@
+Changelog: Anatomy & Combat Overhaul
+Major Features Added
+
+    Added Anatomy System: Characters now have a detailed anatomical structure.
+        Body parts can take damage, lose functionality, or be destroyed.
+        Vital body parts (e.g., Head, Torso) cause death if lost.
+        Limb loss affects combat (e.g., losing a hand means dropping weapons).
+
+NPC & Character Generation
+
+    NPCs now generate with the correct anatomy based on their Race and BodyType.
+    AnatomyGenerator now correctly assigns anatomy to characters upon creation.
+    NPCGenerator ensures generated NPCs receive matching anatomy.
+
+Combat System Overhaul
+
+    Damage now targets individual body parts instead of just overall health.
+    Lost limbs affect gameplay (e.g., dropping weapons when a hand is lost).
+    Vital part destruction results in instant death (e.g., decapitation).
+    Resistance now applies per body part, affecting damage mitigation.
+    Critical hits increase damage and can destroy body parts outright.
+
+Combat Messaging Improvements
+
+    Added detailed combat messages explaining exactly what happens:
+        "Orc strikes Knight's Right Arm for 15 damage!"
+        "Knight has lost their Right Arm!"
+        "Knight drops Longsword!"
+        "Knight has been fatally wounded and dies!"
+    Messages now log to both the console and the in-game combat log.
+    Ensures clearer battle feedback for players.
+
+Inventory & Item Handling
+
+    Weapons, shields, and gear are unequipped and dropped when a body part is lost.
+    Fixed duplication issue—items are now removed from the character before being dropped.
+    Dropped items correctly appear on the ground and can be picked up by others.
+
+Code Clean-Up & Optimizations
+
+    Removed redundant inventory management from NPC.cs (now handled in Character.cs).
+    Fixed TakeDamage() to distribute damage correctly to body parts.
+    Updated CanEquipItem() to prevent equipping items on non-functional limbs.
+    Fixed Enum.TryParse() issue for BodyPosition parsing in AnatomyDataLoader.cs.
+    Refactored DropItem() to properly remove items before adding them to the world.
+    Ensured GetRandomBodyPart() selects only valid, existing body parts.
+
+Summary
+
+    Added Anatomy system with destructible body parts.
+    NPCs now spawn with appropriate anatomy based on Race.
+    Combat now distributes damage across body parts, with realistic consequences.
+    Items are properly unequipped and dropped when losing limbs.
+    Combat messages now provide detailed explanations of attacks, injuries, and deaths.
+    Fixed multiple bugs and optimized existing mechanics.
+	
+	
+
+Changelog: Underground & Cave System Overhaul
+Major Features Added
+Underground Water System
+
+    Introduced a WaterLevel system (0-100) to track underground moisture.
+    Cells now have subterranean water based on their surface proximity to water bodies.
+    Added underground water pockets, which can be used for wells or aquifers in the future.
+    SubterraneanTerrain now correctly reflects underground water presence, not just WaterLevel.
+
+Cave System Revamp
+
+    Caves are now generated in the subterranean layer instead of directly on the surface.
+    SubterraneanTerrain = TerrainType.Cave now correctly marks cave areas underground.
+    Caves now expand using procedural generation, ensuring organic cave networks.
+    Introduced cave connections, forming large underground tunnel networks.
+    Cave entrances are now separate from caves, allowing for surface-to-underground entry points.
+
+Map & Terrain Adjustments
+
+    The GenerateSubterraneanWaterMap() function now sets underground water correctly based on WaterLevel.
+    Adjusted WaterLevel expansion to ensure water spreads naturally underground.
+    Underground lakes can now form in areas with high WaterLevel.
+
+Cave & NPC Generation Improvements
+
+    CaveGenerator was updated to integrate procedural cave expansion while preserving old functionality.
+    Caves now generate with randomized cave types, including:
+        Treasure Caves
+        Monster Lairs
+        Fungi Caves
+        Abandoned Camps
+        Collapsed Tunnels
+    Cave IDs are now assigned consistently across all connected tiles, ensuring caves remain unified.
+
+Ore Generation System
+
+    Introduced ResourceTags for tracking underground Iron, Copper, Silver, Gold, Mithril, and Adamantine.
+    Ores now spawn based on terrain type, with:
+        Common metals (Iron, Copper) appearing in mountains and underground areas.
+        Rare ores (Gold, Mithril, Adamantine) found in deep caves or hidden veins.
+    Ores now use random distribution, ensuring each world generates uniquely.
+
+Bug Fixes & Code Optimizations
+
+    Fixed an issue where Caves spawned in Mountain Peaks, making them inaccessible.
+    Fixed an issue where subterranean water was not appearing correctly despite WaterLevel.
+    Fixed IsPositionValid not being accessible in CaveGenerator by using MapGenerator.Instance.
+    Optimized cave and water expansion algorithms for better performance on large maps.
+    Removed redundancy by merging old CaveGenerator functionality with new procedural cave expansion.
+
+Summary
+
+    Caves now exist fully underground instead of being part of the surface terrain.
+    WaterLevel now properly influences underground water, creating subterranean lakes and moisture zones.
+    Ore deposits now generate in the underground layer, tied to specific terrain features.
+    Caves are procedurally generated, forming connected networks rather than isolated cells.
+    Surface cave entrances now allow access to underground tunnels.
+    Codebase optimized, with redundant checks and outdated methods removed.
+	
+	
+
+Changelog: Civilisation & Village Expansion Overhaul
+Major Features Added
+
+Village & Civilization Expansion
+
+    Villages now expand their territory organically, prioritizing high-value land.
+    Expansion decisions consider population growth, available resources, prestige level, and defense needs.
+    Dynamic cell scoring system evaluates terrain desirability before expansion.
+    Expansion Points introduced, which dictate how much land a village can claim based on its prosperity.
+
+Civilization-Level Growth
+
+    Civilizations can now claim large regions, influencing multiple villages.
+    When a civilization's influence grows, it can establish new villages.
+    Border conflicts may arise when civilizations push against each other.
+
+Adaptive Village Growth
+
+    Villages now respond dynamically to nearby resources:
+        Expansion prioritizes fertile land for farming villages.
+        Mining towns seek out mountains and stone-rich areas.
+        Trade hubs expand along roads and rivers.
+    Special landmarks (rivers, ancient ruins, sacred sites) now influence village growth.
+
+Village AI Improvements
+
+    Villages intelligently choose expansion paths rather than growing randomly.
+    A village may halt expansion if food, water, or wood supplies are too low.
+    Defensive villages may prioritize fortified positions over farmland.
+
+New Civilization Expansion Mechanics
+
+    Factions now influence expansion: A highly aggressive civilization may rapidly seize land.
+    Different races have unique expansion preferences (e.g., Elves prefer forests, Dwarves seek mountains).
+    New diplomatic events triggered by territorial disputes.
+
+Debugging & Optimizations
+
+    GameDebugger & MessageLogManager now log all village expansions.
+    Expansion logic rewritten for better readability and maintainability.
+    Ensured compliance with coding rules (avoiding redundant code, improving list storage efficiency).
+
+Summary
+
+    Villages expand more intelligently, with resource-driven growth.
+    Civilizations now claim land dynamically and found new settlements.
+    Expansion mechanics consider faction traits, diplomacy, and environmental factors.
+    Added debugging and performance optimizations for better tracking and scaling.
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	{
+  "changelog": [
+    {
+      "title": "Civilization & Village Expansion Overhaul",
+      "version": "1.3.0",
+      "date": "2025-03-01",
+      "changes": [
+        "Villages now expand organically, prioritizing high-value land based on resources, prestige, and defense.",
+        "Civilizations can claim large regions, establish new villages, and engage in territorial disputes.",
+        "Expansion mechanics vary by faction traits (e.g., Elves prefer forests, Dwarves seek mountains).",
+        "Villages adapt to nearby resources: farming villages seek fertile land, mining towns expand into mountains.",
+        "Defensive settlements prioritize fortified positions over farmland.",
+        "New diplomacy events triggered by territorial disputes between civilizations.",
+        "Expansion logic optimized for performance and better AI-driven growth."
+      ]
+    },
+    {
+      "title": "Anatomy & Combat Overhaul",
+      "version": "1.2.0",
+      "date": "2025-02-22",
+      "changes": [
+        "Introduced Anatomy System with destructible body parts.",
+        "Combat now distributes damage to body parts, with limb loss affecting gameplay.",
+        "Characters spawn with appropriate anatomy based on Race and BodyType.",
+        "Critical hits can destroy body parts outright; vital part destruction causes instant death.",
+        "Improved combat messaging with detailed logs of attacks, injuries, and deaths.",
+        "Items are unequipped and dropped when a body part is lost.",
+        "Fixed item duplication and inventory handling issues.",
+        "Optimized code: refactored inventory, damage distribution, and equip checks."
+      ]
+    },
+    {
+      "title": "Underground & Cave System Overhaul",
+      "version": "1.1.0",
+      "date": "2025-02-15",
+      "changes": [
+        "Revamped Cave System: Caves now generate underground with procedural expansion.",
+        "Introduced underground water levels affecting moisture, lakes, and aquifers.",
+        "Added cave types: Treasure Caves, Monster Lairs, Fungi Caves, Abandoned Camps, Collapsed Tunnels.",
+        "Cave entrances are now separate, allowing surface-to-underground travel.",
+        "Ore deposits (Iron, Copper, Gold, Mithril, Adamantine) now spawn based on terrain type.",
+        "Fixed subterranean water display issues and cave accessibility in mountain peaks.",
+        "Optimized cave generation and underground water algorithms for better performance."
+      ]
+    }
+  ]
+}

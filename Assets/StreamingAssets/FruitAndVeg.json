@@ -1,0 +1,174 @@
+[
+    {
+        "Name": "Apple",
+        "HungerValue": 20,
+        "ThirstValue": 5,
+        "Description": "A common fruit, mildly thirst-quenching.",
+        "ItemTypes": ["Fruit", "TreeFruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "Berries",
+        "HungerValue": 10,
+        "ThirstValue": 10,
+        "Description": "A small, juicy fruit that restores some thirst.",
+        "ItemTypes": ["Fruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Tiny",
+        "IsEdible": true
+    },
+    {
+        "Name": "Carrot",
+        "Value": 2,
+        "HungerValue": 6,
+        "Description": "A crunchy vegetable.",
+        "ItemTypes": ["Vegetable"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "Onion",
+        "Value": 2,
+        "HungerValue": 3,
+        "Description": "A bulbous vegetable with strong flavor.",
+        "ItemTypes": ["Vegetable"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "MetalBar",
+        "Quantity": 1,
+        "Value": 5,
+        "Description": "A solid piece of metal used in construction and crafting.",
+        "ItemTypes": ["CraftingMaterial", "BuildingMaterial"],
+        "Size": "Medium",
+        "IsEdible": false
+    },
+    {
+        "Name": "Pomegranate",
+        "Value": 5,
+        "HungerValue": 10,
+        "ThirstValue": 10,
+        "Description": "A fruit with a juicy interior, restores thirst.",
+        "ItemTypes": ["Fruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "Potato",
+        "Value": 2,
+        "HungerValue": 15,
+        "Description": "A starchy root vegetable.",
+        "ItemTypes": ["Vegetable"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "Brick",
+        "Value": 4,
+        "Description": "A heavy building material used in construction.",
+        "ItemTypes": ["BuildingMaterial"],
+        "Size": "Medium",
+        "IsEdible": false
+    },
+    {
+        "Name": "Melon",
+        "Value": 4,
+        "HungerValue": 10,
+        "ThirstValue": 10,
+        "Description": "A large fruit with a high water content.",
+        "ItemTypes": ["Fruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Large",
+        "IsEdible": true
+    },
+    {
+        "Name": "Raspberry",
+        "Value": 3,
+        "HungerValue": 10,
+        "ThirstValue": 10,
+        "Description": "A small, sweet, and juicy fruit.",
+        "ItemTypes": ["Fruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Tiny",
+        "IsEdible": true
+    },
+    {
+        "Name": "Pepper",
+        "Value": 2,
+        "HungerValue": 5,
+        "Description": "A small vegetable with a sharp taste.",
+        "ItemTypes": ["Vegetable"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "Iron Nail",
+        "Value": 1,
+        "Description": "A small metal fastener used in crafting and construction.",
+        "ItemTypes": ["CraftingMaterial"],
+        "Size": "Tiny",
+        "IsEdible": false
+    },
+    {
+        "Name": "Orange",
+        "HungerValue": 15,
+        "ThirstValue": 20,
+        "Description": "A citrus fruit known for its juicy, tangy flesh.",
+        "ItemTypes": ["Fruit", "TreeFruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Medium",
+        "IsEdible": true
+    },
+    {
+        "Name": "Pear",
+        "HungerValue": 20,
+        "ThirstValue": 10,
+        "Description": "A sweet, grainy fruit that is commonly eaten fresh or cooked.",
+        "ItemTypes": ["Fruit", "TreeFruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Medium",
+        "IsEdible": true
+    },
+    {
+        "Name": "Wooden Plank",
+        "Value": 3,
+        "Description": "A piece of cut wood used in building structures.",
+        "ItemTypes": ["BuildingMaterial"],
+        "Size": "Large",
+        "IsEdible": false
+    },
+    {
+        "Name": "Button Mushroom",
+        "HungerValue": 5,
+        "Description": "A common, mild-tasting mushroom.",
+        "ItemTypes": ["Fungi"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small",
+        "IsEdible": true
+    },
+    {
+        "Name": "Portobello Mushroom",
+        "HungerValue": 10,
+        "Description": "A large, meaty mushroom with a rich, earthy flavour.",
+        "ItemTypes": ["Fungi"],
+        "Interfaces": ["IEdible"],
+        "Size": "Medium",
+        "IsEdible": true
+    },
+    {
+        "Name": "Rusted Gear",
+        "Value": 2,
+        "Description": "A worn-down gear from old machinery.",
+        "ItemTypes": ["Junk"],
+        "Size": "Small",
+        "IsEdible": false
+    }
+]

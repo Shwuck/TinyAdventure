@@ -1,0 +1,67 @@
+[
+    {
+        "Name": "Raw Meat Chunk",
+        "HungerValue": 25,
+        "ThirstValue": 0,
+        "Description": "A chunk of raw, uncooked meat. Not very appetising, but it fills the stomach.",
+        "ItemTypes": ["Meat"],
+        "Interfaces": ["IEdible"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Bone",
+        "Quantity": 1,
+        "Value": 5,
+        "Description": "A sturdy piece of bone, useful for crafting or simple tools.",
+        "ItemTypes": ["CraftingMaterial", "Miscellaneous"],
+        "Size": "Small"
+    },
+    {
+        "Name": "BoneDust",
+        "Quantity": 1,
+        "Value": 2,
+        "Description": "Finely ground bone dust, often used in alchemy or rituals.",
+        "ItemTypes": ["CraftingMaterial", "Bone", "Miscellaneous"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "BoneChipping",
+        "Quantity": 5,
+        "Value": 3,
+        "Description": "Small fragments of bone, often collected after carving.",
+        "ItemTypes": ["CraftingMaterial", "Bone", "Miscellaneous"],
+        "Size": "Tiny"
+    },
+    {
+        "Name": "Tattered Animal Pelt",
+        "Quantity": 1,
+        "Value": 3,
+        "Description": "A badly damaged pelt, with cuts and tears from an unskilled hunter. Not ideal.",
+        "ItemTypes": ["CraftingMaterial", "Miscellaneous"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Imperfect Animal Pelt",
+        "Quantity": 1,
+        "Value": 7,
+        "Description": "An animal pelt.",
+        "ItemTypes": ["CraftingMaterial", "Pelt", "Miscellaneous"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Animal Pelt",
+        "Quantity": 1,
+        "Value": 15,
+        "Description": "A decent quality pelt, suitable for crafting clothing and other goods.",
+        "ItemTypes": ["CraftingMaterial", "Pelt", "Miscellaneous"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Fine Animal Pelt",
+        "Quantity": 1,
+        "Value": 30,
+        "Description": "A high-quality animal pelt, expertly harvested and in excellent condition. Highly valuable for crafting.",
+        "ItemTypes": ["CraftingMaterial", "Pelt", "Miscellaneous"],
+        "Size": "Medium"
+    }
+]

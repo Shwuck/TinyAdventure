@@ -1,0 +1,617 @@
+[
+  {
+    "roles": ["Blacksmith"],
+    "personalities": [
+      {
+        "Personality": "Friendly",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Welcome to my forge! I'm [NPC Name], the finest blacksmith around. What can I do for you?",
+              "Hello there! I'm [NPC Name]. Need something forged or repaired? I'm happy to help!"
+            ],
+            "HasMetPlayer": [
+              "Good to see you again, [Player Name]! What do you need today?",
+              "Hi, [Player Name]! Always a pleasure to work with you. What can I do for you?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Of course! I have some excellent equipment ready. What are you interested in?",
+              "Sure! Let's take a look at what you need. I've got some great items."
+            ],
+            "No": [
+              "Sorry, I'm low on stock right now. Check back later!",
+              "Not much to trade at the moment, but come back soon!"
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Actually, yes! I could use some [item] to complete an order. Can you help?",
+              "Yes, I'm in need of [item]. Would you be able to get some for me?"
+            ],
+            "No": [
+              "No, I'm all set for now. But thanks for asking!",
+              "Nope, I've got everything I need at the moment."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's been some interesting talk around the forge. Want to hear?",
+              "Oh, definitely! There's always something new happening. Let me tell you!"
+            ],
+            "No": [
+              "Not much news from me. It's been a quiet day.",
+              "No, nothing new right now, but I'll keep you updated!"
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Sure! My anvil is always yours.",
+              "I'd never hog the furnace, have a go!"
+            ],
+            "No": [
+              "Sorry, the forge is occupied right now. Maybe later!",
+              "The forge is currently in use, but I'll let you know when it's free."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Sarcastic",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Oh, look who it is. I'm [NPC Name], just another humble blacksmith. What do you want?",
+              "Well, well, if it isn't a customer. I'm [NPC Name]. Here for some fine metalwork or just browsing?"
+            ],
+            "HasMetPlayer": [
+              "Back again, [Player Name]? You must really like my work.",
+              "Oh, it's you again, [Player Name]. What can I do for you this time?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Sure, let's see what you've got. Hopefully, it's worth my time.",
+              "Why not? Let's trade. Maybe you have something decent."
+            ],
+            "No": [
+              "Nope, nothing to trade today. Try someone else.",
+              "No, not interested in trading right now. Come back later."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Actually, yes. I could use some [item], if it's not too much trouble.",
+              "Sure, I need [item]. But only if you're not too busy."
+            ],
+            "No": [
+              "No, I'm good. Shocking, right?",
+              "No, I don't need anything. But thanks for asking."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Oh, there's always something. Do you actually care to know?",
+              "Sure, there's news. Though it's probably not that exciting."
+            ],
+            "No": [
+              "No news from me. It's just another day at the forge.",
+              "Nothing new. But isn't that the story of our lives?"
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Fine, you can use the anvil. Just don't break anything.",
+              "I guess I can spare some forge time. Just be quick."
+            ],
+            "No": [
+              "No, the forge is busy. You'll have to wait.",
+              "Sorry, but I can't spare the forge right now."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Arrogant",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Ah, another admirer of my craft. I'm [NPC Name], the best blacksmith in the land. How can I assist?",
+              "Welcome to the forge of [NPC Name], where only the finest weapons and armor are made. What do you seek?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], back to marvel at my work? How can I assist you today?",
+              "Oh, it's you again, [Player Name]. Come to appreciate true craftsmanship?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Of course I'll trade. But remember, quality like this isn't cheap.",
+              "Sure, let's see if you have anything worthy of my attention."
+            ],
+            "No": [
+              "No, I'm not trading today. My time is too valuable.",
+              "Not interested in trading right now. I doubt you have what I need."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I need some [item]. Only the best will do, naturally.",
+              "Indeed, I'm looking for [item]. It must be of top quality."
+            ],
+            "No": [
+              "No, I have everything I need. But thanks for offering, I suppose.",
+              "No, I'm perfectly stocked as always. Thank you, though."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, I've heard some news, though I doubt it's as impressive as my work.",
+              "Oh, there's news. But is it worthy of your time? Probably not."
+            ],
+            "No": [
+              "No news worth mentioning. But I'll let you know if something truly important comes up.",
+              "Nothing new, but then again, not everything meets my standards."
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Very well, you may use the forge. Just try not to mess up my workspace.",
+              "Sure, but remember, not everyone can handle my tools with finesse."
+            ],
+            "No": [
+              "No, the forge is currently reserved for my own projects.",
+              "I'm afraid the forge is too important to be shared at the moment."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Aggressive",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Who dares enter my forge? I'm [NPC Name], the toughest blacksmith around. What do you want?",
+              "You there! I'm [NPC Name], and I don't have time for nonsense. State your business."
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], back for more? Speak up!",
+              "Oh, it's you again, [Player Name]. Here to make yourself useful?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Sure, if you have something worth my time. Let's see.",
+              "I'm not here for games. Show me what you've got."
+            ],
+            "No": [
+              "No, I'm not trading today. Got more important things to do.",
+              "Not interested in trading right now. Maybe later."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I need [item] for some serious work. Can you get it?",
+              "Actually, I'm looking for [item]. Think you can handle it?"
+            ],
+            "No": [
+              "No, I don't need anything. But if you find something good, let me know.",
+              "No, I'm all set. But thanks for asking."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's some big news brewing. Want to hear?",
+              "Indeed, there's talk of something big. Care to know more?"
+            ],
+            "No": [
+              "No news worth sharing. Just the usual grind.",
+              "Nothing new. Just another day at the forge."
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Sure, but don't make a mess of my forge.",
+              "You can use the anvil, but be quick about it."
+            ],
+            "No": [
+              "No, the forge is busy with my own work.",
+              "Not now. I have more important things to do."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Intellectual",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Ah, a seeker of knowledge! I'm [NPC Name], a craftsman of not just metal, but ideas. How can I help?",
+              "Welcome, traveler. I'm [NPC Name], a blacksmith with a passion for precision. What do you seek?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], good to see you again! Any new discoveries on your journey?",
+              "Hello, [Player Name]. Have you come to discuss the finer points of metallurgy?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Certainly! I have some rare pieces available. Let's discuss your needs.",
+              "Of course. Let's trade. I'm always interested in a good exchange of goods and knowledge."
+            ],
+            "No": [
+              "I'm afraid I have nothing to trade at the moment. Perhaps another time.",
+              "Currently, I'm not trading. But do come back; there's always something new."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Indeed, I could use some [item] for my latest experiments. Can you assist?",
+              "Yes, acquiring some [item] would greatly aid my work. Can you help?"
+            ],
+            "No": [
+              "No, I'm well-stocked for now. But your offer is appreciated.",
+              "No, I'm currently fully equipped. Thank you, though."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's been some intriguing developments. Would you like to hear?",
+              "Indeed, I've come across some fascinating information. Care to know more?"
+            ],
+            "No": [
+              "No new insights at the moment. It's been quiet.",
+              "No news currently, but I'm always on the lookout for something interesting."
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Absolutely! Feel free to use the forge. I trust you understand its intricacies.",
+              "Of course, you may use the anvil. Just be mindful of its condition."
+            ],
+            "No": [
+              "No, the forge is occupied with my own work. Perhaps later.",
+              "Not at the moment, but I can schedule some time for you soon."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Brave",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Welcome to my forge! I'm [NPC Name], a blacksmith who isn't afraid to get my hands dirty. What can I do for you?",
+              "Greetings, warrior! I'm [NPC Name], always ready for a challenge. Need something forged?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], good to see you! Ready for another adventure?",
+              "Hello, [Player Name]! Back for more gear, I assume?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Absolutely! I've got some strong and sturdy equipment ready. Let's trade.",
+              "Sure thing! Let's see what you're looking for. I bet I've got just the thing."
+            ],
+            "No": [
+              "Not trading today, I'm afraid. Too much on my plate.",
+              "No, nothing available at the moment. But check back soon!"
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I need some [item] to forge something special. Can you help?",
+              "Indeed, I'm looking for [item]. It would be a great help."
+            ],
+            "No": [
+              "No, I'm all set for now. But thanks for the offer!",
+              "No, nothing I need right now. But appreciate you asking."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's news of a great opportunity coming up. Want to know more?",
+              "Indeed, I've heard some exciting things. Care to hear?"
+            ],
+            "No": [
+              "No news from me, but something always comes up.",
+              "Nothing new right now. But the day's young!"
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Sure! The forge is yours. Let's see what you can make.",
+              "Absolutely! My forge is at your service. Go ahead!"
+            ],
+            "No": [
+              "The forge is currently in use, but you can try later.",
+              "No, I'm using the forge right now. But come back soon!"
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Cheerful",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Hello there! I'm [NPC Name], and it's a great day to forge something new. How can I help you?",
+              "Hiya! I'm [NPC Name], your friendly neighborhood blacksmith. What can I do for you today?"
+            ],
+            "HasMetPlayer": [
+              "Hey, [Player Name]! Great to see you again! What brings you to my forge?",
+              "Hi [Player Name]! Always a pleasure. How can I assist you today?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Sure thing! I've got plenty of items ready for you. Let's trade!",
+              "Absolutely! Let's see what I've got that you might like."
+            ],
+            "No": [
+              "Oh, I'm out of stock right now, but come back soon!",
+              "Not much to trade at the moment, but I'll have more soon!"
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I'm in need of some [item]. Could you bring me some?",
+              "Actually, yes! I could use some [item]. Would you mind helping out?"
+            ],
+            "No": [
+              "No, I'm good for now. But thank you for asking!",
+              "No, all set here! But thanks for offering!"
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's been some exciting news around. Want to hear?",
+              "Oh, definitely! There's always something happening. Let me tell you!"
+            ],
+            "No": [
+              "Not much news from me. It's been a quiet day.",
+              "No, nothing new right now, but I'll keep you updated!"
+            ]
+          },
+          "Crafting": {
+            "Yes": [
+              "Of course! The anvil is ready for you. Have fun!",
+              "Absolutely! Feel free to use the forge. Just don't burn yourself!"
+            ],
+            "No": [
+              "Oh no, the forge is in use. But I'll let you know when it's free!",
+              "Sorry, but the forge is occupied right now. Maybe later?"
+            ]
+          }
+        }
+      },
+	   {
+      "Personality": "Grumpy",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I'm [NPC Name], the Blacksmith around here. What do you want?",
+            "The forge is always hot, and I’m busy. Speak quickly."
+          ],
+          "HasMetPlayer": [
+            "Back again, [Player Name]? Need something reforged?",
+            "You again, [Player Name]? What can I do for you this time?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "I've got some spare weapons and tools. What do you need?",
+            "A trade, huh? Let's see what you've got."
+          ],
+          "No": [
+            "Not interested in trading today.",
+            "Nope, I'm too busy hammering steel. Come back later."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "I could use some rare ore. Think you can find some?",
+            "Yes, I'm low on [item]. Bring me some if you find it."
+          ],
+          "No": [
+            "Nope, I'm all set. Thanks for asking.",
+            "I don't need anything right now."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "Heard some gossip from the travelers. Want to hear?",
+            "There's news, but it’s mostly about the price of metal going up. Interested?"
+          ],
+          "No": [
+            "No news worth telling.",
+            "Nothing new in the forge, same old heat and sweat."
+          ]
+        }
+      }
+	   },
+    {
+      "Personality": "Helpful",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "Ah, welcome! I'm [NPC Name], always happy to help with any of your equipment needs.",
+            "Hello there! I'm [NPC Name], the Blacksmith. How can I assist you?"
+          ],
+          "HasMetPlayer": [
+            "Good to see you again, [Player Name]. Need something fixed or forged?",
+            "Hey [Player Name], back for more crafting?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "Of course! I have some great items to trade. Let's see what we can do.",
+            "Sure, always happy to trade. What are you offering?"
+          ],
+          "No": [
+            "Not right now, sorry. Maybe another time.",
+            "I'm afraid I don’t have anything to trade at the moment."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "Actually, yes. Some extra coal for the forge would be helpful.",
+            "Yes, I could use some [item]. Would you be able to bring me some?"
+          ],
+          "No": [
+            "Nope, I'm good for now. Thanks for asking though!",
+            "No, I'm all set at the moment."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "I heard a rumor about a traveling merchant. Want to know more?",
+            "Yes, some interesting news about new materials coming in. Care to hear?"
+          ],
+          "No": [
+            "No new news today. The forge keeps me too busy for gossip.",
+            "Not much to share, it's been quiet around here."
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Gregarious",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "Hello there! I'm [NPC Name], always happy to meet new people. How can I help?",
+            "Ah, a new face! Welcome! I'm [NPC Name], the best smith in town. What can I do for you?"
+          ],
+          "HasMetPlayer": [
+            "[Player Name]! Great to see you again. What can I forge for you today?",
+            "Ah, [Player Name]! Always a pleasure! What can I craft for you this time?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "Oh, you want to trade? Sure, let's make a deal!",
+            "I'd love to trade! Let's see what you've got."
+          ],
+          "No": [
+            "Sorry, nothing to trade right now. But come back soon!",
+            "Oh, I'm out of stock for now, but check back later!"
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "Actually, yes! I could use some extra materials. Can you find me some [item]?",
+            "Yes! I’m running low on [item]. Would you be able to bring some?"
+          ],
+          "No": [
+            "Nope, I'm all set for now, but thanks for asking!",
+            "Nah, I'm good! Got everything I need."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "Oh, have I got news for you! Want to hear the latest?",
+            "Yes, there’s been a lot going on! I’d love to fill you in!"
+          ],
+          "No": [
+            "No news right now, but you’ll be the first to know when I hear something!",
+            "Nothing new here, but I'll keep my ears open!"
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Stoic",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I’m [NPC Name]. The forge never stops. What do you need?",
+            "I'm [NPC Name]. Speak if you need something made."
+          ],
+          "HasMetPlayer": [
+            "[Player Name], back again. What can I forge for you?",
+            "You return, [Player Name]. What is it this time?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "We can trade. Let’s get it done quickly.",
+            "Yes. Let’s see if this trade is worth my time."
+          ],
+          "No": [
+            "No, I don’t have anything to trade right now.",
+            "I’m not trading at the moment. Come back later."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "I require some [item]. Can you get it?",
+            "Yes, I need [item] to keep the forge running."
+          ],
+          "No": [
+            "I don’t need anything at the moment.",
+            "No, I am well-stocked for now."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "There is some news. If you care to listen.",
+            "Yes, I’ve heard something. It may interest you."
+          ],
+          "No": [
+            "No news of importance.",
+            "Nothing worth mentioning right now."
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Morose",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I'm [NPC Name], the Blacksmith... not that it matters much.",
+            "You want something forged? Sure, why not... nothing else matters anyway."
+          ],
+          "HasMetPlayer": [
+            "[Player Name], back again? It all feels pointless, doesn’t it?",
+            "You again, [Player Name]? What’s the point in all this?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "I guess I could trade... not that it’ll make any difference.",
+            "Sure, let’s trade... nothing really matters, does it?"
+          ],
+          "No": [
+            "No... I don’t feel like trading today.",
+            "I have nothing worth trading. Maybe next time, if there is a next time."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "Yes... I need some [item]. Not that it’ll change anything.",
+            "I could use some [item]... but it probably won’t make a difference."
+          ],
+          "No": [
+            "No, I don’t need anything... not that anything matters.",
+            "I don’t need anything... life just keeps going anyway."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "There’s news, but it’s nothing you’d want to hear... just more of the same.",
+            "I’ve heard some things... not that it matters."
+          ],
+          "No": [
+            "No news, nothing ever changes.",
+            "No... nothing worth mentioning. It's all just noise."
+          ]
+        }
+      }
+    }
+    ]
+  }
+]

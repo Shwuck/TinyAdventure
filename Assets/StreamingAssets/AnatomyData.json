@@ -1,0 +1,75 @@
+[
+    {
+        "BodyType": "Humanoid",
+        "DefaultParts": {
+            "Head": 1,
+            "Torso": 1,
+            "Arm": 2,
+            "Hand": 2,
+            "Finger": 10,
+            "Leg": 2,
+            "Foot": 2,
+            "Eye": 2
+        }
+    },
+    {
+        "BodyType": "Quadruped",
+        "DefaultParts": {
+            "Head": 1,
+            "Torso": 1,
+            "Leg": 4,
+            "Foot": 4,
+            "Tail": 1,
+            "Eye": 2
+        }
+    },
+    {
+        "BodyType": "Serpentine",
+        "DefaultParts": {
+            "Head": 1,
+            "Torso": 1,
+            "Tail": 1,
+            "Eye": 2
+        }
+    },
+    {
+        "BodyType": "Avian",
+        "DefaultParts": {
+            "Head": 1,
+            "Torso": 1,
+            "Wing": 2,
+            "Leg": 2,
+            "Foot": 2,
+            "Eye": 2
+        }
+    },
+    {
+        "BodyType": "Insectoid",
+        "DefaultParts": {
+            "Head": 1,
+            "Antenna": 2,
+            "Torso": 1,
+            "Arm": 4,
+            "Hand": 4,
+            "Finger": 20,
+            "Leg": 2,
+            "Foot": 2,
+            "Eye": 2
+        }
+    },
+    {
+        "BodyType": "Demon",
+        "DefaultParts": {
+            "Head": 1,
+            "Horns": 2,
+            "Torso": 1,
+            "Arm": 2,
+            "Hand": 2,
+            "Finger": 10,
+            "Leg": 2,
+            "Foot": 2,
+            "Tail": 1,
+            "Eye": 2
+        }
+    }
+]

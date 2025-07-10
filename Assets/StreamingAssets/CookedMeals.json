@@ -1,0 +1,29 @@
+[
+    {
+        "Name": "Roast Meat",
+        "HungerValue": 50,
+        "ThirstValue": 0,
+        "Description": "A hearty meal of roasted meat, filling and rich in protein.",
+        "ItemTypes": ["Meal", "Meat"],
+        "Interfaces": ["IEdible"],
+        "Size": "Medium"
+    },
+    {
+        "Name": "Roast Fruit",
+        "HungerValue": 35,
+        "ThirstValue": 10,
+        "Description": "A warm and sweet roasted fruit dish, with a hint of caramelisation.",
+        "ItemTypes": ["Meal", "Fruit"],
+        "Interfaces": ["IEdible"],
+        "Size": "Small"
+    },
+    {
+        "Name": "Roast Vegetables",
+        "HungerValue": 40,
+        "ThirstValue": 5,
+        "Description": "An assortment of roasted vegetables, lightly seasoned and crisp.",
+        "ItemTypes": ["Meal", "Vegetable"],
+        "Interfaces": ["IEdible"],
+        "Size": "Medium"
+    }
+]

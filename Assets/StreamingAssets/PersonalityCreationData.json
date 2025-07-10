@@ -1,0 +1,118 @@
+[
+  {
+    "PersonalityName": "Friendly",
+    "Rarity": 5
+  },
+  {
+    "PersonalityName": "Grumpy",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Shy",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Confident",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Mysterious",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Cheerful",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Sarcastic",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Nervous",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Skittish",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Curious",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Arrogant",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Optimistic",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Pessimistic",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Brave",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Cowardly",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Generous",
+    "Rarity": 2
+  },
+  {
+    "PersonalityName": "Greedy",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Intellectual",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Naive",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Mischievous",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Honest",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Snivelling",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Jealous",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Ostenatious",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Morose",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Gregarious",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Stoic",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Pandering",
+    "Rarity": 1
+  },
+  {
+    "PersonalityName": "Deceitful",
+    "Rarity": 1
+  }
+]

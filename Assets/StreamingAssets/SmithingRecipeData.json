@@ -1,0 +1,78 @@
+[
+    { "BodyComponent": "Chain", "HeadComponent": "Hook", "ResultingWeapon": "Kusarigama" },
+	{ "BodyComponent": "Chain", "HeadComponent": "Mace Head", "ResultingWeapon": "Flail" },
+	{ "BodyComponent": "Chain", "HeadComponent": "Rod", "ResultingWeapon": "Nunchucks" },
+    { "BodyComponent": "Chain", "HeadComponent": "Saw Blade", "ResultingWeapon": "Chain-Saw" },
+    { "BodyComponent": "Chain", "HeadComponent": "Spiked Head", "ResultingWeapon": "Spiked Flail" },
+
+    { "BodyComponent": "Grip", "HeadComponent": "Curved Blade", "ResultingWeapon": "Kukri" },
+    { "BodyComponent": "Grip", "HeadComponent": "Double Axe Head", "ResultingWeapon": "Twin Axes" },
+    { "BodyComponent": "Grip", "HeadComponent": "Hook", "ResultingWeapon": "Sickle" },
+    { "BodyComponent": "Grip", "HeadComponent": "Long Blade", "ResultingWeapon": "Dirk" },
+    { "BodyComponent": "Grip", "HeadComponent": "Pointed Head", "ResultingWeapon": "Punch Dagger" },
+	{ "BodyComponent": "Grip", "HeadComponent": "Rod", "ResultingWeapon": "Tonfa" },
+    { "BodyComponent": "Grip", "HeadComponent": "Saw Blade", "ResultingWeapon": "Serrated Dagger" },
+    { "BodyComponent": "Grip", "HeadComponent": "Short Blade", "ResultingWeapon": "Dagger" },
+    { "BodyComponent": "Grip", "HeadComponent": "Spiked Head", "ResultingWeapon": "Knuckle Duster" },
+    { "BodyComponent": "Grip", "HeadComponent": "Thin Blade", "ResultingWeapon": "Stiletto" },
+
+    { "BodyComponent": "Guard", "HeadComponent": "Curved Blade", "ResultingWeapon": "Royal Scimitar" },
+    { "BodyComponent": "Guard", "HeadComponent": "Long Blade", "ResultingWeapon": "Guardian Sword" },
+    { "BodyComponent": "Guard", "HeadComponent": "Thin Blade", "ResultingWeapon": "Rapier" },
+
+    { "BodyComponent": "Handle", "HeadComponent": "Axe Head", "ResultingWeapon": "Battle Axe" },
+    { "BodyComponent": "Handle", "HeadComponent": "Curved Blade", "ResultingWeapon": "Flamberge" },
+    { "BodyComponent": "Handle", "HeadComponent": "Double Axe Head", "ResultingWeapon": "Double-Headed Axe" },
+    { "BodyComponent": "Handle", "HeadComponent": "Hook", "ResultingWeapon": "Hook Hammer" },
+    { "BodyComponent": "Handle", "HeadComponent": "Long Blade", "ResultingWeapon": "Claymore" },
+    { "BodyComponent": "Handle", "HeadComponent": "Mace Head", "ResultingWeapon": "Morning Star" },
+    { "BodyComponent": "Handle", "HeadComponent": "Spiked Head", "ResultingWeapon": "War Flail" },
+    { "BodyComponent": "Handle", "HeadComponent": "Thin Blade", "ResultingWeapon": "Estoc" },
+    { "BodyComponent": "Handle", "HeadComponent": "Hammer Head", "ResultingWeapon": "Great Maul" },
+
+    { "BodyComponent": "Hilt", "HeadComponent": "Axe Head", "ResultingWeapon": "War Hatchet" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Blade", "ResultingWeapon": "Standard Sword" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Claw Head", "ResultingWeapon": "Claw Sword" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Curved Blade", "ResultingWeapon": "Scimitar" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Double Axe Head", "ResultingWeapon": "Double-Bladed Hatchet" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Hammer Head", "ResultingWeapon": "War Pick" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Hook", "ResultingWeapon": "Hook Sword" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Long Blade", "ResultingWeapon": "Long Sword" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Saw Blade", "ResultingWeapon": "Saw Sword" },
+    { "BodyComponent": "Hilt", "HeadComponent": "Forked Head", "ResultingWeapon": "Sai" },
+
+    { "BodyComponent": "Pole", "HeadComponent": "Axe Head", "ResultingWeapon": "Poleaxe" },
+    { "BodyComponent": "Pole", "HeadComponent": "Claw Head", "ResultingWeapon": "Claw Polearm" },
+    { "BodyComponent": "Pole", "HeadComponent": "Curved Blade", "ResultingWeapon": "Naginata" },
+    { "BodyComponent": "Pole", "HeadComponent": "Double Axe Head", "ResultingWeapon": "Twin Halberd" },
+    { "BodyComponent": "Pole", "HeadComponent": "Blade", "ResultingWeapon": "Javelin" },
+	{ "BodyComponent": "Pole", "HeadComponent": "Pointed Head", "ResultingWeapon": "Boar Spear" },
+    { "BodyComponent": "Pole", "HeadComponent": "Short Blade", "ResultingWeapon": "Pole Dagger" },
+	{ "BodyComponent": "Pole", "HeadComponent": "Spear Head", "ResultingWeapon": "Spear" },
+    { "BodyComponent": "Pole", "HeadComponent": "Spiked Head", "ResultingWeapon": "Spiked Polearm" },
+    { "BodyComponent": "Pole", "HeadComponent": "Thin Blade", "ResultingWeapon": "Pike" },
+	{ "BodyComponent": "Pole", "HeadComponent": "Forked Head", "ResultingWeapon": "Trident" },
+
+    { "BodyComponent": "Shaft", "HeadComponent": "Axe Head", "ResultingWeapon": "Heavy Battle Axe" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Claw Head", "ResultingWeapon": "Claw Hammer" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Curved Blade", "ResultingWeapon": "War Scythe" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Double Axe Head", "ResultingWeapon": "Double-Sided Axe" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Hammer Head", "ResultingWeapon": "War Hammer" },
+	{ "BodyComponent": "Shaft", "HeadComponent": "Long Blade", "ResultingWeapon": "Guisarme" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Mace Head", "ResultingWeapon": "Mace" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Pointed Head", "ResultingWeapon": "Lance" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Saw Blade", "ResultingWeapon": "Saw Blade Halberd" },
+    { "BodyComponent": "Shaft", "HeadComponent": "Spiked Head", "ResultingWeapon": "Spiked Mace" },
+
+
+    { "BodyComponent": "Staff", "HeadComponent": "Claw Head", "ResultingWeapon": "Claw Staff" },
+    { "BodyComponent": "Staff", "HeadComponent": "Curved Blade", "ResultingWeapon": "Fauchard" },
+    { "BodyComponent": "Staff", "HeadComponent": "Double Axe Head", "ResultingWeapon": "Double Halberd" },
+    { "BodyComponent": "Staff", "HeadComponent": "Hook", "ResultingWeapon": "Hooked Staff" },
+    { "BodyComponent": "Staff", "HeadComponent": "Mace Head", "ResultingWeapon": "Morning Star Staff" },
+    { "BodyComponent": "Staff", "HeadComponent": "Rod", "ResultingWeapon": "Bo Staff" },
+    { "BodyComponent": "Staff", "HeadComponent": "Saw Blade", "ResultingWeapon": "Serrated Staff" }
+]
+
+
+

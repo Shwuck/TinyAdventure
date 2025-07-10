@@ -1,0 +1,218 @@
+[
+    {
+        "Name": "Axe",
+        "Value": 10,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A sharp tool used for chopping wood."
+    },
+    {
+        "Name": "Hammer",
+        "Value": 10,
+        "WeaponType": "Blunt",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A blunt tool for construction."
+    },
+    {
+        "Name": "PickAxe",
+        "Value": 10,
+        "WeaponType": "Sharp",
+        "DamageOutput": 7,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A tool for mining or breaking hard surfaces."
+    },
+    {
+        "Name": "Bucket",
+        "Value": 6,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IWearable", "IContainerItem"],
+        "Description": "A simple container for carrying liquids."
+    },
+    {
+        "Name": "Broom",
+        "Value": 1,
+        "WeaponType": "Blunt",
+        "DamageOutput": 2,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A humble cleaning tool."
+    },
+    {
+        "Name": "Shovel",
+        "Value": 5,
+        "WeaponType": "Blunt",
+        "DamageOutput": 5,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A sturdy shovel, perfect for digging."
+    },
+    {
+        "Name": "Hoe",
+        "Value": 10,
+        "WeaponType": "Blunt",
+        "DamageOutput": 2,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A farming tool for tilling soil."
+    },
+    {
+        "Name": "Skinning Knife",
+        "Value": 20,
+        "WeaponType": "Sharp",
+        "DamageOutput": 3,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A precision blade for skinning animals."
+    },
+	    {
+        "Name": "Pocket Knife",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 2,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "The smallest of blades."
+    },
+    {
+        "Name": "Hatchet",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A small, versatile axe for chopping."
+    },
+    {
+        "Name": "Torch",
+        "Value": 8,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A handheld light source to brighten dark places."
+    },
+    {
+        "Name": "Rope",
+        "Value": 7,
+        "ItemTypes": ["Tool", "CraftingMaterial"],
+        "Interfaces": ["ITool"],
+        "Description": "A sturdy rope, useful for climbing or binding objects."
+    },
+    {
+        "Name": "Watering Can",
+        "Value": 5,
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IContainerItem"],
+        "Description": "A container for watering plants."
+    },
+    {
+        "Name": "Basket",
+        "Value": 5,
+        "ArmourValue": 1,
+		"Capacity": 15,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IWearable", "IContainerItem"],
+        "Description": "A woven basket for carrying items."
+    },
+    {
+        "Name": "Tongs",
+        "Value": 12,
+        "WeaponType": "Blunt",
+        "DamageOutput": 3,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "Metal tongs used for gripping hot objects."
+    },
+    {
+        "Name": "Saw",
+        "Value": 18,
+        "WeaponType": "Serrated",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A sharp saw, essential for cutting wood or as a lethal tool."
+    },
+    {
+        "Name": "Crowbar",
+        "Value": 20,
+        "WeaponType": "Blunt",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A heavy crowbar for prying open objects."
+    },
+    {
+        "Name": "Lantern",
+        "Value": 12,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A portable lantern to illuminate your path."
+    },
+    {
+        "Name": "Fishing Rod",
+        "Value": 10,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A rod for catching fish in the water."
+    },
+    {
+        "Name": "Map",
+        "Value": 7,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A detailed map to help you navigate your surroundings."
+    },
+    {
+        "Name": "Compass",
+        "Value": 10,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A reliable tool to point you in the right direction."
+    },
+    {
+        "Name": "Binoculars",
+        "Value": 5,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A pair of binoculars to see distant objects clearly."
+    },
+    {
+        "Name": "Chisel",
+        "Value": 2,
+        "WeaponType": "Sharp",
+        "DamageOutput": 2,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"],
+        "Description": "A small chisel used for carving."
+    },
+    {
+        "Name": "Jar",
+        "Value": 3,
+        "Capacity": 5,
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IContainerItem"],
+        "Description": "A small jar for storing liquids or small items."
+    },
+    {
+        "Name": "Bottle",
+        "Value": 4,
+        "Capacity": 3,
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IContainerItem"],
+        "Description": "A bottle for holding liquids or potions."
+    },
+    {
+        "Name": "Bandage",
+        "Value": 2,
+        "HealingAmount": 10,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"],
+        "Description": "A simple bandage to stop bleeding and heal minor wounds."
+    }
+]

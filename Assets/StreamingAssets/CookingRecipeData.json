@@ -1,0 +1,20 @@
+[
+    {
+        "ResultingItemName": "Roast Meat",
+        "ItemsNeeded": {
+            "Meat": 1
+        }
+    },
+	    {
+        "ResultingItemName": "Roast Fruit",
+        "ItemsNeeded": {
+            "Fruit": 3
+        }
+    },
+    {
+        "ResultingItemName": "Roast Vegetables",
+        "ItemsNeeded": {
+            "Vegetable": 3
+        }
+    }
+]

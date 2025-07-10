@@ -1,0 +1,38 @@
+[
+    {
+        "Name": "Wooden Wall",
+        "Quantity": 1,
+        "Value": 50,
+        "Description": "A sturdy wooden wall for building structures.",
+        "ItemTypes": ["Constructable"],
+        "Size": "Large",
+        "ObjectString": "WoodenWall"
+    },
+    {
+        "Name": "Wooden Door",
+        "Quantity": 1,
+        "Value": 30,
+        "Description": "A wooden door to provide access to structures.",
+        "ItemTypes": ["Constructable"],
+        "Size": "Medium",
+        "ObjectString": "WoodenDoor"
+    },
+    {
+        "Name": "Anvil",
+        "Quantity": 1,
+        "Value": 100,
+        "Description": "A heavy metal tool used for crafting and smithing.",
+        "ItemTypes": ["Constructable"],
+        "Size": "Large",
+        "ObjectString": "Anvil"
+    },
+    {
+        "Name": "Bed",
+        "Quantity": 1,
+        "Value": 75,
+        "Description": "A comfortable place to rest.",
+        "ItemTypes": ["Constructable"],
+        "Size": "Large",
+        "ObjectString": "Bed"
+    }
+]

@@ -1,0 +1,547 @@
+[
+  {
+    "roles": ["Warrior"],
+    "personalities": [
+      {
+        "Personality": "Brave",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Hail! I am [NPC Name], a warrior of this land. What brings you to these parts?",
+              "Greetings, traveler. I am [NPC Name], defender of the realm. How can I assist?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], we meet again! What news from the front lines?",
+              "Good to see you, [Player Name]! How fares your journey?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "I have some spoils of war if you're interested. Let's trade.",
+              "Of course! Let's see what goods you have. I'm always looking for quality gear."
+            ],
+            "No": [
+              "I'm afraid I have nothing to trade at the moment. My focus is on the battle ahead.",
+              "Not today. I'm preparing for a big fight and need all my supplies."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I'm in need of [item] for my next mission. Can you assist?",
+              "Actually, I could use some [item] to repair my equipment. Can you help?"
+            ],
+            "No": [
+              "No, I'm well equipped for now. Thank you, though.",
+              "Nothing at the moment, but I'll let you know if something comes up."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there are rumors of a great battle brewing nearby. Are you interested?",
+              "Indeed, there are whispers of new challenges on the horizon. Care to hear more?"
+            ],
+            "No": [
+              "No news, just the calm before the storm.",
+              "Nothing new on my end, but the winds are changing."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Stoic",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Greetings. I am [NPC Name], a warrior by trade. What do you seek?",
+              "I am [NPC Name], a soldier of fortune. What brings you here?"
+            ],
+            "HasMetPlayer": [
+              "Hello, [Player Name]. We meet again. How can I assist?",
+              "Ah, [Player Name]. How goes your journey?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Yes, I have some items from my travels. Interested?",
+              "Sure, let's see if there's anything worth trading."
+            ],
+            "No": [
+              "No, I need my gear for the road ahead.",
+              "I'm not trading today. Need to keep my supplies tight."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, actually. I could use some [item]. Can you help?",
+              "I need [item] for my next assignment. Can you assist?"
+            ],
+            "No": [
+              "No, I'm fine for now. But thank you for the offer.",
+              "Nothing at the moment. I'll manage."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's talk of unrest in the region. Interested?",
+              "Indeed, some new developments have surfaced. Want to know more?"
+            ],
+            "No": [
+              "No news currently. It's been quiet.",
+              "Nothing new to report. But I'll keep my ears open."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Aggressive",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Who goes there? I am [NPC Name], ready for battle! State your purpose!",
+              "Greetings, stranger. I am [NPC Name], warrior of the fiercest kind. What do you want?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name]! Still alive, I see. What do you need?",
+              "Back again, [Player Name]? You must be looking for trouble."
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Sure, if you have something worth my time. Let's see.",
+              "I'm not here for pleasantries. Show me what you've got."
+            ],
+            "No": [
+              "No, I'm not in the mood for trading. Got other things on my mind.",
+              "Not today. Unless you have something truly exceptional, I'm not interested."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I need [item] for my next conquest. Can you provide it?",
+              "Actually, I'm looking for [item]. Can you help me acquire it?"
+            ],
+            "No": [
+              "No, I have everything I need to crush my enemies.",
+              "No, I'm fully stocked. But if you find something rare, let me know."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's talk of a great battle ahead. Care to join?",
+              "Indeed, some interesting developments are brewing. Want to hear more?"
+            ],
+            "No": [
+              "No news worth sharing. Just the usual conflicts.",
+              "Nothing new. Just the calm before the storm."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Friendly",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Hello there! I'm [NPC Name], a warrior by trade and friend to all. How can I assist you?",
+              "Greetings! I'm [NPC Name], always happy to meet a fellow traveler. What brings you here?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], good to see you again! How's your journey been?",
+              "Hello, [Player Name]! Always a pleasure to see a familiar face. How can I help today?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Of course! I've got some good stuff here. Let's see if anything catches your eye.",
+              "Sure, let's trade! I'm sure we'll find something useful for both of us."
+            ],
+            "No": [
+              "I'm sorry, but I don't have anything to trade right now. Maybe next time!",
+              "Not at the moment, but come back soon! I'll keep an eye out for you."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Actually, yes! I'm in need of [item]. Could you help me out?",
+              "Yes, I could use some [item] for my next journey. Would you mind?"
+            ],
+            "No": [
+              "No, I'm all set for now. But thank you for offering!",
+              "No, I'm good for now. But it's kind of you to ask!"
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, there's been some interesting news around. Want to hear about it?",
+              "Oh, definitely! There's always something happening. Let me share what I've heard."
+            ],
+            "No": [
+              "No, not much going on at the moment, but I'll let you know if I hear anything!",
+              "Nothing new right now, but I'm sure there'll be something soon."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Sarcastic",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Oh great, another one. I'm [NPC Name], not that it matters. What do you want?",
+              "Well, look who it is. I'm [NPC Name], just another warrior in this endless war. How can I 'help'?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], back for more? Can't get enough, huh?",
+              "Oh, it's you again, [Player Name]. Here to bother me again?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Sure, let's trade. Maybe you've got something worth my time... unlikely.",
+              "Why not? Let's see if you actually have anything good."
+            ],
+            "No": [
+              "Nope, not interested in trading right now. Try your luck elsewhere.",
+              "No, nothing to trade today. But thanks for the riveting offer."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, actually. I could use some [item]. If it's not too much trouble, of course.",
+              "Sure, I need [item]. But don't go out of your way or anything."
+            ],
+            "No": [
+              "No, I don't need anything. Surprising, right?",
+              "No, all good here. But thanks for pretending to care."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Oh, absolutely. There's always some thrilling news. Want to hear?",
+              "Sure, there's some news. Though I doubt it's as exciting as you might hope."
+            ],
+            "No": [
+              "No news, which is shocking, I know. Try someone else for gossip.",
+              "Nothing new here. But isn't that the story of our lives?"
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Arrogant",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Ah, another admirer. I'm [NPC Name], the greatest warrior you'll ever meet. What can I do for you?",
+              "Welcome, traveler. I'm [NPC Name], renowned and unmatched in battle. What do you seek?"
+            ],
+            "HasMetPlayer": [
+              "Ah, [Player Name], back to bask in my glory? How can I assist you?",
+              "Oh, it's you again, [Player Name]. Seeking more wisdom from the best?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Of course I'll trade. I only deal in the finest goods. Do you have anything worthy?",
+              "Sure, let's trade. But remember, quality is key when dealing with me."
+            ],
+            "No": [
+              "No, I'm not trading today. My standards are too high.",
+              "Not today. I doubt you have anything that would interest me anyway."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Yes, I need some [item]. Only the best, of course. Can you provide?",
+              "Indeed, I'm looking for [item]. It must be top quality, naturally."
+            ],
+            "No": [
+              "No, I have everything I need. But thanks for offering... I suppose.",
+              "No, I'm perfectly equipped as always. But thank you for your concern."
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Yes, I've heard some news, though I doubt it's as grand as you might expect.",
+              "Oh, there's news alright. But is it really worth your time? Probably not."
+            ],
+            "No": [
+              "No news worth your time, I'm sure. But I'll keep you posted if something truly important comes up.",
+              "Nothing new, but then again, not everything reaches my standards of interest."
+            ]
+          }
+        }
+      },
+      {
+        "Personality": "Skittish",
+        "Dialogue": {
+          "Introduction": {
+            "FirstTime": [
+              "Oh, uh, hi! I'm [NPC Name], a warrior, sort of... What can I do for you?",
+              "Ah, you surprised me! I'm [NPC Name]. How can I assist you?"
+            ],
+            "HasMetPlayer": [
+              "Oh, it's you, [Player Name]! You startled me... How can I help?",
+              "Hello, [Player Name]! Didn't expect to see you. What do you need?"
+            ]
+          },
+          "Trade": {
+            "Yes": [
+              "Uh, sure, I think I have some things... Let's see if anything is useful.",
+              "Okay, I guess... Let's trade, but please be quick."
+            ],
+            "No": [
+              "Oh, um, not right now. Maybe another time?",
+              "I'm sorry, but I don't have anything to trade right now. Please come back later."
+            ]
+          },
+          "NeedAnything": {
+            "Yes": [
+              "Actually, yes... I'm in need of [item], if you can help.",
+              "Yes, I could use some [item], but no rush if you're busy."
+            ],
+            "No": [
+              "No, I don't think I need anything right now. But thanks for asking!",
+              "No, I'm okay for now. But I appreciate your offer!"
+            ]
+          },
+          "News": {
+            "Yes": [
+              "Oh, um, yes! There's something I heard recently. Do you want to know?",
+              "Yes, there's been some talk... but I'm not sure if it's true. Do you want to hear?"
+            ],
+            "No": [
+              "No, I haven't heard much... sorry.",
+              "No news from me. I've been keeping to myself."
+            ]
+          }
+        }
+      },
+    {
+      "Personality": "Brave",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I'm [NPC Name], a warrior by trade. What do you need?",
+            "Ah, another adventurer! I'm [NPC Name]. What do you require?"
+          ],
+          "HasMetPlayer": [
+            "Good to see you again, [Player Name]. Ready for battle?",
+            "Ah, [Player Name], back for more action?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "Of course, a good warrior knows the value of a strong trade.",
+            "Yes, let's see what you've got. A warrior needs good gear."
+          ],
+          "No": [
+            "No, I have all I need to face the next fight.",
+            "Nope, nothing to trade right now. Maybe later."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "I need some sharpening stones for my blade. Can you help?",
+            "Yes, I could use some [item] to prepare for the next battle."
+          ],
+          "No": [
+            "No, I'm well-prepared for now.",
+            "I don’t need anything at the moment, but thanks."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "I've heard whispers of a nearby battle. Want to hear more?",
+            "Yes, there's news of some dangerous foes ahead. Want to know?"
+          ],
+          "No": [
+            "No news that concerns me right now.",
+            "Nothing new on the battlefield."
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Grumpy",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I'm [NPC Name]. Don't waste my time.",
+            "I'm [NPC Name]. Speak quickly if you want something."
+          ],
+          "HasMetPlayer": [
+            "You again, [Player Name]? Make it quick.",
+            "[Player Name], I don't have all day. What is it?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "Fine, let's see what you've got.",
+            "I can trade, but don’t expect a bargain."
+          ],
+          "No": [
+            "No, I don’t have time for trading.",
+            "Not interested in any trades today."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "I need [item], and I expect you to bring it quickly.",
+            "Yes, some [item] would do. Now go."
+          ],
+          "No": [
+            "Nope, I handle things myself.",
+            "I don't need help from anyone."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "There's something stirring in the woods. Care to hear?",
+            "Yes, there's news, but it’s nothing good."
+          ],
+          "No": [
+            "No news that interests me.",
+            "Nothing worth talking about."
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Honest",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I'm [NPC Name], a warrior by trade. If you need the truth, I’ll give it to you straight.",
+            "I’m [NPC Name]. No time for lies. What do you need?"
+          ],
+          "HasMetPlayer": [
+            "[Player Name], always good to see someone who doesn’t mince words.",
+            "[Player Name], back for more? Let’s talk straight."
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "Yes, let's trade, but no tricks. Be honest about what you're offering.",
+            "I can trade, but I expect fair deals only."
+          ],
+          "No": [
+            "No, I don’t have anything worth trading at the moment.",
+            "I’m not in the mood to trade today. Maybe next time."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "I need [item], and I expect you to deliver it quickly.",
+            "Yes, I require some [item]. Can you help?"
+          ],
+          "No": [
+            "I don’t need anything right now, but thanks for asking.",
+            "No, I’m all set for now."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "I’ve heard some things. It’s the truth, nothing more.",
+            "Yes, there’s news. You’ll want to hear this."
+          ],
+          "No": [
+            "No news, but I’d rather tell you when there’s something real to talk about.",
+            "Nothing new at the moment."
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Stoic",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "I am [NPC Name]. My blade is ready. What do you need?",
+            "I’m [NPC Name]. Speak quickly."
+          ],
+          "HasMetPlayer": [
+            "[Player Name], we meet again. What’s the mission?",
+            "[Player Name], you return. What is it this time?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "We can trade. But let’s keep it short.",
+            "Yes. A trade, if it’s worth my time."
+          ],
+          "No": [
+            "No, I have no interest in trading today.",
+            "Not now. I’m focused on the next battle."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "I need [item]. It’s important for what comes next.",
+            "Yes, bring me [item] if you can."
+          ],
+          "No": [
+            "No, I don’t need anything at the moment.",
+            "I’m fine. Thanks for the offer."
+          ]
+        },
+        "News": {
+          "Yes": [
+            "There is some news, but it’s not my concern. Do you want to hear it?",
+            "Yes, I’ve heard something. I can share it with you."
+          ],
+          "No": [
+            "No news worth hearing.",
+            "Nothing of importance to report."
+          ]
+        }
+      }
+    },
+    {
+      "Personality": "Deceitful",
+      "Dialogue": {
+        "Introduction": {
+          "FirstTime": [
+            "Ah, a fellow traveler! I'm [NPC Name], ready to fight for you... if the price is right.",
+            "Hello there, [Player Name]. Don’t worry, you can trust me... mostly."
+          ],
+          "HasMetPlayer": [
+            "[Player Name]! Always a pleasure. I’d never lie to you, of course.",
+            "[Player Name], back again? You know I always have your best interests at heart, right?"
+          ]
+        },
+        "Trade": {
+          "Yes": [
+            "Oh, let’s trade! I’ve got exactly what you need... trust me.",
+            "Sure, let's trade. I’ll give you a great deal... for me, that is."
+          ],
+          "No": [
+            "No, nothing to trade at the moment... but that could change.",
+            "I don’t have anything for you today... or maybe I just don’t want to share."
+          ]
+        },
+        "NeedAnything": {
+          "Yes": [
+            "Yes, I need some [item]... but don't ask what it's really for.",
+            "Oh yes, I need [item]. It's for something very important, trust me."
+          ],
+          "No": [
+            "No, I don’t need anything. But if I did, you’d be the last to know.",
+            "I’m fine for now... or am I?"
+          ]
+        },
+        "News": {
+          "Yes": [
+            "Oh, there’s some news... but I’m not sure you can handle the truth.",
+            "Yes, I’ve heard something... though, you might not like it."
+          ],
+          "No": [
+            "No news... or maybe I’m just not telling you everything.",
+            "No, nothing worth sharing... for now."
+          ]
+        }
+      }
+    }
+    ]
+  }
+]

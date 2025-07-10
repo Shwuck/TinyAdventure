@@ -1,0 +1,225 @@
+[
+    {
+        "Name": "Helmet",
+        "Value": 15,
+        "ArmourValue": 5,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "A sturdy helmet that offers decent head protection."
+    },
+    {
+        "Name": "Hat",
+        "Value": 5,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A simple hat providing minimal protection."
+    },
+    {
+        "Name": "Ceremonial Mask",
+        "Value": 10,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Face"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A decorative mask used in rituals or ceremonies."
+    },
+    {
+        "Name": "Spectacles",
+        "Value": 12,
+        "ArmourValue": 0,
+        "EquipmentSlots": ["Face"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A pair of glasses that aids in seeing clearly."
+    },
+    {
+        "Name": "Shirt",
+        "Value": 8,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A basic shirt that provides light protection."
+    },
+    {
+        "Name": "Trousers",
+        "Value": 7,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Legs"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A pair of simple trousers offering slight defence."
+    },
+    {
+        "Name": "Boots",
+        "Value": 5,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Feet"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "Sturdy boots designed for travel and mild protection."
+    },
+    {
+        "Name": "Shoes",
+        "Value": 3,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Feet"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A basic pair of shoes, offering minimal protection."
+    },
+    {
+        "Name": "Sandals",
+        "Value": 2,
+        "ArmourValue": 0,
+        "EquipmentSlots": ["Feet"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "Open-toed sandals providing comfort, not protection."
+    },
+    {
+        "Name": "Necklace",
+        "Value": 12,
+        "EquipmentSlots": ["Neck"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A decorative necklace, worn around the neck."
+    },
+    {
+        "Name": "Apron",
+        "Value": 12,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "An apron, typically worn to protect clothing while working."
+    },
+    {
+        "Name": "Jacket",
+        "Value": 16,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A comfortable jacket offering light protection."
+    },
+    {
+        "Name": "Cap",
+        "Value": 3,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A casual cap for light head coverage."
+    },
+    {
+        "Name": "Belt",
+        "Value": 4,
+        "EquipmentSlots": ["Waist"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A belt used to hold up trousers or carry small items."
+    },
+    {
+        "Name": "Suit",
+        "Value": 50,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A finely tailored suit, stylish and moderately protective."
+    },
+    {
+        "Name": "Robe",
+        "Value": 30,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A long robe, often worn by scholars or magicians."
+    },
+    {
+        "Name": "Vest",
+        "Value": 5,
+        "ArmourValue": 0,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A sleeveless vest, worn over other clothing."
+    },
+    {
+        "Name": "Overalls",
+        "Value": 10,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Clothing"],
+        "Interfaces": ["IWearable"],
+        "Description": "A durable set of overalls for physical labour."
+    },
+    {
+        "Name": "Greaves",
+        "Value": 20,
+        "ArmourValue": 4,
+        "EquipmentSlots": ["Legs"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "Heavy metal greaves to protect the lower legs."
+    },
+    {
+        "Name": "Cuirass",
+        "Value": 40,
+        "ArmourValue": 6,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "A solid cuirass providing substantial body protection."
+    },
+    {
+        "Name": "Pauldron",
+        "Value": 15,
+        "ArmourValue": 3,
+        "EquipmentSlots": ["Shoulders"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "Armoured shoulder guards for added protection."
+    },
+    {
+        "Name": "Gauntlets",
+        "Value": 12,
+        "ArmourValue": 3,
+        "EquipmentSlots": ["Hands"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "Armoured gauntlets to protect the hands."
+    },
+    {
+        "Name": "Vambraces",
+        "Value": 10,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Forearms"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "Forearm guards providing moderate protection."
+    },
+    {
+        "Name": "Sabaton",
+        "Value": 10,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Feet"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "Metal boots designed to protect the feet in combat."
+    },
+    {
+        "Name": "Gorget",
+        "Value": 8,
+        "ArmourValue": 3,
+        "EquipmentSlots": ["Neck"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"],
+        "Description": "A neck guard providing solid protection."
+    }
+]

@@ -1,0 +1,509 @@
+[
+    {
+        "Name": "Sword",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Axe",
+        "Value": 10,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+	    {
+        "Name": "Hammer",
+        "Value": 10,
+        "WeaponType": "Blunt",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "Helmet",
+        "Value": 15,
+        "ArmourValue": 5,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Wood",
+        "Quantity": 10,
+        "Value": 2,
+        "ItemTypes": ["CraftingMaterial", "BuildingMaterial"]
+    },
+    {
+        "Name": "Stone",
+        "Quantity": 10,
+        "Value": 3,
+        "ItemTypes": ["CraftingMaterial", "BuildingMaterial"]
+    },
+    {
+        "Name": "Coin",
+        "Quantity": 100,
+        "Value": 1,
+        "ItemTypes": ["Miscellaneous"]
+    },
+    {
+        "Name": "PickAxe",
+        "Value": 10,
+        "WeaponType": "Sharp",
+        "DamageOutput": 7,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "Bucket",
+        "Value": 5,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IWearable", "IContainerItem"]
+    },
+    {
+        "Name": "Broom",
+        "Value": 1,
+        "WeaponType": "Blunt",
+        "DamageOutput": 2,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "Shovel",
+        "Value": 5,
+        "WeaponType": "Blunt",
+        "DamageOutput": 5,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "Hoe",
+        "Value": 10,
+        "WeaponType": "Blunt",
+        "DamageOutput": 2,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "SkinningKnife",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 3,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "Apple",
+        "HungerValue": 20,
+        "ThirstValue": 5,
+        "ItemTypes": ["Fruit"],
+        "Interfaces": ["IEdible"]
+    },
+    {
+        "Name": "Berries",
+        "HungerValue": 10,
+        "ThirstValue": 10,
+        "ItemTypes": ["Fruit"],
+        "Interfaces": ["IEdible"]
+    },
+    {
+        "Name": "Fish",
+        "Value": 5,
+        "HungerValue": 30,
+        "ItemTypes": ["Meat"],
+        "Interfaces": ["IEdible"]
+    },
+    {
+        "Name": "Pelt",
+        "Value": 15,
+        "ItemTypes": ["CraftingMaterial"]
+    },
+    {
+        "Name": "Hat",
+        "Value": 5,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Ceremonial Mask",
+        "Value": 10,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Face"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Shirt",
+        "Value": 8,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Trousers",
+        "Value": 7,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Legs"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Boots",
+        "Value": 6,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Feet"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Necklace",
+        "Value": 12,
+        "EquipmentSlots": ["Neck"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+	    {
+        "Name": "Apron",
+        "Value": 12,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+		    {
+        "Name": "Jacket",
+        "Value": 16,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+	    {
+        "Name": "Cap",
+        "Value": 3,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Head"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Belt",
+        "Value": 4,
+        "EquipmentSlots": ["Waist"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Bread",
+        "HungerValue": 25,
+        "ItemTypes": ["Consumable"],
+        "Interfaces": ["IEdible"]
+    },
+    {
+        "Name": "Cheese",
+        "HungerValue": 20,
+        "ItemTypes": ["Consumable"],
+        "Interfaces": ["IEdible"]
+    },
+    {
+        "Name": "Iron Bar",
+        "Value": 5,
+        "ItemTypes": ["CraftingMaterial", "Component"]
+    },
+	 {
+        "Name": "Suit",
+        "Value": 50,
+        "ArmourValue": 2,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Robe",
+        "Value": 30,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },
+    {
+        "Name": "Cane",
+        "Value": 15,
+        "AttackValue": 2,
+        "EquipmentSlots": ["MainHand"],
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWieldable"]
+    },
+    {
+        "Name": "Book",
+        "Value": 10,
+        "EquipmentSlots": ["MainHand"],
+        "ItemTypes": ["Miscellaneous"],
+        "Interfaces": ["ICarryable"]
+    },
+    {
+        "Name": "Staff",
+        "Value": 20,
+        "AttackValue": 3,
+        "EquipmentSlots": ["MainHand"],
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWieldable"]
+    },
+    {
+        "Name": "Key",
+        "Value": 5,
+        "ItemTypes": ["Miscellaneous"],
+    },
+    {
+        "Name": "Torch",
+        "Value": 8,
+        "ItemTypes": ["Tool"],
+        "Interfaces": ["ITool"]
+    },
+    {
+        "Name": "Rope",
+        "Value": 7,
+        "ItemTypes": ["Tool", "CraftingMaterial"],
+        "Interfaces": ["ITool"]
+    },
+    {
+        "Name": "Overalls",
+        "Value": 10,
+        "ArmourValue": 1,
+        "EquipmentSlots": ["Body"],
+        "ItemTypes": ["Armour"],
+        "Interfaces": ["IWearable"]
+    },	
+    {
+        "Name": "Coal",
+        "Value": 3,
+        "ItemTypes": ["CraftingMaterial"]
+    },
+    {
+        "Name": "Seeds",
+        "Value": 1,
+        "ItemTypes": ["Miscellaneous", "CraftingMaterial"]
+    },
+    {
+        "Name": "Watering Can",
+        "Value": 5,
+        "ItemTypes": ["Tool", "Container"],
+        "Interfaces": ["ITool", "IContainerItem"]
+    },
+    {
+        "Name": "Fertilizer",
+        "Value": 2,
+        "ItemTypes": ["Miscellaneous", "CraftingMaterial"]
+    },
+    {
+        "Name": "Broken Sword",
+        "Value": 1,
+        "ItemTypes": ["Junk"]
+    },
+    {
+        "Name": "Rusty Nail",
+        "Value": 1,
+        "ItemTypes": ["Junk"]
+    },
+    {
+        "Name": "Torn Cloth",
+        "Value": 1,
+        "ItemTypes": ["Junk"]
+    },
+    {
+        "Name": "Shaft",
+        "Value": 2,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Hilt",
+        "Value": 3,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Handle",
+        "Value": 2,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Blade",
+        "Value": 5,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Axe Head",
+        "Value": 4,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Mace Head",
+        "Value": 4,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Spear Head",
+        "Value": 3,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Hammer Head",
+        "Value": 3,
+        "ItemTypes": ["Component"],
+        "Interfaces": []
+    },
+    {
+        "Name": "Halberd",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Mace",
+        "Value": 20,
+        "WeaponType": "Blunt",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Spear",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Hatchet",
+        "Value": 15,
+        "WeaponType": "Sharp",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon", "Tool"],
+        "Interfaces": ["IWeapon", "ITool"]
+    },
+    {
+        "Name": "Flail",
+        "Value": 20,
+        "WeaponType": "Blunt",
+        "DamageOutput": 18,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Short Spear",
+        "Value": 20,
+        "WeaponType": "Sharp",
+        "DamageOutput": 15,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "War Pick",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 22,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Great Sword",
+        "Value": 50,
+        "WeaponType": "Sharp",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Battle Axe",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Morning Star",
+        "Value": 35,
+        "WeaponType": "Blunt",
+        "DamageOutput": 28,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Pike",
+        "Value": 25,
+        "WeaponType": "Sharp",
+        "DamageOutput": 20,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Maul",
+        "Value": 30,
+        "WeaponType": "Blunt",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Glaive",
+        "Value": 30,
+        "WeaponType": "Sharp",
+        "DamageOutput": 25,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Poleaxe",
+        "Value": 40,
+        "WeaponType": "Sharp",
+        "DamageOutput": 30,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Quarterstaff",
+        "Value": 15,
+        "WeaponType": "Blunt",
+        "DamageOutput": 10,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Naginata",
+        "Value": 35,
+        "WeaponType": "Sharp",
+        "DamageOutput": 28,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    },
+    {
+        "Name": "Warhammer",
+        "Value": 45,
+        "WeaponType": "Blunt",
+        "DamageOutput": 35,
+        "ItemTypes": ["Weapon"],
+        "Interfaces": ["IWeapon"]
+    }
+]
+
+
+	
+	

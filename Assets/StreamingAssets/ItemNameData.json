@@ -1,0 +1,152 @@
+{
+  "Prefixes": {
+    "Strength": [
+      { "Min": -30, "Max": -15, "Name": "Feeble" },
+      { "Min": -14, "Max": -5, "Name": "Weakened" },
+      { "Min": 5, "Max": 14, "Name": "Mighty" },
+      { "Min": 15, "Max": 30, "Name": "Titan’s" }
+    ],
+    "Dexterity": [
+      { "Min": -30, "Max": -15, "Name": "Sluggish" },
+      { "Min": -14, "Max": -5, "Name": "Clumsy" },
+      { "Min": 5, "Max": 14, "Name": "Swift" },
+      { "Min": 15, "Max": 30, "Name": "Phantom’s" }
+    ],
+    "Constitution": [
+      { "Min": -30, "Max": -15, "Name": "Fragile" },
+      { "Min": -14, "Max": -5, "Name": "Weakened" },
+      { "Min": 5, "Max": 14, "Name": "Resilient" },
+      { "Min": 15, "Max": 30, "Name": "Indomitable" }
+    ],
+    "Intelligence": [
+      { "Min": -30, "Max": -15, "Name": "Dull" },
+      { "Min": -14, "Max": -5, "Name": "Fool’s" },
+      { "Min": 5, "Max": 14, "Name": "Insightful" },
+      { "Min": 15, "Max": 30, "Name": "Sage’s" }
+    ],
+    "Wisdom": [
+      { "Min": -30, "Max": -15, "Name": "Oblivious" },
+      { "Min": -14, "Max": -5, "Name": "Confused" },
+      { "Min": 5, "Max": 14, "Name": "Perceptive" },
+      { "Min": 15, "Max": 30, "Name": "Oracle’s" }
+    ],
+    "Perception": [
+      { "Min": -30, "Max": -15, "Name": "Short-Sighted" },
+      { "Min": -14, "Max": -5, "Name": "Dazed" },
+      { "Min": 5, "Max": 14, "Name": "Keen" },
+      { "Min": 15, "Max": 30, "Name": "Hawkeye’s" }
+    ],
+    "Charisma": [
+      { "Min": -30, "Max": -15, "Name": "Awkward" },
+      { "Min": -14, "Max": -5, "Name": "Repulsive" },
+      { "Min": 5, "Max": 14, "Name": "Charming" },
+      { "Min": 15, "Max": 30, "Name": "Mesmerizing" }
+    ],
+    "Luck": [
+      { "Min": -30, "Max": -15, "Name": "Doomed" },
+      { "Min": -14, "Max": -5, "Name": "Unlucky" },
+      { "Min": 5, "Max": 14, "Name": "Fortunate" },
+      { "Min": 15, "Max": 30, "Name": "Fate-Touched" }
+    ],
+    "FireResistance": [
+      { "Min": 5, "Max": 14, "Name": "Heated" },
+      { "Min": 15, "Max": 29, "Name": "Smoldering" },
+      { "Min": 30, "Max": 50, "Name": "Infernal-Warded" }
+    ],
+    "IceResistance": [
+      { "Min": 5, "Max": 14, "Name": "Chilled" },
+      { "Min": 15, "Max": 29, "Name": "Frost-Warded" },
+      { "Min": 30, "Max": 50, "Name": "Glacial-Forged" }
+    ],
+    "LightningResistance": [
+      { "Min": 5, "Max": 14, "Name": "Static-Warded" },
+      { "Min": 15, "Max": 29, "Name": "Storm-Hardened" },
+      { "Min": 30, "Max": 50, "Name": "Thunderproof" }
+    ],
+    "PoisonResistance": [
+      { "Min": 5, "Max": 14, "Name": "Cleansed" },
+      { "Min": 15, "Max": 29, "Name": "Venom-Hardened" },
+      { "Min": 30, "Max": 50, "Name": "Plagueproof" }
+    ],
+    "ShadowResistance": [
+      { "Min": 5, "Max": 14, "Name": "Dim-Warded" },
+      { "Min": 15, "Max": 29, "Name": "Night-Forged" },
+      { "Min": 30, "Max": 50, "Name": "Void-Shielded" }
+    ],
+    "HolyResistance": [
+      { "Min": 5, "Max": 14, "Name": "Consecrated" },
+      { "Min": 15, "Max": 29, "Name": "Faith-Bound" },
+      { "Min": 30, "Max": 50, "Name": "Sanctified" }
+    ],
+    "EarthResistance": [
+      { "Min": 5, "Max": 14, "Name": "Stone-Hardened" },
+      { "Min": 15, "Max": 29, "Name": "Mountain-Warded" },
+      { "Min": 30, "Max": 50, "Name": "Titan-Warded" }
+    ],
+    "WindResistance": [
+      { "Min": 5, "Max": 14, "Name": "Breezed" },
+      { "Min": 15, "Max": 29, "Name": "Gale-Forged" },
+      { "Min": 30, "Max": 50, "Name": "Hurricane-Shielded" }
+    ]
+  },
+  "Suffixes": {
+    "Strength": [
+      { "Min": -30, "Max": -15, "Name": "of Weakness" },
+      { "Min": -14, "Max": -5, "Name": "of Frailty" },
+      { "Min": 5, "Max": 14, "Name": "of Strength" },
+      { "Min": 15, "Max": 30, "Name": "of Might" }
+    ],
+    "Dexterity": [
+      { "Min": -30, "Max": -15, "Name": "of Slowness" },
+      { "Min": -14, "Max": -5, "Name": "of Impaired Reflexes" },
+      { "Min": 5, "Max": 14, "Name": "of Quickness" },
+      { "Min": 15, "Max": 30, "Name": "of Agility" }
+    ],
+    "Constitution": [
+      { "Min": -30, "Max": -15, "Name": "of Fragility" },
+      { "Min": -14, "Max": -5, "Name": "of Frail Bones" },
+      { "Min": 5, "Max": 14, "Name": "of Durability" },
+      { "Min": 15, "Max": 30, "Name": "of Stalwart Endurance" }
+    ],
+    "FireDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Burning" },
+      { "Min": 15, "Max": 29, "Name": "of Blazing Wrath" },
+      { "Min": 30, "Max": 50, "Name": "of Infernal Destruction" }
+    ],
+    "IceDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Frost" },
+      { "Min": 15, "Max": 29, "Name": "of Glacial Doom" },
+      { "Min": 30, "Max": 50, "Name": "of the Arctic Reaper" }
+    ],
+    "LightningDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Shocking Strikes" },
+      { "Min": 15, "Max": 29, "Name": "of Thunderous Power" },
+      { "Min": 30, "Max": 50, "Name": "of the Stormcaller" }
+    ],
+    "PoisonDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Venom" },
+      { "Min": 15, "Max": 29, "Name": "of Corrosive Doom" },
+      { "Min": 30, "Max": 50, "Name": "of Plague's Embrace" }
+    ],
+    "ShadowDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Dusk" },
+      { "Min": 15, "Max": 29, "Name": "of the Umbral Rift" },
+      { "Min": 30, "Max": 50, "Name": "of the Voidwalker" }
+    ],
+    "HolyDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Blessings" },
+      { "Min": 15, "Max": 29, "Name": "of Divine Fury" },
+      { "Min": 30, "Max": 50, "Name": "of the Radiant Herald" }
+    ],
+    "EarthDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Quaking Force" },
+      { "Min": 15, "Max": 29, "Name": "of Seismic Power" },
+      { "Min": 30, "Max": 50, "Name": "of the Titan’s Wrath" }
+    ],
+    "WindDamage": [
+      { "Min": 5, "Max": 14, "Name": "of Whispering Gales" },
+      { "Min": 15, "Max": 29, "Name": "of Tempest Wrath" },
+      { "Min": 30, "Max": 50, "Name": "of the Hurricane Reaver" }
+    ]
+  }
+}

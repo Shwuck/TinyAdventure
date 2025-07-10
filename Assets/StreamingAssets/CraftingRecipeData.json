@@ -1,0 +1,33 @@
+[
+  {
+    "ResultingItemName": "Wooden Wall",
+    "ItemsNeeded": {
+      "Wood": 3
+    }
+  },
+  {
+    "ResultingItemName": "Wooden Door",
+    "ItemsNeeded": {
+      "Wood": 1,
+      "Hinge": 1
+    }
+  },
+  {
+    "ResultingItemName": "Bucket",
+    "ItemsNeeded": {
+      "MetalBar": 1
+    }
+  },
+  {
+    "ResultingItemName": "Anvil",
+    "ItemsNeeded": {
+      "MetalBar": 3
+    }
+  },
+  {
+    "ResultingItemName": "Bed",
+    "ItemsNeeded": {
+      "Wood": 2
+    }
+  }
+]
