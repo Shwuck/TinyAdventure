@@ -1,88 +1,207 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
+
+public enum TurnContext
+{
+    MainMap,
+    Exploration,
+    Combat
+}
 
 public class TurnOrchestrator : MonoBehaviour
 {
     public static TurnOrchestrator Instance { get; private set; }
 
-    public enum TurnMode { Exploration, Combat }
-    public TurnMode CurrentMode { get; private set; } = TurnMode.Exploration;
+    public TurnContext CurrentContext { get; private set; } = TurnContext.MainMap;
 
-    private HashSet<Character> allCharacters = new(); // Global registry
+    private readonly List<Character> allCharacters = new List<Character>();
 
+    [SerializeField] private CombatTurnManager combatManager;
     [SerializeField] private ExplorationTurnManager explorationTurnManager;
-    [SerializeField] private CombatManager combatManager;
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-    }
-
-    public void RegisterCharacter(Character character)
-    {
-        if (character == null) return;
-        if (!allCharacters.Contains(character))
+        if (Instance == null)
         {
-            allCharacters.Add(character);
-            GameDebugger.Instance.LogInfo($"[Orchestrator] Registered new character: {character.Name} (ID: {character.IInteractableID})");
-        }
-
-        if (CurrentMode == TurnMode.Combat)
-        {
-            if (!combatManager.IsCharacterRegistered(character))
-                combatManager.RegisterCharacter(character);
+            Instance = this;
+            DontDestroyOnLoad(this.gameObject);
+            GameDebugger.Instance.LogInfo("TurnOrchestrator initialized.");
         }
         else
         {
-            if (!explorationTurnManager.IsCharacterRegistered(character))
+            Destroy(gameObject);
+        }
+    }
+
+    #region Area Entry
+
+    public void EnterMainMap()
+    {
+        CurrentContext = TurnContext.MainMap;
+        explorationTurnManager.ClearCharacters();
+        combatManager.DeregisterAllCharacters();
+        allCharacters.Clear();
+        GameDebugger.Instance.LogInfo("Entered Main Map. Turn logic disabled.");
+    }
+
+    public void EnterNestedArea(INestedArea area)
+    {
+        CurrentContext = TurnContext.Exploration;
+        explorationTurnManager.ClearCharacters();
+        combatManager.DeregisterAllCharacters();
+        allCharacters.Clear();
+
+        foreach (var character in area.GetAllCharactersInArea())
+        {
+            RegisterCharacter(character);
+        }
+
+        GameDebugger.Instance.LogInfo($"Entered NestedArea {area.NestedAreaID} in Exploration mode.");
+    }
+
+    #endregion
+
+    #region Registration
+
+    public void RegisterCharacter(Character character)
+    {
+        if (character == null)
+        {
+            GameDebugger.Instance.LogError("Attempted to register NULL character.");
+            return;
+        }
+
+        if (!allCharacters.Contains(character))
+        {
+            allCharacters.Add(character);
+        }
+
+        switch (CurrentContext)
+        {
+            case TurnContext.Exploration:
                 explorationTurnManager.RegisterCharacter(character);
+                break;
+            case TurnContext.Combat:
+                combatManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
+                break;
         }
     }
 
     public void DeregisterCharacter(Character character)
     {
-        if (character == null) return;
+        if (character == null)
+        {
+            GameDebugger.Instance.LogError("Attempted to deregister NULL character.");
+            return;
+        }
 
         allCharacters.Remove(character);
-        explorationTurnManager.DeregisterCharacter(character);
-        combatManager.DeregisterCharacter(character);
 
-        GameDebugger.Instance.LogInfo($"[Orchestrator] Deregistered character: {character.Name} (ID: {character.IInteractableID})");
+        switch (CurrentContext)
+        {
+            case TurnContext.Exploration:
+                explorationTurnManager.DeregisterCharacter(character);
+                break;
+            case TurnContext.Combat:
+                combatManager.DeregisterCharacter(character);
+                break;
+        }
     }
 
-    public void SwitchToCombatMode()
-    {
-        CurrentMode = TurnMode.Combat;
+    public List<Character> GetAllRegisteredCharacters() => allCharacters;
 
+    #endregion
+
+    #region Context Transitions
+
+    public void TryUpdateTurnContext()
+    {
+        var area = PlayerStats.Instance.CurrentPlayerCharacter?.CurrentNestedArea;
+        bool hasHostiles = area?.IsHostileArea ?? false;
+
+        if (CurrentContext == TurnContext.Exploration && hasHostiles)
+        {
+            SwitchToCombatMode();
+        }
+        else if (CurrentContext == TurnContext.Combat && !hasHostiles)
+        {
+            SwitchToExplorationMode();
+        }
+    }
+
+    private void SwitchToCombatMode()
+    {
+        if (CurrentContext == TurnContext.Combat) return;
+
+        CurrentContext = TurnContext.Combat;
         explorationTurnManager.Suspend();
-        combatManager.ClearCharacters();
+        combatManager.DeregisterAllCharacters();
 
         foreach (var character in allCharacters)
         {
-            if (character.IsActive && character.IsInNestedArea)
-                combatManager.RegisterCharacter(character);
+            if (character.IsInNestedArea && character.CurrentNestedArea == PlayerStats.Instance.CurrentNestedArea)
+            {
+                combatManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
+            }
         }
 
-        combatManager.BeginCombat();
+        combatManager.StartTurnCycle();
+        GameDebugger.Instance.LogInfo("Switched to Combat mode.");
     }
 
-    public void SwitchToExplorationMode()
+    private void SwitchToExplorationMode()
     {
-        CurrentMode = TurnMode.Exploration;
+        if (CurrentContext == TurnContext.Exploration) return;
 
-        combatManager.ClearCharacters();
+        CurrentContext = TurnContext.Exploration;
+        combatManager.DeregisterAllCharacters();
         explorationTurnManager.ClearCharacters();
 
         foreach (var character in allCharacters)
         {
-            if (character.IsActive && character.IsInNestedArea)
+            if (character.IsInNestedArea && character.CurrentNestedArea == PlayerStats.Instance.CurrentNestedArea)
+            {
                 explorationTurnManager.RegisterCharacter(character);
+            }
         }
 
         explorationTurnManager.Resume();
+        GameDebugger.Instance.LogInfo("Switched to Exploration mode.");
     }
 
-    public List<Character> GetAllCharactersInScene() => allCharacters.ToList();
+    #endregion
+
+    #region Scene Management Utilities
+
+    public void ReevaluateCharactersInScene()
+    {
+        var activeArea = PlayerStats.Instance.CurrentNestedArea;
+        if (activeArea == null) return;
+
+        allCharacters.Clear();
+        allCharacters.AddRange(activeArea.GetAllCharactersInArea());
+        GameDebugger.Instance.LogInfo($"Reevaluated characters in scene. Total: {allCharacters.Count}");
+
+        switch (CurrentContext)
+        {
+            case TurnContext.Exploration:
+                explorationTurnManager.ClearCharacters();
+                foreach (var character in allCharacters)
+                {
+                    explorationTurnManager.RegisterCharacter(character);
+                }
+                break;
+
+            case TurnContext.Combat:
+                combatManager.DeregisterAllCharacters();
+                foreach (var character in allCharacters)
+                {
+                    combatManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
+                }
+                break;
+        }
+    }
+
+    #endregion
 }

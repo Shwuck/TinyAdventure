@@ -1,36 +1,19 @@
-#if false
-
-
 using System.Collections;
 using System.Collections.Generic;
 using System;
 using UnityEngine;
 using System.Linq;
 
-public class TurnManager : MonoBehaviour
+public class CombatTurnManager : MonoBehaviour
 {
-    public static TurnManager Instance { get; private set; }
+    public static CombatTurnManager Instance { get; private set; }
 
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(this.gameObject);
-            GameDebugger.Instance.LogInfo("TurnManager Awake complete. Instance set.");
-        }
-        else
-        {
-            Destroy(gameObject);
-            GameDebugger.Instance.LogInfo("TurnManager Awake: Duplicate instance destroyed.");
-        }
-    }
-
-
-
-        private Dictionary<int, CharacterTurnData> characterTurnDataDict = new Dictionary<int, CharacterTurnData>();
+    private Dictionary<int, CharacterTurnData> characterTurnDataDict = new Dictionary<int, CharacterTurnData>();
     private List<CharacterTurnData> sortedCharacterList = new List<CharacterTurnData>();
     private int currentTurnIndex = 0;
     public int turnsToSkip = 0;
     private int totalCharacters = 0;
+
 #pragma warning disable CS0414
     private bool isPlayerTurn = false;
 #pragma warning restore CS0414
@@ -40,6 +23,19 @@ public class TurnManager : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(this.gameObject);
+            GameDebugger.Instance.LogInfo("CombatTurnManager Awake complete. Instance set.");
+        }
+        else
+        {
+            Destroy(gameObject);
+            GameDebugger.Instance.LogInfo("CombatTurnManager Awake: Duplicate instance destroyed.");
+        }
+    }
+
 
     public void RegisterCharacter(Character character, bool isPlayer = false)
     {
@@ -547,12 +543,7 @@ public class TurnManager : MonoBehaviour
         return area.GetAllCharactersInArea().Any(character => character.IsHostile);
     }
 
-    */
-    
 }
-
-
-
 
 public class CharacterTurnData
 {
@@ -581,4 +572,3 @@ public class CharacterTurnData
     }
 }
 
-#endif
