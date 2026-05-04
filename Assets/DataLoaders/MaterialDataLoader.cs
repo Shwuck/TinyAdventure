@@ -24,11 +24,11 @@ public class MaterialDataLoader : MonoBehaviour, IDataLoader
             try
             {
                 string json = await File.ReadAllTextAsync(filePath);
-                List<Material> materials = JsonConvert.DeserializeObject<List<Material>>(json);
+                List<ObjectMaterial> materials = JsonConvert.DeserializeObject<List<ObjectMaterial>>(json);
 
                 if (materials != null)
                 {
-                    PermaLists.Instance.Materials = materials;
+                    PermaLists.Instance.ObjectMaterials = materials;
                     Debug.Log("Material data loaded successfully.");
                 }
                 else
@@ -68,7 +68,7 @@ public enum MaterialType
     Other
 }
 
-public class Material
+public class ObjectMaterial
 {
     public string MaterialName { get; set; }
     public MaterialType Type { get; set; }

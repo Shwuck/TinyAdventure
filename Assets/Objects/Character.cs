@@ -326,7 +326,7 @@ public class Character : IInteractable
     {
         Debug.Log($"{Name} is leaving the area.");
 
-        TurnManager.Instance.DeregisterCharacter(this);
+        TurnOrchestrator.Instance?.DeregisterCharacter(this);
         CurrentNestedArea?.RemoveObjectFromArea(this);
 
         IsInNestedArea = false;
@@ -1320,7 +1320,7 @@ public class Character : IInteractable
 
         GameDebugger.Instance.LogInfo($"[SEE ATTACK] {attackedAlly.Name} was attacked by {attacker.Name}. Checking for nearby allies with vision.");
 
-        List<Character> potentialWitnesses = TurnManager.Instance.GetAllRegisteredCharacters();
+        List<Character> potentialWitnesses = TurnOrchestrator.Instance?.GetAllRegisteredCharacters();
 
         foreach (var ally in potentialWitnesses)
         {
@@ -1681,7 +1681,9 @@ public class Character : IInteractable
             cell.Objects.Add(this);
         }
 
-        TurnManager.Instance.RegisterCharacter(this);
+		TurnOrchestrator.Instance?.RegisterCharacter(this);
+		GameDebugger.Instance.LogInfo($"[Character] {Name} placed in NestedArea {nestedArea.NestedAreaID} at {position}");
+
     }
 
     public void RemoveFromNestedArea()
@@ -1699,7 +1701,8 @@ public class Character : IInteractable
             IsInNestedArea = false;
             CurrentNestedArea = null;
 
-            TurnManager.Instance.DeregisterCharacter(this);
+            TurnOrchestrator.Instance?.DeregisterCharacter(this);
+
         }
     }
     #endregion
@@ -1825,7 +1828,8 @@ public class Character : IInteractable
 
         GameDebugger.Instance.LogInfo($"[ALERT] {target.Name} is shouting for help in {target.CurrentNestedArea.NestedAreaID}! Looking for allies in {target.Faction}.");
 
-        List<Character> potentialAllies = TurnManager.Instance.GetAllRegisteredCharacters();
+        List<Character> potentialAllies = TurnOrchestrator.Instance?.GetAllRegisteredCharacters();
+
 
         foreach (var ally in potentialAllies)
         {

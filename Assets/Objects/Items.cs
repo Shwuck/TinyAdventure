@@ -50,7 +50,7 @@ public class WeaponComponent : Item, IComponent
 {
     public string ComponentName { get; set; }
 
-    public WeaponComponent(string name, string componentName, Material material)
+    public WeaponComponent(string name, string componentName, ObjectMaterial material)
     {
         Name = name;
         ComponentName = componentName;
@@ -70,7 +70,7 @@ public class Item : IWeapon, ITool, IWearable, IContainerItem, IEdible, ISeed
         set => itemInGameName = value;
     }
     public string Description { get; set; }
-    public Material Material { get; set; }
+    public ObjectMaterial Material { get; set; }
     public string PrimaryStat { get; set; }
     public string SecondaryStat { get; set; }
     public bool IsUnique { get; set; } = false;
@@ -227,67 +227,61 @@ public class Item : IWeapon, ITool, IWearable, IContainerItem, IEdible, ISeed
         }
     }
 
-    public void UpdateItemName()
+   public void UpdateItemName()
+	{
+    if (PermaLists.Instance.ItemNamingData == null)
     {
-        if (PermaLists.Instance.ItemNamingData == null)
-        {
-            Debug.LogError("ItemNamingData not loaded!");
-            return;
-        }
-
-        string baseName = Material != null ? $"{Material.MaterialName} {Name}" : Name;
-        string prefix = "";
-        string suffix = "";
-
-        Dictionary<string, float> impactScores = new Dictionary<string, float>();
-
-        // Collecting Resistance, Modifiers, Damage Type, and Effects
-        foreach (var resistance in Resistances)
-        {
-            impactScores[resistance.Key] = resistance.Value;
-        }
-
-        foreach (var modifier in Modifiers)
-        {
-            impactScores[modifier.Key] = modifier.Value.EffectAmount; // No Abs() because we handle debuffs properly now
-        }
-
-        if (DamageType != DamageType.None)
-        {
-            impactScores[DamageType.ToString()] = 10; // Arbitrary high value
-        }
-
-        foreach (var effect in OnHitEffects)
-        {
-            impactScores[effect.EffectName] = 8;
-        }
-
-        foreach (var effect in OnHitTakenEffects)
-        {
-            impactScores[effect.EffectName] = 5;
-        }
-
-        // Sort by impact
-        var sortedModifiers = impactScores.OrderByDescending(x => Mathf.Abs(x.Value)).ToList();
-
-        if (sortedModifiers.Count > 0)
-        {
-            prefix = sortedModifiers[0].Key;
-            sortedModifiers.RemoveAt(0);
-        }
-
-        if (sortedModifiers.Count > 0)
-        {
-            suffix = string.Join(" and ", sortedModifiers.Select(x => x.Key));
-        }
-
-        // Fetch Naming Based on Ranges
-        prefix = GetModifierName(prefix, impactScores);
-        suffix = GetModifierName(suffix, impactScores);
-
-        ItemInGameName = $"{prefix} {baseName} {suffix}".Trim();
-        Debug.Log($"Updated Item Name: {ItemInGameName}");
+        Debug.LogError("ItemNamingData not loaded!");
+        return;
     }
+
+    string materialName = (this.Material != null && !string.IsNullOrWhiteSpace(this.Material.MaterialName))
+        ? this.Material.MaterialName
+        : null;
+
+    string baseName = materialName != null ? $"{materialName} {Name}" : Name;
+
+    string prefix = "";
+    string suffix = "";
+    var impactScores = new Dictionary<string, float>();
+
+    foreach (var resistance in Resistances)
+        impactScores[resistance.Key] = resistance.Value;
+
+    foreach (var modifier in Modifiers)
+        impactScores[modifier.Key] = modifier.Value.EffectAmount;
+
+    if (DamageType != DamageType.None)
+        impactScores[DamageType.ToString()] = 10;
+
+    foreach (var effect in OnHitEffects)
+        impactScores[effect.EffectName] = 8;
+
+    foreach (var effect in OnHitTakenEffects)
+        impactScores[effect.EffectName] = 5;
+
+    var sorted = impactScores.OrderByDescending(x => Mathf.Abs(x.Value)).ToList();
+
+    if (sorted.Count > 0)
+    {
+        prefix = sorted[0].Key;
+        sorted.RemoveAt(0);
+    }
+
+    if (sorted.Count > 0)
+        suffix = string.Join(" and ", sorted.Select(x => x.Key));
+
+    prefix = GetModifierName(prefix, impactScores);
+    suffix = GetModifierName(suffix, impactScores);
+
+    // Build and tidy up whitespace
+    ItemInGameName = $"{prefix} {baseName} {suffix}".Trim();
+    while (ItemInGameName.Contains("  "))
+        ItemInGameName = ItemInGameName.Replace("  ", " ");
+
+    Debug.Log($"Updated Item Name: {ItemInGameName}");
+	}
+
 
     private string GetModifierName(string stat, Dictionary<string, float> impactScores)
     {

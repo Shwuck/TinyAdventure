@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -142,6 +143,7 @@ public class GameManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+			ApplyCallTraceSettings();
         }
         else
         {
@@ -311,10 +313,10 @@ public class GameManager : MonoBehaviour
     private float GetNoiseValue()
     {
         // Initialize the random number generator with GameSeed
-        Random.InitState(GameSeed);
+        UnityEngine.Random.InitState(GameSeed);
 
         // Generate a random float between 5.5 and 8.5
-        float randomFloat = Random.Range(5.5f, 8.5f);
+        float randomFloat = UnityEngine.Random.Range(5.5f, 8.5f);
 
         return randomFloat;
     }
@@ -395,7 +397,36 @@ public class GameManager : MonoBehaviour
         GroupID = 0;
     }
 
+	#region CallTrace Settings
+	[Header("CallTrace")]
+	public bool EnableCallTraceReports = true;     // master switch
+	public bool CallTraceVerbose = true;           // per-call logs
+	public bool CallTraceLogFirstHitOnly = true;   // log only the first hit per method
+	public bool EnableCallTraceFullTrace = false;  // include short caller chain
+	public int  CallTraceDepth = 4;                // chain depth when full trace is on
 
+	public void ApplyCallTraceSettings()
+	{
+		// Guard if CallTrace not compiled in some builds
+		try
+		{
+			// Master switch gates verbosity. ReportUntouched still respects master.
+			CallTrace.Verbose = EnableCallTraceReports && CallTraceVerbose;
+			CallTrace.LogFirstHitOnly = CallTraceLogFirstHitOnly;
+			CallTrace.EnableFullTrace = EnableCallTraceFullTrace;
+			CallTrace.MaxTraceDepth = Mathf.Max(1, CallTraceDepth);
+
+			GameDebugger.Instance.LogInfo(
+				$"[GameManager] CallTrace applied -> enabled:{EnableCallTraceReports}, " +
+				$"verbose:{CallTraceVerbose}, firstHitOnly:{CallTraceLogFirstHitOnly}, " +
+				$"fullTrace:{EnableCallTraceFullTrace}, depth:{CallTraceDepth}");
+		}
+		catch (Exception ex)
+		{
+			GameDebugger.Instance.LogError($"[GameManager] ApplyCallTraceSettings failed: {ex.Message}");
+		}
+	}
+	#endregion
 
 
 

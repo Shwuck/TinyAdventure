@@ -702,7 +702,7 @@ public static class ItemFactory
         {
             foreach (var requirement in item.ComponentsRequired)
             {
-                var validMaterials = PermaLists.Instance.Materials
+                var validMaterials = PermaLists.Instance.ObjectMaterials
                     .Where(m => requirement.AllowedMaterialTypes.Contains(m.Type) && !item.ExcludedMaterialTypes.Contains(m.Type))
                     .ToList();
 
@@ -777,7 +777,7 @@ private static void AddSmithingRecipeComponents(Item item, SmithingRecipe smithi
         }
     }
 
-    private static Material SelectMaterialBasedOnRarity(List<Material> materials)
+    private static ObjectMaterial SelectMaterialBasedOnRarity(List<ObjectMaterial> materials)
     {
         var sortedMaterials = materials.OrderBy(m => (int)m.Rarity).ToList();
         int totalWeight = sortedMaterials.Sum(m => (int)m.Rarity + 1);
@@ -797,29 +797,29 @@ private static void AddSmithingRecipeComponents(Item item, SmithingRecipe smithi
         return sortedMaterials.Last();
     }
 
-    private static Material GetRandomMaterial(List<MaterialType> excludedMaterialTypes, ItemType itemType)
+    private static ObjectMaterial GetRandomMaterial(List<MaterialType> excludedMaterialTypes, ItemType itemType)
     {
         // Determine the appropriate MaterialType list to search based on the itemType
-        List<Material> materials;
+        List<ObjectMaterial> materials;
 
         if (itemType == ItemType.Ore)
         {
             // Search for materials of type Metal
-            materials = PermaLists.Instance.Materials
+            materials = PermaLists.Instance.ObjectMaterials
                 .Where(m => m.Type == MaterialType.Metal && !excludedMaterialTypes.Contains(m.Type))
                 .ToList();
         }
         else if (itemType == ItemType.Gemstone)
         {
             // Search for materials of type Gemstone
-            materials = PermaLists.Instance.Materials
+            materials = PermaLists.Instance.ObjectMaterials
                 .Where(m => m.Type == MaterialType.Gemstone && !excludedMaterialTypes.Contains(m.Type))
                 .ToList();
         }
         else
         {
             // Default behavior: search all materials except excluded ones
-            materials = PermaLists.Instance.Materials
+            materials = PermaLists.Instance.ObjectMaterials
                 .Where(m => !excludedMaterialTypes.Contains(m.Type))
                 .ToList();
         }
@@ -927,7 +927,7 @@ private static void AddSmithingRecipeComponents(Item item, SmithingRecipe smithi
             Interfaces = itemData.Interfaces,
             Components = components.Select(componentName =>
             {
-                var material = PermaLists.Instance.Materials.FirstOrDefault(m => m.MaterialName == componentName);
+                var material = PermaLists.Instance.ObjectMaterials.FirstOrDefault(m => m.MaterialName == componentName);
                 return new Item
                 {
                     Name = componentName,

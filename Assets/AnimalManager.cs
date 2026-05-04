@@ -75,9 +75,9 @@ public class AnimalManager : MonoBehaviour
         animal.CanLeaveArea = true;
         Debug.Log($"'{animal.Name}' placed at {animalPosition} within nested area.");
 
-        if (!TurnManager.Instance.IsCharacterRegistered(animal))
+        if (!TurnOrchestrator.Instance.IsCharacterRegistered(animal))
         {
-            TurnManager.Instance.RegisterCharacter(animal);  // Updated to pass the Animal object directly
+            TurnOrchestrator.Instance.RegisterCharacter(animal);  // Updated to pass the Animal object directly
             Debug.Log($"Registering Animal '{animal.Name}' with TurnManager.");
         }
         else
@@ -109,7 +109,7 @@ public class AnimalManager : MonoBehaviour
 
             animal.IsInNestedArea = false;
             animal.CurrentNestedArea = null;
-            TurnManager.Instance.DeregisterCharacter(animal);  // Updated to pass the Animal object directly
+            TurnOrchestrator.Instance.DeregisterCharacter(animal);  // Updated to pass the Animal object directly
             Debug.Log($"Animal '{animal.Name}' deregistered from turn manager.");
 
             // Remove from the GeneratedAnimals list

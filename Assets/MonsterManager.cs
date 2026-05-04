@@ -77,9 +77,9 @@ public class MonsterManager : MonoBehaviour
         monster.MonsterLevel = nestedArea.DangerLevel;
         Debug.Log($"'{monster.Name}' placed at {monsterPosition} within nested area.");
 
-        if (!TurnManager.Instance.IsCharacterRegistered(monster))
+        if (!TurnOrchestrator.Instance.IsCharacterRegistered(monster))
         {
-            TurnManager.Instance.RegisterCharacter(monster);
+            TurnOrchestrator.Instance.RegisterCharacter(monster);
             Debug.Log($"Registering Monster '{monster.Name}' with TurnManager.");
         }
         else
@@ -111,7 +111,7 @@ public class MonsterManager : MonoBehaviour
 
             monster.IsInNestedArea = false;
             monster.CurrentNestedArea = null;
-            TurnManager.Instance.DeregisterCharacter(monster);
+            TurnOrchestrator.Instance.DeregisterCharacter(monster);
             Debug.Log($"Monster '{monster.Name}' deregistered from turn manager.");
 
             nestedArea.GeneratedMonsters.Remove(monster);

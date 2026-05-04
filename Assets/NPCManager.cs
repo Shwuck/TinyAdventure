@@ -30,19 +30,16 @@ public class NPCManager : MonoBehaviour
     #endregion
 
     #region NPC Registration
-    public void RegisterNPC(NPC npc)
-    {
-        allNPCs.Add(npc);
-        TurnManager.Instance.RegisterCharacter(npc);
-        Debug.Log($"Registered Character {npc.Name} to the TurnManager via NPCManager");
-    }
+	public void RegisterNPC(NPC npc)
+	{
+		EnsureRegistered(npc);
+	}
 
-    public void UnregisterNPC(NPC npc)
-    {
-        allNPCs.Remove(npc);
-        TurnManager.Instance.DeregisterCharacter(npc);
-        Debug.Log($"Deregistered Character {npc.Name} from the TurnManager via NPCManager");
-    }
+	public void UnregisterNPC(NPC npc)
+	{
+		EnsureDeregistered(npc);
+	}
+
 
     public void RegisterNPCGroup(NPCGroup group, Vector2Int position)
     {
@@ -63,6 +60,32 @@ public class NPCManager : MonoBehaviour
     {
         activeNPCGroups.Remove(group);
     }
+	
+		private void EnsureRegistered(NPC npc)
+	{
+		if (npc == null) return;
+		if (!allNPCs.Contains(npc)) allNPCs.Add(npc);
+
+		if (!TurnOrchestrator.Instance.IsCharacterRegistered(npc))
+		{
+			TurnOrchestrator.Instance.RegisterCharacter(npc);
+			GameDebugger.Instance.LogInfo($"NPCManager: Registered '{npc.Name}' with TurnOrchestrator.");
+		}
+	}
+
+	private void EnsureDeregistered(NPC npc)
+	{
+		if (npc == null) return;
+		allNPCs.Remove(npc);
+
+		if (TurnOrchestrator.Instance.IsCharacterRegistered(npc))
+		{
+			TurnOrchestrator.Instance.DeregisterCharacter(npc);
+			GameDebugger.Instance.LogInfo($"NPCManager: Deregistered '{npc.Name}' from TurnOrchestrator.");
+		}
+	}
+
+	
     #endregion
 
     #region NPC Updates
@@ -116,18 +139,19 @@ public class NPCManager : MonoBehaviour
     #endregion
 
     #region NPC Group Management
-    public void UpdateGroupMembership(NPCGroup group)
-    {
-        foreach (var npc in group.NPCs.ToList())
-        {
-            if (!npc.IsActive)
-            {
-                group.NPCs.Remove(npc);
-                Debug.Log($"NPC '{npc.Name}' removed from group '{group.GroupName}' due to inactivity.");
-                TurnManager.Instance.DeregisterCharacter(npc);
-            }
-        }
-    }
+	public void UpdateGroupMembership(NPCGroup group)
+	{
+		foreach (var npc in group.NPCs.ToList())
+		{
+			if (!npc.IsActive)
+			{
+				group.NPCs.Remove(npc);
+				Debug.Log($"NPC '{npc.Name}' removed from group '{group.GroupName}' due to inactivity.");
+				EnsureDeregistered(npc); // was TurnOrchestrator.Instance.DeregisterCharacter(npc)
+			}
+		}
+	}
+
 
     public void UpdateNPCGroupStatus(NPCGroup group)
     {
@@ -177,43 +201,57 @@ public class NPCManager : MonoBehaviour
     }
 
     public void RemoveNPCsFromNestedArea(NPCGroup group)
+{
+    if (group.IsInNestedArea && group.CurrentNestedArea != null)
     {
-        if (group.IsInNestedArea && group.CurrentNestedArea != null)
+        var nestedArea = group.CurrentNestedArea;
+        var nestedMap = nestedArea.GetNestedMap();
+
+        foreach (var npc in group.NPCs)
         {
-            INestedArea nestedArea = group.CurrentNestedArea;
-            Cell[,] nestedMap = nestedArea.GetNestedMap();
+            GameDebugger.Instance.LogInfo($"Removing NPC '{npc.Name}' from nested area.");
 
-            foreach (var npc in group.NPCs)
+            if (npc.NestedMapPosition.x >= 0 && npc.NestedMapPosition.x < nestedMap.GetLength(0) &&
+                npc.NestedMapPosition.y >= 0 && npc.NestedMapPosition.y < nestedMap.GetLength(1))
             {
-                Debug.Log($"Removing NPC '{npc.Name}' from nested area.");
-
-                if (npc.NestedMapPosition.x >= 0 && npc.NestedMapPosition.x < nestedMap.GetLength(0) &&
-                    npc.NestedMapPosition.y >= 0 && npc.NestedMapPosition.y < nestedMap.GetLength(1))
-                {
-                    Cell cell = nestedMap[npc.NestedMapPosition.x, npc.NestedMapPosition.y];
-                    cell.isNPCPresent = false;
-                    cell.isPassable = true;
-                    cell.Objects.Remove(npc);
-                    Debug.Log($"NPC '{npc.Name}' removed from nested area at position {npc.NestedMapPosition}");
-                }
-                else
-                {
-                    Debug.LogWarning($"NPC '{npc.Name}' position ({npc.NestedMapPosition}) is outside the bounds of the nested area.");
-                }
-
-                TurnManager.Instance.DeregisterCharacter(npc);
+                Cell cell = nestedMap[npc.NestedMapPosition.x, npc.NestedMapPosition.y];
+                cell.isNPCPresent = false;
+                cell.isPassable = true;
+                cell.Objects.Remove(npc);
             }
 
-            group.IsInNestedArea = false;
-            group.CurrentNestedArea = null;
-            Debug.Log($"NPCs removed from nested area for group '{group.GroupName}'");
+            // helper instead of direct call
+            EnsureDeregistered(npc);
+        }
+
+        group.IsInNestedArea = false;
+        group.CurrentNestedArea = null;
+        GameDebugger.Instance.LogInfo($"NPCs removed from nested area for group '{group.GroupName}'");
+    }
+    else
+    {
+        Debug.LogWarning($"Group '{group.GroupName}' is not in a nested area.");
+    }
+}
+
+private void TransferNPCGroupToNestedArea(NPCGroup npcGroup, INestedArea nestedArea, Vector2Int nestedPosition)
+{
+    foreach (NPC npc in npcGroup.NPCs)
+    {
+        Vector2Int p = DetermineNPCPositionInNestedArea(nestedArea);
+        if (nestedArea.IsValidPosition(p) && nestedArea.IsPassable(p))
+        {
+            nestedArea.UpdateCharacterPosition(npc, p);
+            UpdateNPCPosition(npc, npc.Position, p);
+            EnsureRegistered(npc); // was RegisterCharacter
+            GameDebugger.Instance.LogInfo($"NPC {npc.Name} moved into nested area and registered.");
         }
         else
         {
-            Debug.LogWarning($"Group '{group.GroupName}' is not in a nested area.");
+            Debug.LogError("Unable to transfer NPC to nested area due to collision or invalid position.");
         }
     }
-
+}
     private void UpdateGroupPositionAndFlags(NPCGroup group, Vector2Int oldPosition, Vector2Int newPosition)
     {
         if (mapGenerator.map[oldPosition.x, oldPosition.y].isNPCGroupPresent)
@@ -223,26 +261,6 @@ public class NPCManager : MonoBehaviour
 
         mapGenerator.map[newPosition.x, newPosition.y].isNPCGroupPresent = true;
         UpdateNPCGroupPosition(group, oldPosition, newPosition);
-    }
-
-    private void TransferNPCGroupToNestedArea(NPCGroup npcGroup, INestedArea nestedArea, Vector2Int nestedPosition)
-    {
-        foreach (NPC npc in npcGroup.NPCs)
-        {
-            Vector2Int nestedNPCPosition = DetermineNPCPositionInNestedArea(nestedArea);
-
-            if (nestedArea.IsValidPosition(nestedNPCPosition) && nestedArea.IsPassable(nestedNPCPosition))
-            {
-                nestedArea.UpdateCharacterPosition(npc, nestedNPCPosition);
-                UpdateNPCPosition(npc, npc.Position, nestedNPCPosition);
-                TurnManager.Instance.RegisterCharacter(npc);
-                Debug.Log($"Character {npc.Name} has been logged via NPCManager");
-            }
-            else
-            {
-                Debug.LogError("Unable to transfer NPC to nested area due to collision or invalid position.");
-            }
-        }
     }
 
     public void PlaceNPC(INestedArea nestedArea, NPC npc)
@@ -268,58 +286,89 @@ public class NPCManager : MonoBehaviour
         npc.CurrentNestedArea = nestedArea;
         Debug.Log($"'{npc.Name}' placed at {npcPosition} within nested area.");
 
-        if (!TurnManager.Instance.IsCharacterRegistered(npc))
-        {
-            TurnManager.Instance.RegisterCharacter(npc);
-            Debug.Log($"Character {npc.Name} has been logged via NPCManager at NestedArea {npc.CurrentNestedArea.NestedAreaID}");
-            Debug.Log($"Registering NPC '{npc.Name}' with TurnManager.");
-        }
-        else
-        {
-            Debug.Log($"NPC '{npc.Name}' is already registered with the TurnManager.");
-        }
+		EnsureRegistered(npc);
     }
 
-    public void PlaceNPCs(INestedArea nestedArea, NPCGroup npcGroup)
-    {
-        Debug.Log($"Placing NPCs for group '{npcGroup.GroupName}'");
-        npcGroup.IsInNestedArea = true;
-        npcGroup.CurrentNestedArea = nestedArea;
+		public void PlaceNPCs(INestedArea nestedArea, NPCGroup npcGroup)
+		{
+			GameDebugger.Instance.LogInfo($"Placing NPCs for group '{npcGroup.GroupName}'");
+			npcGroup.IsInNestedArea = true;
+			npcGroup.CurrentNestedArea = nestedArea;
 
-        foreach (NPC npc in npcGroup.NPCs)
-        {
-            Vector2Int npcPosition = DetermineNPCPositionInNestedArea(nestedArea);
+			foreach (NPC npc in npcGroup.NPCs)
+			{
+				Vector2Int npcPosition = DetermineNPCPositionInNestedArea(nestedArea);
+				int attempts = 0;
+				while (!nestedArea.IsValidPosition(npcPosition) || !nestedArea.IsPassable(npcPosition) || HasCollision(nestedArea, npcPosition))
+				{
+					GameDebugger.Instance.LogInfo($"Adjusting '{npc.Name}' due to collision/invalid.");
+					npcPosition = AdjustNPCPosition(nestedArea, npcPosition);
+					if (++attempts > 5)
+					{
+						Debug.LogError($"Failed to place '{npc.Name}' after {attempts} attempts. Skipping.");
+						goto NextNPC;
+					}
+				}
 
-            Debug.Log($"Initial position for '{npc.Name}' determined as {npcPosition}");
+				nestedArea.UpdateCharacterPosition(npc, npcPosition);
+				UpdateNPCPosition(npc, npc.Position, npcPosition);
+				npc.NestedMapPosition = npcPosition;
+				npc.IsInNestedArea = true;
+				npc.CurrentNestedArea = nestedArea;
 
-            int attempts = 0;
-            while (!nestedArea.IsValidPosition(npcPosition) || !nestedArea.IsPassable(npcPosition) || HasCollision(nestedArea, npcPosition))
-            {
-                Debug.LogWarning($"Collision detected or invalid position for '{npc.Name}'. Adjusting NPC position.");
-                npcPosition = AdjustNPCPosition(nestedArea, npcPosition);
-                attempts++;
-                if (attempts > 5)
-                {
-                    Debug.LogError($"Failed to place '{npc.Name}' after {attempts} attempts. Aborting to prevent infinite loop.");
-                    break;
-                }
-            }
+				GameDebugger.Instance.LogInfo($"'{npc.Name}' placed at {npcPosition} within nested area.");
 
-            if (attempts <= 5)
-            {
-                nestedArea.UpdateCharacterPosition(npc, npcPosition);
-                UpdateNPCPosition(npc, npc.Position, npcPosition);
-                npc.NestedMapPosition = npcPosition;
-                npc.IsInNestedArea = true;
-                npc.CurrentNestedArea = nestedArea;
+				// Use the helper (idempotent)
+				EnsureRegistered(npc);
 
-                Debug.Log($"'{npc.Name}' placed at {npcPosition} within nested area.");
+				NextNPC: ;
+			}
+		}
 
-                TurnManager.Instance.RegisterCharacter(npc);
-                Debug.Log($"Character {npc.Name} has been logged via NPCManager");
-            }
-        }
-    }
+
+		public void PlaceVillageNPCs(Cell parentCell, INestedArea nestedArea)
+		{
+			if (parentCell == null || nestedArea == null) return;
+			CallTrace.Mark(this);
+
+			// If your project uses Village/AvailableVillageNPCs, keep that logic:
+			var village = nestedArea as Village;
+			if (village == null || village.VillageNPCs.Count == 0) return;
+
+			foreach (var npc in village.AvailableVillageNPCs)
+			{
+				if (!IsNPCInNestedArea(npc, nestedArea))
+				{
+					npc.IsInVillage = true;
+					PlaceNPC(nestedArea, npc); // PlaceNPC already guards registration
+				}
+			}
+
+			// Optional audit (I’d usually move this to the coordinator)
+			var reg = TurnOrchestrator.Instance.GetRegisteredCharacters();
+			GameDebugger.Instance.LogInfo($"NPCManager: Village placed. Registered count = {reg.Count}");
+		}
+
+
+	public void PlaceNPCGroupInNestedArea(Cell parentCell, INestedArea nestedArea)
+	{
+		if (parentCell == null || nestedArea == null) return;
+		CallTrace.Mark(this);
+
+		var group = FindNPCGroupAtPosition(parentCell.Coordinates);
+		if (group == null || !group.IsActive)
+		{
+			GameDebugger.Instance.LogInfo("NPCManager: No active group to place at this position.");
+			return;
+		}
+
+		PlaceNPCs(nestedArea, group);       // uses your existing per-NPC placement
+		UpdateGroupMembership(group);       // clean inactive members
+		UpdateNPCGroupStatus(group);        // keep flags honest
+		GameDebugger.Instance.LogInfo($"NPCManager: Placed NPC group '{group.GroupName}' in NestedArea {nestedArea.NestedAreaID}");
+	}
+
+
 
     private Vector2Int DetermineNPCPositionInNestedArea(INestedArea nestedArea)
     {

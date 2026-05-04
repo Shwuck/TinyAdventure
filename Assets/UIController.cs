@@ -485,7 +485,7 @@ public class UIController : MonoBehaviour
 
     public void UpdateTurnOrderUI()
     {
-        List<string> turnOrderList = TurnManager.Instance.GetTurnOrderList();
+        List<string> turnOrderList = TurnOrchestrator.Instance.GetTurnOrderList();
         string turnOrderText = "Turn Order:\n" + string.Join("\n", turnOrderList);
 
         // Ensure PlayPanelUI is updated
@@ -1033,16 +1033,22 @@ public class UIController : MonoBehaviour
 
 
 
-    public void ApplyPanelShakeOnDamage(float strength, float duration)
-    {
-        if (panelToShake == null)
-        {
-            Debug.LogWarning("UIController: No panel assigned for shaking!");
-            return;
-        }
+	public void ApplyPanelShakeOnDamage(float strength, float duration)
+	{
+		if (panelToShake == null)
+		{
+			Debug.LogWarning("UIController: No panel assigned for shaking!");
+			return;
+		}
+		var rt = panelToShake.GetComponent<RectTransform>();
+		if (rt == null)
+		{
+			Debug.LogWarning("UIController: panelToShake has no RectTransform!");
+			return;
+		}
+		UIEffects.Instance.ShakeUI(rt, duration, strength);
+	}
 
-        StartCoroutine(ShakePanelCoroutine(panelToShake.GetComponent<RectTransform>(), strength, duration));
-    }
 
     private IEnumerator ShakePanelCoroutine(RectTransform panel, float strength, float duration)
     {

@@ -52,7 +52,7 @@ public class Monster : Character
         // Register the monster in the turn manager
         stateMachine = new StateMachine(this);
         stateMachine.ChangeState(new MonsterIdleState()); // Start in monster idle state
-        TurnManager.Instance.RegisterCharacter(this);
+        TurnOrchestrator.Instance.RegisterCharacter(this);
     }
     #endregion
 
@@ -75,7 +75,7 @@ public class Monster : Character
         MonsterRemains remains = MonsterRemains.GenerateRemains(this);
 
         // Remove from Turn Manager
-        TurnManager.Instance.DeregisterCharacter(this);
+        TurnOrchestrator.Instance.DeregisterCharacter(this);
         IsActive = false; // Mark as inactive
 
         // Ensure remains are properly placed and visible
@@ -142,7 +142,7 @@ public class Monster : Character
         if (player != null && CanSeeTarget(player)) return player;
 
         // Otherwise, target the closest NPC
-        return TurnManager.Instance.GetAllRegisteredCharacters()
+        return TurnOrchestrator.Instance.GetAllRegisteredCharacters()
             .Where(c => c is NPC && CanSeeTarget(c)) // Ensure they are visible
             .OrderBy(c => Vector2.Distance(this.Position, c.Position))
             .FirstOrDefault();

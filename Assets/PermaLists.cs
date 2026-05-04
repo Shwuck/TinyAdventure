@@ -63,7 +63,7 @@ public class PermaLists : MonoBehaviour
     public List<EntityLootData> EntityLootData = new List<EntityLootData>();
     public List<ItemCreationData> ItemCreationData = new List<ItemCreationData>();
     public List<SmithingRecipe> SmithingRecipeList = new List<SmithingRecipe>();
-    public List<Material> Materials = new List<Material>();
+    public List<ObjectMaterial> ObjectMaterials = new List<ObjectMaterial>();
     #endregion
 
     #region Buffs, Debuffs, Effects
@@ -197,7 +197,7 @@ public class PermaLists : MonoBehaviour
         VillageCreationData ??= new List<VillageCreationData>();
         LootCreationData ??= new List<LootCreationData>();
         ItemCreationData ??= new List<ItemCreationData>();
-        Materials ??= new List<Material>();
+        ObjectMaterials ??= new List<ObjectMaterial>();
         SmithingRecipeList ??= new List<SmithingRecipe>();
         DialogueScripts ??= new List<DialogueScript>();
         Personalities ??= new List<Personality>();

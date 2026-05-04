@@ -784,7 +784,7 @@ public abstract class BaseNestedArea : INestedArea
             // Handle character-specific logic, if the interactable is a Character
             if (interactable is Character character)
             {
-                TurnManager.Instance.DeregisterCharacter(character);
+                TurnOrchestrator.Instance.DeregisterCharacter(character);
                 GameDebugger.Instance.LogInfo($"Deregistered character '{character.Name}' from the TurnManager.");
             }
 
@@ -858,13 +858,13 @@ public abstract class BaseNestedArea : INestedArea
     public void RegisterCharacterWithTurnManager(Character character)
     {
         float turnDuration = CalculateTurnDuration(character.Speed);
-        TurnManager.Instance.RegisterCharacter(character); // Updated to pass the Character object
+        TurnOrchestrator.Instance.RegisterCharacter(character); // Updated to pass the Character object
         Debug.Log($"Registered Character {character.IInteractableID} to the TurnManager via BaseNestedArea");
     }
 
     public void DeregisterCharacterFromTurnManager(Character character)
     {
-        TurnManager.Instance.DeregisterCharacter(character); // Updated to pass the Character object
+        TurnOrchestrator.Instance.DeregisterCharacter(character); // Updated to pass the Character object
         GameDebugger.Instance.LogInfo($"Deregistered Character {character.IInteractableID} from TurnManager");
     }
 

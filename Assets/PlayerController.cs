@@ -11,12 +11,17 @@ public class PlayerController : MonoBehaviour
     // Singleton instance
     public static PlayerController Instance { get; private set; }
 
+	[SerializeField] private AreaEntryCoordinator areaEntryCoordinator;
+
+
     #region References
     public MapGenerator mapGenerator; // Reference to your MapGenerator
     public NPCManager npcManager;
     public ActionManager actionManager;
     public EndOfTurnManager endOfTurnManager;
     public TMP_Text descriptionText;
+	private TurnOrchestrator turnOrchestrator;
+
 
     public MapDisplayUI mapDisplayUI;
     public GameObject playerPanel;
@@ -110,6 +115,7 @@ public class PlayerController : MonoBehaviour
         toggleNestedAreaButtonText = toggleNestedAreaButton.GetComponentInChildren<TMP_Text>();
         UpdateToggleButtonState();
         toggleNestedAreaButton.onClick.AddListener(ToggleNestedArea);
+		turnOrchestrator = TurnOrchestrator.Instance;
 
         if (isInNestedArea)
         {
@@ -419,416 +425,388 @@ public class PlayerController : MonoBehaviour
 
     #endregion
 
-    #region Nested Area Management
-    public void TryEnterOrGenerateNestedArea()
-    {
-        if (isInNestedArea)
-        {
-            HandleNestedAreaTransition();
-        }
-        else
-        {
-            HandleMainMapTransition();
-        }
-        UpdateDescription();
-        UpdateAdaptiveActionMenu();
-    }
-
-    private void HandleNestedAreaTransition()
-    {
-        var currentCell = currentNestedArea.GetCellAtPosition(facingCellPosition);
-        if (currentCell == null || !currentCell.hasNestedArea)
-        {
-            nestedAreaGenerator.GenerateNestedAreaWithinNestedArea(currentNestedArea, facingCellPosition);
-        }
-
-        EnterNestedAreaWithinNestedArea(currentCell);
-    }
-
-    private void HandleMainMapTransition()
-    {
-        var currentCell = mapGenerator.GetCell(playerPosition);
-        if (currentCell == null) return;
-
-        enteringCell = currentCell;
-        currentCellID = currentCell.CellID;
-
-        if (!currentCell.hasNestedArea)
-        {
-            nestedAreaGenerator.GenerateNestedArea(currentCell);
-        }
-
-        EnterNestedArea(currentCell);
-    }
-
-    private void EnterNestedArea(Cell cellWithNestedArea)
-    {
-        if (cellWithNestedArea == null || !cellWithNestedArea.hasNestedArea) return;
-
-        isInNestedArea = true;
-        var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
-        var playerCharacterName = playerCharacter.Name;
-        var playerCharacterID = playerCharacter.IInteractableID;
-
-        Debug.Log($"Entering nested area. PlayerCharacter Name: {playerCharacterName}, ID: {playerCharacterID}");
-
-        previousNestedAreaID = currentNestedArea != null ? currentNestedArea.NestedAreaID : -1;
-        int mainMapCellID = currentCellID;
-
-        parentNestedAreaID = cellWithNestedArea.CurrentAreaID;
-        PlayerStats.Instance.ParentNestedAreaID = cellWithNestedArea.CurrentAreaID;
-        mainMapPosition = playerPosition;
-        isInMainMap = false;
-        isInNestedArea = true;
-        currentNestedArea = cellWithNestedArea.NestedArea;
-        playerPosition = cellWithNestedArea.NestedArea.EntrancePosition;
-        nestedAreaPanel.SetActive(true);
-
-        currentNestedArea.GetNestedMap()[playerPosition.x, playerPosition.y].isPlayerPresent = true;
-
-        if (currentNestedArea.HasVisited)
-        {
-            currentNestedArea.HandlePlayerReentry();
-        }
-
-        ApplyOverallFertilityAdjustment(cellWithNestedArea);
-
-        if (cellWithNestedArea.Terrain == TerrainType.Village)
-        {
-            Debug.Log("Placing village NPCs.");
-            PlaceVillageNPCs(cellWithNestedArea);
-        }
-
-        if (cellWithNestedArea.isNPCGroupPresent)
-        {
-            Debug.Log("Placing NPC group in nested area.");
-            PlaceNPCGroupInNestedArea(cellWithNestedArea);
-        }
-
-        if (!currentNestedArea.GetAllAnimalsInArea().Any())
-        {
-            currentNestedArea.GenerateAnimalsForCellID(mainMapCellID);
-        }
-        else
-        {
-            Debug.Log("Animals already present in nested area; skipping generation.");
-        }
-
-        if (!cellWithNestedArea.WasPlayerStart)
-        {
-            AnimalManager.Instance.PlaceAnimalsForNestedArea(currentNestedArea);
-        }
-
-        previousCellID = currentCellID;
-        currentCellID = currentNestedArea.GetCellAtPosition(playerPosition).CellID;
-        currentNestedAreaID = currentNestedArea.NestedAreaID;
-
-        if (MessageLogManager.Instance != null)
-        {
-            string areaType = cellWithNestedArea.Terrain.ToString();
-            string nestedAreaName = currentNestedArea.Name;
-            MessageLogManager.Instance.Log("exploration", "Entered", $"{areaType} - {nestedAreaName}");
-        }
-
-        UpdateNestedAreaStats();
-        UpdateDescription();
-
-        Debug.Log($"Fully Entered Nested Area! NestedAreaID {currentNestedAreaID}. PlayerCharacter Name: {playerCharacterName}, ID: {playerCharacterID}");
-        PlayerStats.Instance.CurrentPlayerCharacter.CurrentNestedArea = currentNestedArea;
-
-        float turnDuration = CalculateTurnDuration(PlayerStats.Instance.TravelSpeed);
-
-        Debug.Log("Registering player character with TurnManager.");
-        GameManager.Instance.ActiveTurnManager = true;
-        TurnManager.Instance.RegisterCharacter(playerCharacter, true);
-        TurnManager.Instance.ValidateCharacterNestedAreas();
-        TurnManager.Instance.DebugNestedArea();
-        PlayerStats.Instance.RegisteredInTurnManager = true;
-        TurnManager.Instance.LogAllRegisteredCharacters();
-        TurnManager.Instance.StartTurnCycle();
-
-        UIController.Instance.UpdateMapsAfterAction();
-    }
-
-
-    private void ApplyOverallFertilityAdjustment(Cell parentCell)
-    {
-        int overallAdjustment = parentCell.OverallFertilityAdjustment;
-        Cell[,] nestedMap = currentNestedArea.GetNestedMap();
-
-        for (int x = 0; x < nestedMap.GetLength(0); x++)
-        {
-            for (int y = 0; y < nestedMap.GetLength(1); y++)
-            {
-                Cell nestedCell = nestedMap[x, y];
-                nestedCell.FertilityValue += overallAdjustment;
-                nestedCell.OverallFertilityAdjustment += overallAdjustment;
-
-                // Ensure the fertility value is within the valid range
-                if (nestedCell.FertilityValue > 100)
-                {
-                    nestedCell.FertilityValue = 100;
-                }
-                else if (nestedCell.FertilityValue < 0)
-                {
-                    nestedCell.FertilityValue = 0;
-                    nestedCell.isFertile = false;
-                    if (nestedCell.Terrain == TerrainType.Land)
-                    {
-                        nestedCell.Terrain = TerrainType.Dirt;
-                        Debug.Log($"Cell {nestedCell.CellID} changed to Dirt due to fertility drop.");
-                    }
-                }
-
-                Debug.Log($"Applied overall fertility adjustment of {overallAdjustment} to nested cell {nestedCell.CellID}, new fertility value: {nestedCell.FertilityValue}");
-            }
-        }
-    }
-
-    private void PlaceVillageNPCs(Cell cellWithNestedArea)
-    {
-        INestedArea nestedAreaToPass = cellWithNestedArea.NestedArea;
-        Village village = cellWithNestedArea.NestedArea as Village;
-        if (village != null && village.VillageNPCs.Count > 0)
-        {
-            foreach (NPC npc in village.AvailableVillageNPCs)
-            {
-                // Check if NPC is already placed in the nested area
-                if (!npcManager.IsNPCInNestedArea(npc, nestedAreaToPass))
-                {
-                    npc.IsInVillage = true;
-                    npcManager.PlaceNPC(nestedAreaToPass, npc);
-                }
-                else
-                {
-                    Debug.Log($"NPC '{npc.Name}' is already placed in the nested area.");
-                }
-            }
-
-            // Get the count of registered characters and log it
-            int registeredCount = TurnManager.Instance.GetRegisteredCharacterCount();
-            Debug.Log($"Total registered characters: {registeredCount}");
-
-            // Optionally, log the names of registered characters
-            var registeredCharacters = TurnManager.Instance.GetRegisteredCharacters();
-            foreach (var character in registeredCharacters)
-            {
-                Debug.Log($"Character ID: {character.Key}, Name: {character.Value}");
-            }
-        }
-    }
-
-    private void PlaceNPCGroupInNestedArea(Cell cellWithNestedArea)
-    {
-        NPCGroup npcGroup = npcManager.FindNPCGroupAtPosition(cellWithNestedArea.Coordinates);
-        if (npcGroup != null)
-        {
-            npcManager.PlaceNPCs(currentNestedArea, npcGroup);
-        }
-    }
-
-    public void EnterNestedAreaWithinNestedArea(Cell cellWithNestedArea)
-    {
-        if (currentNestedArea != null)
-        {
-            Debug.Log($"Deregistering characters from Nested Area {currentNestedAreaID} before moving deeper.");
-            TurnManager.Instance.DeregisterCharactersInNestedArea(currentNestedArea);
-        }
-
-        previousNestedAreaID = currentNestedArea != null ? currentNestedArea.NestedAreaID : -1;
-
-        parentNestedAreaID = cellWithNestedArea.ParentAreaID;
-        PlayerStats.Instance.ParentNestedAreaID = cellWithNestedArea.ParentAreaID;
-        isInMainMap = false;
-        isInNestedArea = true;
-        currentNestedArea = cellWithNestedArea.NestedArea;
-        playerPosition = cellWithNestedArea.NestedArea.EntrancePosition;
-        nestedAreaPanel.SetActive(true);
-
-        currentNestedArea.GetNestedMap()[playerPosition.x, playerPosition.y].isPlayerPresent = true;
-
-        if (cellWithNestedArea.isNPCGroupPresent)
-        {
-            PlaceNPCGroupInNestedArea(cellWithNestedArea);
-        }
-
-        currentNestedAreaID = currentNestedArea.NestedAreaID;
-        UpdateNestedAreaStats();
-        UpdateDescription();
-
-        // **Re-register the player character in the new nested area**
-        var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
-        if (!TurnManager.Instance.IsCharacterRegistered(playerCharacter))
-        {
-            Debug.Log($"Re-registering player character in Nested Area {currentNestedAreaID}.");
-            TurnManager.Instance.RegisterCharacter(playerCharacter, true);
-        }
-        else
-        {
-            Debug.Log($"Player character was already registered in TurnManager for Nested Area {currentNestedAreaID}.");
-        }
-
-        TurnManager.Instance.ValidateCharacterNestedAreas();
-        TurnManager.Instance.LogAllRegisteredCharacters();
-
-        // **Restart the turn cycle in the new nested area**
-        TurnManager.Instance.StartTurnCycle();
-    }
-
-
-    private void ExitNestedArea()
-    {
-        if (!isInNestedArea || currentNestedArea == null)
-        {
-            Debug.Log("Not currently in a nested area, cannot exit.");
-            return;
-        }
-
-        // Log exiting the nested area
-        if (MessageLogManager.Instance != null)
-        {
-            string nestedAreaName = currentNestedArea?.Name ?? "unknown area";
-            MessageLogManager.Instance.Log("exploration", "Exited", nestedAreaName);
-        }
-
-        HandleExitNestedArea();
-        EndOfTurnManager.Instance.ConvertNestedTurnsToTime();
-
-        // Deregister all characters, including the player and NPCs
-        TurnManager.Instance.DeregisterAllCharacters();
-        PlayerStats.Instance.RegisteredInTurnManager = false;
-        GameManager.Instance.ActiveTurnManager = false;
-    }
-
-    private void HandleExitNestedArea()
-    {
-        if (currentNestedArea.NestedAreaLevel == 0 || currentNestedArea.ParentCellID == currentNestedArea.MainMapCellID)
-        {
-            foreach (var npcGroup in currentNestedArea.GetNPCGroups())
-            {
-                npcManager.UpdateNPCGroupStatus(npcGroup);
-            }
-
-            var currentCell = currentNestedArea.GetCellAtPosition(nestedMapPosition);
-            currentCell.LastVisited = TimeManager.Instance.currentDay;
-
-            isInNestedArea = false;
-            isInMainMap = true;
-            playerPosition = mapGenerator.GetCellCoordinatesContainingNestedArea(currentNestedArea);
-            currentRegion = mapGenerator.GetCell(playerPosition).RegionNumber;
-            Debug.Log($"Exiting nested area to {playerPosition}.");
-
-            currentNestedArea.HandlePlayerExit(mapGenerator);
-            currentNestedArea = null;
-            nestedMapPosition = Vector2Int.zero;
-            previousNestedMapPosition = Vector2Int.zero;
-            UpdatePlayerStatsInstance();
-            UpdateDescription();
-        }
-        else
-        {
-            Debug.Log("Cannot exit nested area. You are not at the top level.");
-        }
-    }
-
-
-    private float CalculateTurnDuration(float speed)
-    {
-        return Mathf.Max(0.1f, 1.0f / speed);
-    }
-
-    public void LeaveNestedAreaToParent()
-    {
-        if (isInNestedArea && currentNestedArea != null)
-        {
-            int parentNestedAreaID = PlayerStats.Instance.FacingCellParentID;
-            INestedArea parentNestedArea = mapGenerator.FindNestedAreaBasedOnNestedAreaID(parentNestedAreaID);
-
-            if (parentNestedArea != null)
-            {
-                Vector2Int entrancePosition = PlayerStats.Instance.FacingCellCoordinates;
-                MoveToNestedAreaPosition(parentNestedAreaID, entrancePosition);
-
-                currentNestedArea = parentNestedArea;
-                nestedMapPosition = entrancePosition;
-
-                mapDisplayUI.UpdateNestedMapDisplay(parentNestedArea);
-                UpdateNestedAreaStats();
-                UpdateDescription();
-                UpdateAdaptiveActionMenu();
-
-                Debug.Log("Player left the current nested area and returned to the parent nested area.");
-            }
-            else
-            {
-                Debug.LogWarning($"Parent nested area with ID {parentNestedAreaID} not found.");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("Player is not currently in a nested area.");
-        }
-        endOfTurnManager.ConvertNestedTurnsToTime();
-    }
-
-    private void MoveToNestedAreaPosition(int nestedAreaID, Vector2Int position)
-    {
-        INestedArea nestedArea = mapGenerator.FindNestedAreaBasedOnNestedAreaID(nestedAreaID);
-        if (nestedArea == null || !nestedArea.IsValidPosition(position))
-        {
-            Debug.LogError($"Invalid nested area ID {nestedAreaID} or position {position}.");
-            return;
-        }
-
-        if (isInNestedArea)
-        {
-            nestedMapPosition = position;
-            currentNestedArea.UpdatePlayerPosition(position);
-            Debug.Log($"Moved to position {position} within NestedArea {nestedAreaID}.");
-            npcManager.UpdateNPCsInNestedArea(currentNestedArea);
-        }
-        else
-        {
-            MovePlayerToMainMap(position);
-        }
-
-        UpdateDescription();
-        UpdateAdaptiveActionMenu();
-    }
-
-    private void MovePlayerToMainMap(Vector2Int position)
-    {
-        playerPosition = position;
-        mapGenerator.map[position.x, position.y].isPlayerPresent = true;
-        mapGenerator.map[position.x, position.y].nestedAreaCanBeSeen = true;
-        currentRegion = mapGenerator.GetCell(position).RegionNumber;
-        endOfTurnManager.EndTurn();
-
-        Cell currentCell = mapGenerator.GetCell(position);
-        if (currentCell?.hasNestedArea == true) currentCell.nestedAreaCanBeSeen = true;
-
-        if (currentCell?.isNPCGroupPresent == true)
-        {
-            NPCGroup npcGroup = npcManager.FindNPCGroupAtPosition(currentCell.Coordinates);
-            if (npcGroup != null) npcManager.PlaceNPCs(currentCell.NestedArea, npcGroup);
-        }
-
-        Debug.Log($"Moved to position {position} within main map.");
-    }
-
-    private void AddTurnProgress(float progress)
-    {
-        endOfTurnManager.AddTurnProgress(progress);
-    }
-
-    private void HandleAction(float actionDuration)
-    {
-        endOfTurnManager.AddTurnProgress(actionDuration);
-        // Call PlayerTurnCompleted after the player performs an action
-        TurnManager.Instance.PlayerTurnCompleted();
-    }
-
-    #endregion
+	#region Nested Area Management
+
+	public void TryEnterOrGenerateNestedArea()
+	{
+		CallTrace.Mark(this);
+
+		if (isInNestedArea)
+		{
+			HandleNestedAreaTransition();
+		}
+		else
+		{
+			HandleMainMapTransition();
+		}
+
+		UpdateDescription();
+		UpdateAdaptiveActionMenu();
+	}
+
+	private void HandleNestedAreaTransition()
+	{
+		var currentCell = currentNestedArea.GetCellAtPosition(facingCellPosition);
+		if (currentCell == null || !currentCell.hasNestedArea)
+		{
+			nestedAreaGenerator.GenerateNestedAreaWithinNestedArea(currentNestedArea, facingCellPosition);
+		}
+
+		EnterNestedAreaWithinNestedArea(currentCell);
+	}
+
+	private void HandleMainMapTransition()
+	{
+		var currentCell = mapGenerator.GetCell(playerPosition);
+		if (currentCell == null) return;
+
+		enteringCell = currentCell;
+		currentCellID = currentCell.CellID;
+
+		if (!currentCell.hasNestedArea)
+		{
+			nestedAreaGenerator.GenerateNestedArea(currentCell);
+		}
+
+		CallTrace.Mark(this);
+		EnterNestedArea(currentCell);
+	}
+
+	private void EnterNestedArea(Cell cellWithNestedArea)
+	{
+		if (cellWithNestedArea == null || !cellWithNestedArea.hasNestedArea) return;
+
+		isInNestedArea = true;
+		var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+
+		previousNestedAreaID = currentNestedArea != null ? currentNestedArea.NestedAreaID : -1;
+		int mainMapCellID = currentCellID;
+
+		parentNestedAreaID = cellWithNestedArea.CurrentAreaID;
+		PlayerStats.Instance.ParentNestedAreaID = cellWithNestedArea.CurrentAreaID;
+
+		mainMapPosition = playerPosition;
+		isInMainMap = false;
+
+		currentNestedArea = cellWithNestedArea.NestedArea;
+		playerPosition = currentNestedArea.EntrancePosition;
+		nestedAreaPanel.SetActive(true);
+
+		currentNestedArea.GetNestedMap()[playerPosition.x, playerPosition.y].isPlayerPresent = true;
+
+		CallTrace.Mark(this);
+
+		// Re-entry hook (existing behaviour)
+		if (currentNestedArea.HasVisited)
+			currentNestedArea.HandlePlayerReentry();
+
+		// Delegate environment, NPCs, animals to coordinator
+		areaEntryCoordinator.HandleOnEnterFromMainMap(
+			parentCell: cellWithNestedArea,
+			nestedArea: currentNestedArea,
+			mainMapCellID: mainMapCellID,
+			wasPlayerStart: cellWithNestedArea.WasPlayerStart
+		);
+
+		// IDs, stats, logs
+		previousCellID = currentCellID;
+		currentCellID = currentNestedArea.GetCellAtPosition(playerPosition).CellID;
+		currentNestedAreaID = currentNestedArea.NestedAreaID;
+
+		if (MessageLogManager.Instance != null)
+		{
+			string areaType = cellWithNestedArea.Terrain.ToString();
+			string nestedAreaName = currentNestedArea.Name;
+			MessageLogManager.Instance.Log("exploration", "Entered", $"{areaType} - {nestedAreaName}");
+		}
+
+		UpdateNestedAreaStats();
+		UpdateDescription();
+
+		// Sync PlayerStats pointer
+		PlayerStats.Instance.CurrentPlayerCharacter.CurrentNestedArea = currentNestedArea;
+
+		// Turn Orchestrator (use singleton)
+		var orchestrator = TurnOrchestrator.Instance;
+		Debug.Log("Registering player character with TurnOrchestrator.");
+		GameManager.Instance.ActiveTurnManager = true;
+		PlayerStats.Instance.RegisteredInTurnManager = true;
+
+		if (!orchestrator.IsCharacterRegistered(playerCharacter))
+			orchestrator.RegisterCharacter(playerCharacter);
+
+		orchestrator.ValidateCharacterNestedAreas();
+		orchestrator.LogAllRegisteredCharacters();
+		orchestrator.TryUpdateTurnContext();
+
+		UIController.Instance.UpdateMapsAfterAction();
+	}
+
+	public void EnterNestedAreaWithinNestedArea(Cell cellWithNestedArea)
+	{
+		// Deregister characters from previous nested area (existing behaviour)
+		if (currentNestedArea != null)
+		{
+			Debug.Log($"Deregistering characters from Nested Area {currentNestedAreaID} before moving deeper.");
+			TurnOrchestrator.Instance.DeregisterCharactersInNestedArea(currentNestedArea);
+		}
+
+		previousNestedAreaID = currentNestedArea?.NestedAreaID ?? -1;
+		parentNestedAreaID = cellWithNestedArea.ParentAreaID;
+		PlayerStats.Instance.ParentNestedAreaID = cellWithNestedArea.ParentAreaID;
+
+		isInMainMap = false;
+		isInNestedArea = true;
+
+		currentNestedArea = cellWithNestedArea.NestedArea;
+		playerPosition = currentNestedArea.EntrancePosition;
+		nestedAreaPanel.SetActive(true);
+		currentNestedArea.GetNestedMap()[playerPosition.x, playerPosition.y].isPlayerPresent = true;
+
+		// Delegate NPCs (and, later if desired, animals/env) to coordinator
+		areaEntryCoordinator.HandleOnEnterFromNestedArea(
+			parentCell: cellWithNestedArea,
+			nestedArea: currentNestedArea
+		);
+
+		currentNestedAreaID = currentNestedArea.NestedAreaID;
+		UpdateNestedAreaStats();
+		UpdateDescription();
+
+		var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+		var orchestrator = TurnOrchestrator.Instance;
+
+		if (!orchestrator.IsCharacterRegistered(playerCharacter))
+		{
+			Debug.Log($"Re-registering player character in Nested Area {currentNestedAreaID}.");
+			orchestrator.RegisterCharacter(playerCharacter);
+		}
+
+		orchestrator.ValidateCharacterNestedAreas();
+		orchestrator.LogAllRegisteredCharacters();
+		orchestrator.StartTurnCycle();
+	}
+
+	private void ExitNestedArea()
+	{
+		if (!isInNestedArea || currentNestedArea == null)
+		{
+			Debug.Log("Not currently in a nested area, cannot exit.");
+			return;
+		}
+
+		if (MessageLogManager.Instance != null)
+		{
+			string nestedAreaName = currentNestedArea?.Name ?? "unknown area";
+			MessageLogManager.Instance.Log("exploration", "Exited", nestedAreaName);
+		}
+
+		HandleExitNestedArea();
+		EndOfTurnManager.Instance.ConvertNestedTurnsToTime();
+
+		CallTrace.Mark(this);
+
+		TurnOrchestrator.Instance.DeregisterAllCharacters();
+		PlayerStats.Instance.RegisteredInTurnManager = false;
+		GameManager.Instance.ActiveTurnManager = false;
+	}
+
+	private void HandleExitNestedArea()
+	{
+		if (currentNestedArea.NestedAreaLevel == 0 || currentNestedArea.ParentCellID == currentNestedArea.MainMapCellID)
+		{
+			foreach (var npcGroup in currentNestedArea.GetNPCGroups())
+				npcManager.UpdateNPCGroupStatus(npcGroup);
+
+			var currentCell = currentNestedArea.GetCellAtPosition(nestedMapPosition);
+			currentCell.LastVisited = TimeManager.Instance.currentDay;
+
+			isInNestedArea = false;
+			isInMainMap = true;
+
+			playerPosition = mapGenerator.GetCellCoordinatesContainingNestedArea(currentNestedArea);
+			currentRegion = mapGenerator.GetCell(playerPosition).RegionNumber;
+
+			currentNestedArea.HandlePlayerExit(mapGenerator);
+			currentNestedArea = null;
+
+			nestedMapPosition = Vector2Int.zero;
+			previousNestedMapPosition = Vector2Int.zero;
+
+			UpdatePlayerStatsInstance();
+			UpdateDescription();
+
+			CallTrace.Mark(this);
+			Debug.Log($"Exited nested area to position {playerPosition}.");
+		}
+		else
+		{
+			Debug.Log("Cannot exit nested area. You are not at the top level.");
+		}
+	}
+
+	private float CalculateTurnDuration(float speed)
+	{
+		return Mathf.Max(0.1f, 1.0f / speed);
+	}
+
+	public void LeaveNestedAreaToParent()
+	{
+		if (!isInNestedArea || currentNestedArea == null)
+		{
+			Debug.LogWarning("Player is not currently in a nested area.");
+			return;
+		}
+
+		int parentNestedAreaID = PlayerStats.Instance.FacingCellParentID;
+		var parentNestedArea = mapGenerator.FindNestedAreaBasedOnNestedAreaID(parentNestedAreaID);
+		if (parentNestedArea == null)
+		{
+			Debug.LogWarning($"Parent nested area with ID {parentNestedAreaID} not found.");
+			return;
+		}
+
+		var entrancePosition = PlayerStats.Instance.FacingCellCoordinates;
+		MoveToNestedAreaPosition(parentNestedAreaID, entrancePosition);
+
+		currentNestedArea = parentNestedArea;
+		nestedMapPosition = entrancePosition;
+
+		mapDisplayUI.UpdateNestedMapDisplay(parentNestedArea);
+		UpdateNestedAreaStats();
+		UpdateDescription();
+		UpdateAdaptiveActionMenu();
+
+		CallTrace.Mark(this);
+		Debug.Log("Player returned to the parent nested area.");
+		endOfTurnManager.ConvertNestedTurnsToTime();
+	}
+
+	private void MoveToNestedAreaPosition(int nestedAreaID, Vector2Int position)
+	{
+		var nestedArea = mapGenerator.FindNestedAreaBasedOnNestedAreaID(nestedAreaID);
+		if (nestedArea == null || !nestedArea.IsValidPosition(position))
+		{
+			Debug.LogError($"Invalid nested area ID {nestedAreaID} or position {position}.");
+			return;
+		}
+
+		if (isInNestedArea)
+		{
+			nestedMapPosition = position;
+			currentNestedArea.UpdatePlayerPosition(position);
+			npcManager.UpdateNPCsInNestedArea(currentNestedArea);
+		}
+		else
+		{
+			MovePlayerToMainMap(position);
+		}
+
+		UpdateDescription();
+		UpdateAdaptiveActionMenu();
+	}
+
+	private void MovePlayerToMainMap(Vector2Int position)
+	{
+		playerPosition = position;
+		var cell = mapGenerator.map[position.x, position.y];
+		cell.isPlayerPresent = true;
+		cell.nestedAreaCanBeSeen = true;
+
+		currentRegion = mapGenerator.GetCell(position).RegionNumber;
+		endOfTurnManager.EndTurn();
+
+		if (cell?.hasNestedArea == true) cell.nestedAreaCanBeSeen = true;
+
+		if (cell?.isNPCGroupPresent == true)
+		{
+			var npcGroup = npcManager.FindNPCGroupAtPosition(cell.Coordinates);
+			if (npcGroup != null) npcManager.PlaceNPCs(cell.NestedArea, npcGroup);
+		}
+
+		Debug.Log($"Moved to position {position} within main map.");
+	}
+
+	private void AddTurnProgress(float progress)
+	{
+		endOfTurnManager.AddTurnProgress(progress);
+	}
+
+	private void HandleAction(float actionDuration)
+	{
+		endOfTurnManager.AddTurnProgress(actionDuration);
+		TurnOrchestrator.Instance.PlayerTurnCompleted();
+	}
+
+	#endregion
+
+	#region Nested Area Helpers
+	
+		private void ApplyOverallFertilityAdjustment(Cell parentCell)
+		{
+			if (parentCell == null)
+			{
+				GameDebugger.Instance.LogError("ApplyOverallFertilityAdjustment: parentCell is NULL. Aborting.");
+				return;
+			}
+
+			int overallAdjustment = parentCell.OverallFertilityAdjustment;
+
+			if (currentNestedArea == null)
+			{
+				GameDebugger.Instance.LogError("ApplyOverallFertilityAdjustment: currentNestedArea is NULL. Aborting.");
+				return;
+			}
+
+			Cell[,] nestedMap = currentNestedArea.GetNestedMap();
+
+			if (nestedMap == null)
+			{
+				GameDebugger.Instance.LogError("ApplyOverallFertilityAdjustment: nestedMap is NULL. Aborting.");
+				return;
+			}
+
+			GameDebugger.Instance.LogInfo($"Applying overall fertility adjustment of {overallAdjustment} to NestedArea ID {currentNestedArea.NestedAreaID}");
+
+			int width = nestedMap.GetLength(0);
+			int height = nestedMap.GetLength(1);
+
+			for (int x = 0; x < width; x++)
+			{
+				for (int y = 0; y < height; y++)
+				{
+					Cell nestedCell = nestedMap[x, y];
+					if (nestedCell == null)
+					{
+						GameDebugger.Instance.LogWarning($"ApplyOverallFertilityAdjustment: Null cell at [{x},{y}] skipped.");
+						continue;
+					}
+
+					int oldFertility = nestedCell.FertilityValue;
+					int newFertility = Mathf.Clamp(oldFertility + overallAdjustment, 0, 100);
+
+					nestedCell.FertilityValue = newFertility;
+					nestedCell.OverallFertilityAdjustment += overallAdjustment;
+
+					if (newFertility == 0)
+					{
+						nestedCell.isFertile = false;
+
+						if (nestedCell.Terrain == TerrainType.Land)
+						{
+							nestedCell.Terrain = TerrainType.Dirt;
+							GameDebugger.Instance.LogInfo($"Cell {nestedCell.CellID} turned to Dirt due to fertility drop.");
+						}
+					}
+
+					GameDebugger.Instance.LogInfo(
+						$"Adjusted fertility for Cell {nestedCell.CellID}: {oldFertility} → {newFertility} (Δ {overallAdjustment})");
+				}
+			}
+		}
+
+	#endregion
+
 
     #region Player Stats Update
     private void UpdatePlayerStatsInstance()
@@ -875,34 +853,6 @@ public class PlayerController : MonoBehaviour
         PlayerStats.Instance.UpdateCurrentNestedAreaID(currentNestedAreaID);
         PlayerStats.Instance.UpdateParentNestedAreaID(parentNestedAreaID);
     }
-
-    /*
-    private void UpdatePlayerStatsInstance()
-    {
-        PlayerStats.Instance.UpdatePosition(playerPosition);
-        PlayerStats.Instance.UpdatePreviousPosition(previousPosition);
-        PlayerStats.Instance.UpdateIsInAreas(isInNestedArea, isInMainMap);
-        PlayerStats.Instance.UpdateMainMapPosition(mainMapPosition, currentRegion);
-        PlayerStats.Instance.UpdatePlayerFacing(currentDirection);
-        PlayerStats.Instance.UpdateCurrentCell(currentPlayerCell);
-
-        if (isInNestedArea) UpdateNestedAreaStats();
-        else PlayerStats.Instance.ResetNestedArea();
-    }
-
-    private void UpdateNestedAreaStats()
-    {
-        PlayerStats.Instance.UpdateNestedMapPosition(nestedMapPosition);
-        PlayerStats.Instance.UpdatePreviousNestedMapPosition(previousNestedMapPosition);
-        PlayerStats.Instance.UpdateCurrentNestedArea(currentNestedArea);
-        PlayerStats.Instance.UpdateParentNestedAreaID(parentNestedAreaID);
-        PlayerStats.Instance.UpdateCurrentNestedAreaID(currentNestedAreaID);
-        PlayerStats.Instance.UpdatePreviousNestedAreaID(previousNestedAreaID);
-    } 
-    
-     */
-
-
 
     #endregion
 
@@ -1184,6 +1134,8 @@ public class PlayerController : MonoBehaviour
             HandleInteractableObjectsInFacingCell(facingCell);
             AddEnvironmentalActions(facingCell);
         }
+		
+		CallTrace.Mark(this);
     }
 
 
@@ -1279,11 +1231,12 @@ public class PlayerController : MonoBehaviour
                 PlayerStats.Instance.ActionPoints -= actionPointCost;
                 baseOnClickAction.Invoke();
 
-                // End the turn only if all AP has been used
-                if (PlayerStats.Instance.ActionPoints == 0)
-                {
-                    TurnManager.Instance.PlayerTurnCompleted();
-                }
+				// End the turn only if all AP has been used
+				if (PlayerStats.Instance.ActionPoints == 0)
+				{
+					turnOrchestrator.PlayerTurnCompleted();
+				}
+
             }
             else
             {
@@ -1292,8 +1245,8 @@ public class PlayerController : MonoBehaviour
                 PlayerStats.Instance.ActionPoints = 0;
                 PlayerStats.Instance.HasPendingAction = true;
 
-                // End the turn since AP is exhausted
-                TurnManager.Instance.PlayerTurnCompleted();
+				// End the turn since AP is exhausted
+				turnOrchestrator.PlayerTurnCompleted();
             }
 
             UpdateAdaptiveActionMenu();
@@ -1351,7 +1304,7 @@ public class PlayerController : MonoBehaviour
             else
             {
                 // If no pending action, complete the player's turn
-                TurnManager.Instance.PlayerTurnCompleted();
+                turnOrchestrator.PlayerTurnCompleted();
             }
         }
     }
@@ -1361,15 +1314,13 @@ public class PlayerController : MonoBehaviour
         PlayerStats.Instance.MovePoints -= amount;
 
         // Check if MovePoints are depleted
-        if (PlayerStats.Instance.MovePoints <= 0)
-        {
-            // Check if the player is NOT in combat
-            if (!PlayerStats.Instance.InCombat)
-            {
-                // If the player is out of MovePoints and not in combat, complete the player's turn
-                TurnManager.Instance.PlayerTurnCompleted();
-            }
-        }
+		if (PlayerStats.Instance.MovePoints <= 0)
+		{
+			if (!PlayerStats.Instance.InCombat)
+			{
+				turnOrchestrator.PlayerTurnCompleted();
+			}
+		}
     }
 
     private void HandlePendingAction()
@@ -1381,22 +1332,21 @@ public class PlayerController : MonoBehaviour
             PlayerStats.Instance.HasPendingAction = false;
 
             // If the player still has action points, they can continue
-            if (PlayerStats.Instance.ActionPoints > 0)
-            {
-                UpdateAdaptiveActionMenu(); // Update the action menu
-            }
-            else
-            {
-                // If AP is depleted after handling the pending action, complete the player's turn
-                TurnManager.Instance.PlayerTurnCompleted();
-            }
+			if (PlayerStats.Instance.ActionPoints > 0)
+			{
+				UpdateAdaptiveActionMenu();
+			}
+			else
+			{
+				turnOrchestrator.PlayerTurnCompleted();
+			}
         }
         else
         {
             // If the player still doesn't have enough AP to complete the pending action
             PlayerStats.Instance.PendingActionPointsCost -= PlayerStats.Instance.ActionPoints;
             PlayerStats.Instance.ActionPoints = 0;
-            TurnManager.Instance.PlayerTurnCompleted();
+			turnOrchestrator.PlayerTurnCompleted();
         }
     }
 

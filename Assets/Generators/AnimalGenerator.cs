@@ -480,7 +480,7 @@ public class AnimalGenerator : MonoBehaviour
 
                 if (animalData != null)
                 {
-                    Material newMaterial = new Material
+                    ObjectMaterial newMaterial = new ObjectMaterial
                     {
                         MaterialName = $"{animal} Hide",
                         Type = MaterialType.Leather, // Assuming leather type for animal materials
@@ -488,7 +488,7 @@ public class AnimalGenerator : MonoBehaviour
                     };
 
                     // Add the new material to the materials list
-                    PermaLists.Instance.Materials.Add(newMaterial);
+                    PermaLists.Instance.ObjectMaterials.Add(newMaterial);
                 }
             }
         }
