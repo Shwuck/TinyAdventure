@@ -1,0 +1,274 @@
+ Log Confirmed
+  Analysed: C:\Game Design\Unity\TinyAdventure\DiagnosticLogs\TinyAdventure_TurnDiagnostics_Latest.txt
+  Size: 53,065 bytes
+  Session: 2026-06-11 18:22:48 to 18:24:22
+  CODEXLOG001_TURNLIFECYCLE entries: present
+  Diagnostic warnings: 202 total
+  Categories found: [BOOT], [AREA ENTRY], [REGISTRATION], [CONTEXT UPDATE], [TURN SUMMARY], [AREA EXIT], [SHUTDOWN]
+
+  Playtest coverage from the log:
+
+  - Area entry: yes, two first-level entries.
+  - Area exit: yes, two exits.
+  - Nested-to-nested: no evidence.
+  - Combat: no evidence.
+  - Non-player registration: yes, NPCs and animals.
+  - Non-player turns: no. There are zero [ENTITY TURN] entries.
+  - Player turns: no. There are zero [PLAYER TURN] entries.
+  - Turn cycles: no. There are zero [TURN CYCLE] entries.
+
+  Core Finding
+  The turn lifecycle is not syncing correctly. The log proves the player entered nested areas while TurnOrchestrator.CurrentContext stayed MainMap, both manager references were null, and participants were only
+  accumulating in TurnOrchestrator.allCharacters, not in ExplorationTurnManager or CombatTurnManager.
+
+  Short excerpt:
+
+  Event: PlayerController.EnterNestedArea completed
+  Context: MainMap
+  PlayerStats.IsInNestedArea: True
+  PlayerStats.IsInMainMap: False
+  PlayerStats.RegisteredInTurnManager: True
+  allCharacters.Count: 8
+  Exploration.Count: -1
+  Combat.Count: -1
+  combatManager.Assigned: False
+  explorationTurnManager.Assigned: False
+  WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+  WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+  -1 here means the diagnostic accessor could not read the manager because the serialized manager reference was null.
+
+  Confirmed Bugs
+
+  1. TurnOrchestrator manager references are missing
+     Severity: critical. Confidence: high.
+
+  TurnOrchestrator.combatManager.Assigned: False
+  TurnOrchestrator.explorationTurnManager.Assigned: False
+  WARNING: combatManager is null.
+  WARNING: explorationTurnManager is null.
+
+  What it proves: TurnOrchestrator cannot route registrations to either active manager.
+  Likely symptom: no exploration or combat turn cycles.
+  Smallest future fix: wire or safely resolve the manager references.
+  Do not change: turn architecture or registration policy yet.
+
+  2. Player enters nested area while context remains MainMap
+     Severity: critical. Confidence: high.
+
+  Event: PlayerController.EnterNestedArea completed
+  Context: MainMap
+  PlayerStats.IsInNestedArea: True
+
+  What it proves: visual/location state entered a nested area, but turn context did not.
+  Likely symptom: only direct player movement works; world actors do not take turns.
+  Smallest future fix: after diagnostics, make first-level entry use or mirror the intended TurnOrchestrator.EnterNestedArea flow.
+  Do not change yet: broader area-transition ownership.
+
+  3. PlayerStats.RegisteredInTurnManager is true but player is not in active manager
+     Severity: high. Confidence: high.
+
+  PlayerStats.RegisteredInTurnManager: True
+  WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+  What it proves: the player-side flag is not a reliable source of actual active turn registration.
+  Wrong field/list: PlayerStats.RegisteredInTurnManager disagrees with active manager state.
+  Likely symptom: movement/action logic may think turn manager is active when no active turn manager contains the player.
+
+  4. NPCs/animals register only into allCharacters, not active turn managers
+     Severity: high. Confidence: high.
+
+  NPC example:
+
+  Event: Character registration observed
+  Context: MainMap
+  allCharacters.Count: 1
+  Exploration.Count: -1
+  Combat.Count: -1
+  Entity.Type: NPC
+  Source: TurnOrchestrator.allCharacters
+
+  Animal example:
+
+  Entity.Type: Animal
+  Source: TurnOrchestrator.allCharacters
+  IsPlayer: False
+
+  What it proves: non-player entities were observed registering into TurnOrchestrator.allCharacters; there is no evidence they reached ExplorationTurnManager.
+
+  5. PlayerStats.CurrentNestedArea remains set after exit
+     Severity: medium-high. Confidence: high.
+
+  Event: PlayerController.ExitNestedArea completed
+  Context: MainMap
+  CurrentNestedArea: Village0 (ID=1, Level=0)
+  PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+  PlayerStats.IsInNestedArea: False
+  PlayerStats.IsInMainMap: True
+
+  What it proves: after exit, IsInNestedArea is false but CurrentNestedArea is still non-null.
+  Likely code path: PlayerController.HandleExitNestedArea() clears local currentNestedArea, but UpdateAllPlayerStats() only updates PlayerStats.CurrentNestedArea when isInNestedArea is true.
+  Likely symptom: stale location data can confuse later registration, UI, or turn checks.
+
+  Likely Bugs
+
+  - Animals are registered while IsAlive is false:
+
+  WARNING: allCharacters contains Animal 'Giraffe' [139] but IsAlive is false.
+  WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Giraffe' [139].
+
+  This suggests animal generation/initialization may not set IsAlive = true, or the diagnostics are catching animals that should not have been active. They were still registered into allCharacters.
+
+  Things That Behaved Correctly
+
+  - Area exit cleared allCharacters:
+
+  Event: PlayerController.ExitNestedArea completed
+  allCharacters.Count: 0
+  PlayerStats.RegisteredInTurnManager: False
+
+  - PlayerStats.CurrentNestedArea and player character CurrentNestedArea agreed during nested entry. No disagreement warning appeared.
+  - No duplicate-registration warnings appeared.
+  - No combat manager stale entries were observed, because combat never started and the combat manager reference was null.
+
+  Direct Answers
+
+  1. Does player enter nested area while context remains MainMap? Yes.
+  2. Is player registered in correct active manager after entry? No.
+  3. Are NPCs/animals/monsters registered correctly? No. NPCs/animals reached allCharacters; no active manager registration is proven.
+  4. Does allCharacters agree with active manager? No active manager exists from orchestrator’s perspective.
+  5. Does ExplorationTurnManager contain expected participants? No; it is null via orchestrator.
+  6. Does CombatTurnManager contain expected participants? No combat occurred; reference is null.
+  7. Does combat start when hostile state appears? No hostile/combat evidence in this run.
+  8. Does combat end? No combat evidence.
+  9. Do dead/inactive/wrong-area entities remain registered? Yes, animals with IsAlive=false remained in allCharacters.
+  10. Does area exit clear active participants? It clears allCharacters; active managers were unavailable.
+  11. Duplicate registrations? None proven.
+  12. Stale allCharacters entries? Yes, dead animals.
+  13. PlayerStats.CurrentNestedArea vs player character disagreement? No; they agree, but both can remain stale after exit.
+  14. RegisteredInTurnManager disagreement? Yes.
+  15. Did NPCs/animals/monsters receive turns? No evidence. Zero [ENTITY TURN].
+  16. Did they execute actions? No evidence.
+  17. Did movement/state change? No evidence.
+  18. Did UI/map refresh after non-player movement? Inconclusive; no non-player turns were logged.
+  19. Most likely failed layer? Registration/context/manager wiring, before action selection or movement.
+  20. Diagnostics sufficient? Sufficient to prove the main sync failure. More diagnostics would help later for entity AI movement once managers are wired.
+
+  Timeline
+
+  - Boot: 18:22:48, TurnOrchestrator starts with both manager refs null.
+  - First area entry: 18:23:33, enters Village0.
+  - NPC registrations: several NPCs placed and registered into allCharacters.
+  - Player registration: player registered into allCharacters; context still MainMap.
+  - Context update: HasHostiles: False; no transition.
+  - First exit: 18:24:00, allCharacters clears to 0, but CurrentNestedArea remains stale.
+  - Second area entry: 18:24:13, enters area ID 4.
+  - Animal registrations: animals register into allCharacters; several have IsAlive=false.
+  - Context update: still MainMap.
+  - Second exit: 18:24:18, allCharacters clears.
+  - Shutdown: 18:24:22.
+
+  Invariant Review
+
+   Invariant                                                            Result
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Player in nested area implies Exploration or Combat                  failed
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Exploration context has player/current participants                  inconclusive/failed indirectly; context never became Exploration
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Combat context has player/combatants                                 inconclusive; no combat
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Dead/inactive/unplaced/wrong-area entities do not receive turns      passed for turns, failed for registration into allCharacters
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Previous-area entities not active after exit                         active list cleared; stale CurrentNestedArea failed
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Combat manager empty outside combat                                  inconclusive; manager ref null
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Exploration manager not active during combat                         inconclusive
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Player location agrees across PlayerStats/player character           passed during entry; stale after exit
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   RegisteredInTurnManager matches actual registration                  failed
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Missing manager references detected                                  passed
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   Non-player current-area entities receive turns or explain why not    failed; no active manager/turn cycle
+  ───────────────────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────────
+   If entities receive turns, distinguish movement/action/UI            inconclusive; no turns happened
+
+  Why Only The Player Appeared To Move
+
+  Layer assessment:
+
+   Possible layer                                           Log result
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   No non-player entities existed                           ruled out for first area; NPCs existed. ruled out for second; animals existed.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Entities existed but not placed                          ruled out for NPCs/animals logged as placed.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Placed but not registered                                partially ruled out; they registered to allCharacters.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Registered only in allCharacters                         confirmed.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Registered in wrong manager                              confirmed in effect; active managers unavailable.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Exploration manager zero/incomplete                      confirmed as unavailable/null via -1.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Context remained MainMap                                 confirmed.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Exploration cycle did not start                          confirmed by absence of [TURN CYCLE].
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Non-player turns started but skipped                     ruled out; no [ENTITY TURN].
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Turns ran but chose no movement                          ruled out for this run; no turns ran.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Movement failed/blocked                                  inconclusive; not reached.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Data moved but UI did not refresh                        inconclusive; not reached.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   Player was not in a state where NPC movement expected    suggested by context MainMap, despite nested area visual state.
+  ───────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────────────────────
+   More evidence needed                                     only after manager/context fixes.
+
+  Recommendations
+
+  Top confirmed issues:
+
+  1. TurnOrchestrator manager refs are null.
+  2. Nested-area entry leaves context as MainMap.
+  3. Player registration flag disagrees with active manager registration.
+  4. NPCs/animals register into allCharacters only.
+  5. PlayerStats.CurrentNestedArea remains non-null after exit.
+
+  Top likely root causes:
+
+  1. TurnOrchestrator scene wiring missing for combatManager and explorationTurnManager.
+  2. PlayerController.EnterNestedArea bypasses TurnOrchestrator.EnterNestedArea.
+  3. TurnOrchestrator.RegisterCharacter does nothing beyond allCharacters in MainMap.
+  4. UpdateAllPlayerStats() does not clear PlayerStats.CurrentNestedArea on exit.
+  5. Animal initialization may not set IsAlive=true.
+
+  Top next diagnostics, if needed:
+
+  1. Log PlayerController local currentNestedArea after exit alongside PlayerStats.CurrentNestedArea.
+  2. Log whether ExplorationTurnManager and CombatTurnManager scene objects exist even when orchestrator refs are null.
+  3. Log animal IsAlive at generation time.
+  4. Log TurnOrchestrator.RegisterCharacter context branch taken.
+  5. Log main-map movement checkpoints only at low volume.
+
+  Safest first actual gameplay patch later:
+
+  - Wire or safely resolve TurnOrchestrator’s combatManager and explorationTurnManager references, with diagnostics left in place.
+
+  Second safest patch:
+
+  - Make first-level nested entry transition the orchestrator into Exploration through one controlled path, then verify participant counts.
+
+  Do not refactor yet:
+
+  - Character, AI state machines, combat flow, full area transition ownership, JSON/data generation, or UI refresh.
+
+  Keep CODEXLOG001_TURNLIFECYCLE for another test run. The next test should focus on area entry and exploration registration first, not combat. Combat cannot be meaningfully evaluated until the orchestrator
+  can see its managers and enter Exploration.
+
+─ Worked for 5m 50s ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

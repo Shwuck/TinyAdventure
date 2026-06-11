@@ -1,9 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 using UnityEngine;
 
 public class ExplorationTurnManager : BaseTurnManager
 {
+    private bool restartScheduled;
+
     #region Lifecycle
 
     public void Suspend() => enabled = false;
@@ -53,6 +56,8 @@ public class ExplorationTurnManager : BaseTurnManager
     {
         GameDebugger.Instance.LogInfo(
             $"[ExplorationTurnManager] Player exploration turn started for {playerCharacter.Name}.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", "ExplorationTurnManager.OnPlayerTurnStart", null, playerCharacter);
 
         // If you want exploration movement to respect some kind of points, you can reset them here.
         // If AP is combat-only, you might just refresh movement/UI.
@@ -66,17 +71,77 @@ public class ExplorationTurnManager : BaseTurnManager
     {
         GameDebugger.Instance.LogInfo(
             $"[ExplorationTurnManager] Executing exploration turn for NPC {npc.Name}.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute", null, npc);
         npc.ExecuteTurnActions();
     }
 
     protected override void OnCycleEnded()
     {
-        GameDebugger.Instance.LogInfo("[ExplorationTurnManager] Exploration cycle ended. Restarting.");
+        GameDebugger.Instance.LogInfo("[ExplorationTurnManager] Exploration cycle ended. Scheduling restart.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", "ExplorationTurnManager.OnCycleEnded",
+            $"RegisteredCount: {characterTurnDataDict.Count}\nRestartScheduled: {restartScheduled}");
 
-        // Continuous cycles: after everyone (including player) has had a turn,
-        // we sort and start a new cycle. The cycle will pause naturally when
-        // we hit the player again and wait for PlayerTurnCompleted().
+        if (!HasValidRegisteredPlayer())
+        {
+            GameDebugger.Instance.LogWarning("[ExplorationTurnManager] Cycle stopped: no valid registered player.");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Exploration cycle stopped because no valid player was registered",
+                $"RegisteredCount: {characterTurnDataDict.Count}");
+            return;
+        }
+
+        if (restartScheduled)
+        {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Exploration cycle restart ignored because one is already scheduled",
+                $"RegisteredCount: {characterTurnDataDict.Count}");
+            return;
+        }
+
+        restartScheduled = true;
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", "ExplorationTurnManager restart scheduled",
+            $"RegisteredCount: {characterTurnDataDict.Count}");
+        StartCoroutine(RestartCycleNextFrame());
+    }
+
+    private IEnumerator RestartCycleNextFrame()
+    {
+        yield return null;
+
+        restartScheduled = false;
+
+        if (!enabled)
+        {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Exploration cycle restart cancelled because manager is disabled",
+                $"RegisteredCount: {characterTurnDataDict.Count}");
+            yield break;
+        }
+
+        if (!HasValidRegisteredPlayer())
+        {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Exploration cycle restart cancelled because no valid player was registered",
+                $"RegisteredCount: {characterTurnDataDict.Count}");
+            yield break;
+        }
+
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", "ExplorationTurnManager restart executed",
+            $"RegisteredCount: {characterTurnDataDict.Count}");
         StartTurnCycle();
+    }
+
+    private bool HasValidRegisteredPlayer()
+    {
+        return characterTurnDataDict.Values.Any(data =>
+            data != null &&
+            data.IsPlayer &&
+            data.Character != null &&
+            !ShouldSkipCharacter(data.Character));
     }
 
     #endregion

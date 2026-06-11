@@ -775,6 +775,12 @@ public abstract class BaseNestedArea : INestedArea
     {
         if (interactable != null && IsValidPosition(interactable.Position))
         {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            if (interactable is Character removingCharacter)
+            {
+                TurnDiagnosticsLogger.LogEvent("[ENTITY REMOVAL]", "BaseNestedArea.RemoveObjectFromArea begin", $"NestedArea: {Name} ({NestedAreaID})", removingCharacter);
+            }
+
             Cell cell = AreaMap[interactable.Position.x, interactable.Position.y];
 
             // Remove the object from the cell
@@ -784,6 +790,8 @@ public abstract class BaseNestedArea : INestedArea
             // Handle character-specific logic, if the interactable is a Character
             if (interactable is Character character)
             {
+                // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+                TurnDiagnosticsLogger.LogEvent("[DEREGISTRATION]", "BaseNestedArea.RemoveObjectFromArea before TurnOrchestrator.DeregisterCharacter", $"NestedArea: {Name} ({NestedAreaID})", character);
                 TurnOrchestrator.Instance.DeregisterCharacter(character);
                 GameDebugger.Instance.LogInfo($"Deregistered character '{character.Name}' from the TurnManager.");
             }
@@ -1237,6 +1245,8 @@ public abstract class BaseNestedArea : INestedArea
                 monster.IsActive = true;
                 cell.isPassable = false;
                 cell.Objects.Add(monster);
+                // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+                TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "BaseNestedArea.AddMonster placed monster", $"NestedArea: {Name} ({NestedAreaID})", monster);
                 RegisterCharacterWithTurnManager(monster);
 
                 Debug.Log($"Monster {monster.Name} placed at {position}.");

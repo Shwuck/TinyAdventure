@@ -52,6 +52,8 @@ public class Monster : Character
         // Register the monster in the turn manager
         stateMachine = new StateMachine(this);
         stateMachine.ChangeState(new MonsterIdleState()); // Start in monster idle state
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[REGISTRATION]", "Monster constructor before TurnOrchestrator.RegisterCharacter", "This observes current constructor-time registration behavior only.", this);
         TurnOrchestrator.Instance.RegisterCharacter(this);
     }
     #endregion
@@ -75,6 +77,8 @@ public class Monster : Character
         MonsterRemains remains = MonsterRemains.GenerateRemains(this);
 
         // Remove from Turn Manager
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[ENTITY DEATH]", "Monster.OnDeath before TurnOrchestrator.DeregisterCharacter", null, this);
         TurnOrchestrator.Instance.DeregisterCharacter(this);
         IsActive = false; // Mark as inactive
 

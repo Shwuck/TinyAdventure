@@ -76,6 +76,8 @@ public class CombatTurnManager : BaseTurnManager
     protected override void OnPlayerTurnStart(Character playerCharacter)
     {
         GameDebugger.Instance.LogInfo($"[CombatTurnManager] Player turn started for {playerCharacter.Name}.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", "CombatTurnManager.OnPlayerTurnStart", null, playerCharacter);
 
         if (!GameManager.Instance.ActiveTurnManager)
         {
@@ -98,6 +100,8 @@ public class CombatTurnManager : BaseTurnManager
         UIController.Instance.UpdateTurnOrderUI();
 
         GameDebugger.Instance.LogInfo($"[CombatTurnManager] Executing NPC turn for {npc.Name}.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", "CombatTurnManager.OnNPCTurnExecute", null, npc);
         npc.ExecuteTurnActions();
     }
 

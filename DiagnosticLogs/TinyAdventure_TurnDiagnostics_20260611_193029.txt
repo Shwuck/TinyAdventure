@@ -1,0 +1,1413 @@
+CODEXLOG001_TURNLIFECYCLE [BOOT] 2026-06-11 19:30:29 | frame=0
+DiagnosticId: CODEXLOG001_TURNLIFECYCLE
+DateTime: 2026-06-11T19:30:29.3483248+01:00
+Scene: SampleScene
+Runtime: Editor
+LogPath: C:\Game Design\Unity\TinyAdventure\DiagnosticLogs\TinyAdventure_TurnDiagnostics_20260611_193029.txt
+LatestPath: C:\Game Design\Unity\TinyAdventure\DiagnosticLogs\TinyAdventure_TurnDiagnostics_Latest.txt
+TurnOrchestrator.Exists: True
+TurnOrchestrator.combatManager.Assigned: True
+TurnOrchestrator.explorationTurnManager.Assigned: True
+
+CODEXLOG001_TURNLIFECYCLE [BOOT] 2026-06-11 19:30:29 | frame=0
+Event: TurnOrchestrator manager reference resolution
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: UNKNOWN
+PlayerStats.IsInMainMap: UNKNOWN
+PlayerStats.RegisteredInTurnManager: UNKNOWN
+PlayerStats.InCombat: UNKNOWN
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+combatManager.OriginallyAssigned: False
+explorationTurnManager.OriginallyAssigned: False
+combatManager.FallbackLookupAttempted: True
+explorationTurnManager.FallbackLookupAttempted: True
+combatManager.FallbackLookupSucceeded: True
+explorationTurnManager.FallbackLookupSucceeded: True
+combatManager.FinalAssigned: True
+explorationTurnManager.FinalAssigned: True
+combatManager.SceneObjectName: CombatTurnManager
+explorationTurnManager.SceneObjectName: ExplorationTurnManager
+
+CODEXLOG001_TURNLIFECYCLE [BOOT] 2026-06-11 19:30:29 | frame=0
+Event: TurnOrchestrator.Awake instance set
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: UNKNOWN
+PlayerStats.IsInMainMap: UNKNOWN
+PlayerStats.RegisteredInTurnManager: UNKNOWN
+PlayerStats.InCombat: UNKNOWN
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: PlayerController.EnterNestedArea begin
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+CellID: 3288
+HasNestedArea: True
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Freya The Helper
+Entity.ID: 10
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (4, 6)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Freya The Helper
+Entity.ID: 10
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (4, 6)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 1
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Freya The Helper
+Entity.ID: 10
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (4, 6)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 1
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Abigail Herdsman
+Entity.ID: 9
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (6, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 1
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Abigail Herdsman
+Entity.ID: 9
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (6, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 2
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Abigail Herdsman
+Entity.ID: 9
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (6, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 2
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Dragomir Silvervein
+Entity.ID: 3
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (7, 0)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 2
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Dragomir Silvervein
+Entity.ID: 3
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (7, 0)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 3
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Dragomir Silvervein
+Entity.ID: 3
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (7, 0)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 3
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Solveig Goldforge
+Entity.ID: 8
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (7, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 3
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Solveig Goldforge
+Entity.ID: 8
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (7, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 4
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Solveig Goldforge
+Entity.ID: 8
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (7, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 4
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Freya Hargrave
+Entity.ID: 12
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (2, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 4
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Freya Hargrave
+Entity.ID: 12
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (2, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Freya Hargrave
+Entity.ID: 12
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (2, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Kieran Tailor
+Entity.ID: 14
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (3, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Kieran Tailor
+Entity.ID: 14
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (3, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 6
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Kieran Tailor
+Entity.ID: 14
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (3, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.PlaceNPC placed NPC in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 6
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Edda Flintrock
+Entity.ID: 11
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (1, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea: Village0 (1)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 6
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Edda Flintrock
+Entity.ID: 11
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (1, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: NULL
+PlayerStats.CurrentNestedArea: NULL
+PlayerCharacter.CurrentNestedArea: NULL
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 7
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Edda Flintrock
+Entity.ID: 11
+Entity.Type: NPC
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (1, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:31:08 | frame=8213
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 8
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Ophelia Smith
+Entity.ID: 2
+Entity.Type: PlayerCharacter
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea: Village0 (ID=1, Level=0)
+Entity.NestedMapPosition: (0, 0)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: True
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+CODEXLOG001_TURNLIFECYCLE [CONTEXT UPDATE] 2026-06-11 19:31:08 | frame=8213
+Event: TurnOrchestrator.TryUpdateTurnContext begin
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 8
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+Area: Village0 (1)
+HasHostiles: False
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+CODEXLOG001_TURNLIFECYCLE [TURN SUMMARY] 2026-06-11 19:31:08 | frame=8213
+Event: TurnOrchestrator.TryUpdateTurnContext completed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 8
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+HasHostiles: False
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+CODEXLOG001_TURNLIFECYCLE [TURN SUMMARY] 2026-06-11 19:31:08 | frame=8213
+Event: PlayerController.EnterNestedArea completed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 8
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+NestedArea: Village0 (1)
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+CODEXLOG001_TURNLIFECYCLE [AREA EXIT] 2026-06-11 19:32:15 | frame=24028
+Event: PlayerController.ExitNestedArea begin
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 8
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+NestedArea: Village0 (1)
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+
+CODEXLOG001_TURNLIFECYCLE [TURN SUMMARY] 2026-06-11 19:32:15 | frame=24028
+Event: PlayerController.ExitNestedArea completed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:32:30 | frame=26403
+Event: PlayerController.EnterNestedArea begin
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+CellID: 2519
+HasNestedArea: True
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal placed animal in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Deer
+Entity.ID: 152
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (2, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea:  (0)
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Deer
+Entity.ID: 152
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (2, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 1
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Deer
+Entity.ID: 152
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (2, 2)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal placed animal in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 1
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Deer
+Entity.ID: 150
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (3, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea:  (0)
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 1
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Deer
+Entity.ID: 150
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (3, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 2
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Deer
+Entity.ID: 150
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (3, 7)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal placed animal in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 2
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Shrew
+Entity.ID: 146
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (1, 8)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea:  (0)
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 2
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Shrew
+Entity.ID: 146
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (1, 8)
+Entity.InTurn: False
+Entity.InCombat: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 3
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Shrew
+Entity.ID: 146
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (1, 8)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+
+CODEXLOG001_TURNLIFECYCLE [AREA ENTRY] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal placed animal in nested area
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 3
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Shrew
+Entity.ID: 144
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (7, 1)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+NestedArea:  (0)
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: AnimalManager.PlaceAnimal before TurnOrchestrator.RegisterCharacter
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 3
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Shrew
+Entity.ID: 144
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (7, 1)
+Entity.InTurn: False
+Entity.InCombat: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 4
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Shrew
+Entity.ID: 144
+Entity.Type: Animal
+Entity.IsActive: True
+Entity.IsAlive: False
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (7, 1)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: False
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+WARNING: allCharacters contains Animal 'Shrew' [144] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [144].
+
+CODEXLOG001_TURNLIFECYCLE [REGISTRATION] 2026-06-11 19:32:30 | frame=26403
+Event: Character registration observed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.CurrentNestedArea:  (ID=0, Level=0)
+PlayerCharacter.CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Entity.Name: Ophelia Smith
+Entity.ID: 2
+Entity.Type: PlayerCharacter
+Entity.IsActive: True
+Entity.IsAlive: True
+Entity.IsHostile: False
+Entity.IsInNestedArea: True
+Entity.CurrentNestedArea:  (ID=0, Level=0)
+Entity.NestedMapPosition: (0, 0)
+Entity.InTurn: False
+Entity.InCombat: False
+Details:
+Source: TurnOrchestrator.allCharacters
+IsPlayer: True
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+WARNING: allCharacters contains Animal 'Shrew' [144] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [144].
+
+CODEXLOG001_TURNLIFECYCLE [CONTEXT UPDATE] 2026-06-11 19:32:30 | frame=26403
+Event: TurnOrchestrator.TryUpdateTurnContext begin
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.CurrentNestedArea:  (ID=0, Level=0)
+PlayerCharacter.CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+Area:  (0)
+HasHostiles: False
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+WARNING: allCharacters contains Animal 'Shrew' [144] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [144].
+
+CODEXLOG001_TURNLIFECYCLE [TURN SUMMARY] 2026-06-11 19:32:30 | frame=26403
+Event: TurnOrchestrator.TryUpdateTurnContext completed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.CurrentNestedArea:  (ID=0, Level=0)
+PlayerCharacter.CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+HasHostiles: False
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+WARNING: allCharacters contains Animal 'Shrew' [144] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [144].
+
+CODEXLOG001_TURNLIFECYCLE [TURN SUMMARY] 2026-06-11 19:32:30 | frame=26403
+Event: PlayerController.EnterNestedArea completed
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.CurrentNestedArea:  (ID=0, Level=0)
+PlayerCharacter.CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+Details:
+NestedArea:  (0)
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+WARNING: allCharacters contains Animal 'Shrew' [144] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [144].
+
+CODEXLOG001_TURNLIFECYCLE [SHUTDOWN] 2026-06-11 19:32:55 | frame=32383
+Event: TurnOrchestrator.OnApplicationQuit
+Scene: SampleScene
+Context: MainMap
+CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.CurrentNestedArea:  (ID=0, Level=0)
+PlayerCharacter.CurrentNestedArea:  (ID=0, Level=0)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: True
+PlayerStats.InCombat: False
+allCharacters.Count: 5
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+WARNING: Player is in a nested area but TurnOrchestrator.CurrentContext is MainMap.
+WARNING: PlayerStats.RegisteredInTurnManager is true but the player character is not registered in the active turn manager.
+WARNING: allCharacters contains Animal 'Deer' [152] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [152].
+WARNING: allCharacters contains Animal 'Deer' [150] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Deer' [150].
+WARNING: allCharacters contains Animal 'Shrew' [146] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [146].
+WARNING: allCharacters contains Animal 'Shrew' [144] but IsAlive is false.
+WARNING: TurnOrchestrator.allCharacters may contain stale entity 'Shrew' [144].
+

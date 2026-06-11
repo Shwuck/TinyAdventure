@@ -76,9 +76,13 @@ public class MonsterManager : MonoBehaviour
         monster.Faction = "Undead";
         monster.MonsterLevel = nestedArea.DangerLevel;
         Debug.Log($"'{monster.Name}' placed at {monsterPosition} within nested area.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "MonsterManager.PlaceMonster placed monster in nested area", $"NestedArea: {nestedArea?.Name} ({nestedArea?.NestedAreaID})", monster);
 
         if (!TurnOrchestrator.Instance.IsCharacterRegistered(monster))
         {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[REGISTRATION]", "MonsterManager.PlaceMonster before TurnOrchestrator.RegisterCharacter", null, monster);
             TurnOrchestrator.Instance.RegisterCharacter(monster);
             Debug.Log($"Registering Monster '{monster.Name}' with TurnManager.");
         }
@@ -111,6 +115,8 @@ public class MonsterManager : MonoBehaviour
 
             monster.IsInNestedArea = false;
             monster.CurrentNestedArea = null;
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[ENTITY REMOVAL]", "MonsterManager.RemoveMonsterFromNestedArea before TurnOrchestrator.DeregisterCharacter", null, monster);
             TurnOrchestrator.Instance.DeregisterCharacter(monster);
             Debug.Log($"Monster '{monster.Name}' deregistered from turn manager.");
 

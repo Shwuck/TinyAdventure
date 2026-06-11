@@ -326,6 +326,8 @@ public class Character : IInteractable
     {
         Debug.Log($"{Name} is leaving the area.");
 
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[ENTITY REMOVAL]", "Character.LeaveArea before deregistration/removal", null, this);
         TurnOrchestrator.Instance?.DeregisterCharacter(this);
         CurrentNestedArea?.RemoveObjectFromArea(this);
 
@@ -1030,6 +1032,8 @@ public class Character : IInteractable
     {
         IsActive = false;
         Debug.Log($"{Name} has died!");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[ENTITY DEATH]", "Character.Die", null, this);
         OnDeath();
     }
 
@@ -1683,6 +1687,8 @@ public class Character : IInteractable
 
 		TurnOrchestrator.Instance?.RegisterCharacter(this);
 		GameDebugger.Instance.LogInfo($"[Character] {Name} placed in NestedArea {nestedArea.NestedAreaID} at {position}");
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "Character.PlaceInNestedArea completed", $"NestedArea: {nestedArea?.Name} ({nestedArea?.NestedAreaID})", this);
 
     }
 
@@ -1690,6 +1696,8 @@ public class Character : IInteractable
     {
         if (IsInNestedArea && CurrentNestedArea != null)
         {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[ENTITY REMOVAL]", "Character.RemoveFromNestedArea begin", null, this);
             Cell cell = CurrentNestedArea.GetCellAtPosition(NestedMapPosition);
             if (cell != null)
             {
@@ -1702,6 +1710,8 @@ public class Character : IInteractable
             CurrentNestedArea = null;
 
             TurnOrchestrator.Instance?.DeregisterCharacter(this);
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogTurnSummary("Character.RemoveFromNestedArea completed", $"Entity: {Name} [{IInteractableID}]");
 
         }
     }

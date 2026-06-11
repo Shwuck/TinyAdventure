@@ -74,9 +74,13 @@ public class AnimalManager : MonoBehaviour
         animal.CurrentNestedArea = nestedArea;
         animal.CanLeaveArea = true;
         Debug.Log($"'{animal.Name}' placed at {animalPosition} within nested area.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "AnimalManager.PlaceAnimal placed animal in nested area", $"NestedArea: {nestedArea?.Name} ({nestedArea?.NestedAreaID})", animal);
 
         if (!TurnOrchestrator.Instance.IsCharacterRegistered(animal))
         {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[REGISTRATION]", "AnimalManager.PlaceAnimal before TurnOrchestrator.RegisterCharacter", null, animal);
             TurnOrchestrator.Instance.RegisterCharacter(animal);  // Updated to pass the Animal object directly
             Debug.Log($"Registering Animal '{animal.Name}' with TurnManager.");
         }
@@ -109,6 +113,8 @@ public class AnimalManager : MonoBehaviour
 
             animal.IsInNestedArea = false;
             animal.CurrentNestedArea = null;
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[ENTITY REMOVAL]", "AnimalManager.RemoveAnimalFromNestedArea before TurnOrchestrator.DeregisterCharacter", null, animal);
             TurnOrchestrator.Instance.DeregisterCharacter(animal);  // Updated to pass the Animal object directly
             Debug.Log($"Animal '{animal.Name}' deregistered from turn manager.");
 

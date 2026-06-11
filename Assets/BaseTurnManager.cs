@@ -15,6 +15,29 @@ public abstract class BaseTurnManager : MonoBehaviour
 
     protected int currentTurnIndex = 0;
     protected bool isPlayerTurn = false;
+    protected bool isCycleRunning = false;
+
+    #endregion
+
+    #region CODEXLOG001_TURNLIFECYCLE Diagnostics
+
+    // CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
+    public int DiagnosticRegisteredCount => characterTurnDataDict.Count;
+
+    // CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
+    public bool DiagnosticContainsCharacter(Character character)
+    {
+        return character != null && characterTurnDataDict.ContainsKey(character.IInteractableID);
+    }
+
+    // CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
+    public List<Character> DiagnosticGetRegisteredCharactersSnapshot()
+    {
+        return characterTurnDataDict.Values
+            .Select(data => data.Character)
+            .Where(character => character != null)
+            .ToList();
+    }
 
     #endregion
 
@@ -37,6 +60,8 @@ public abstract class BaseTurnManager : MonoBehaviour
         {
             GameDebugger.Instance.LogWarning(
                 $"{GetType().Name}.RegisterCharacter: [{id}] {character.Name} is already registered.");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Duplicate registration ignored", $"{GetType().Name}.RegisterCharacter already contains [{id}] {character.Name}.", character);
             return;
         }
 
@@ -49,6 +74,8 @@ public abstract class BaseTurnManager : MonoBehaviour
 
         GameDebugger.Instance.LogInfo(
             $"{GetType().Name}.RegisterCharacter: [{id}] {character.Name} Speed={speed} PlacementID={placementID} IsPlayer={isPlayer}");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogRegistration(GetType().Name, character, isPlayer);
     }
 
     /// <summary>
@@ -74,6 +101,8 @@ public abstract class BaseTurnManager : MonoBehaviour
         {
             GameDebugger.Instance.LogWarning(
                 $"{GetType().Name}.DeregisterCharacter: [{id}] {character.Name} not found in registry.");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Deregister missing character", $"{GetType().Name}.DeregisterCharacter could not find [{id}] {character.Name}.", character);
             return;
         }
 
@@ -92,6 +121,8 @@ public abstract class BaseTurnManager : MonoBehaviour
 
         GameDebugger.Instance.LogInfo(
             $"{GetType().Name}.DeregisterCharacter: [{id}] {character.Name} removed from turn system.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogDeregistration(GetType().Name, character);
     }
 
     /// <summary>
@@ -129,6 +160,8 @@ public abstract class BaseTurnManager : MonoBehaviour
     public virtual void DeregisterAllCharacters()
     {
         GameDebugger.Instance.LogInfo($"{GetType().Name}.DeregisterAllCharacters: Clearing all turn data.");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[DEREGISTRATION]", $"{GetType().Name}.DeregisterAllCharacters before clear", $"RegisteredCount: {characterTurnDataDict.Count}");
 
         foreach (var data in sortedCharacterList)
         {
@@ -142,6 +175,9 @@ public abstract class BaseTurnManager : MonoBehaviour
         sortedCharacterList.Clear();
         currentTurnIndex = 0;
         isPlayerTurn = false;
+        isCycleRunning = false;
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[DEREGISTRATION]", $"{GetType().Name}.DeregisterAllCharacters after clear", "RegisteredCount: 0");
     }
 
     #endregion
@@ -153,9 +189,20 @@ public abstract class BaseTurnManager : MonoBehaviour
     /// </summary>
     public virtual void StartTurnCycle()
     {
+        if (isCycleRunning)
+        {
+            GameDebugger.Instance.LogWarning($"{GetType().Name}.StartTurnCycle: Ignored because a cycle is already running.");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Turn cycle start ignored because cycle is already running",
+                $"{GetType().Name}.StartTurnCycle ignored duplicate start request. RegisteredCount: {characterTurnDataDict.Count}");
+            return;
+        }
+
         if (characterTurnDataDict.Count == 0)
         {
             GameDebugger.Instance.LogInfo($"{GetType().Name}.StartTurnCycle: No characters registered.");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Turn cycle requested with zero participants", $"{GetType().Name}.StartTurnCycle found no registered characters.");
             return;
         }
 
@@ -163,8 +210,14 @@ public abstract class BaseTurnManager : MonoBehaviour
         if (!hasPlayer)
         {
             GameDebugger.Instance.LogWarning($"{GetType().Name}.StartTurnCycle: No player character registered.");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Turn cycle has no registered player", $"{GetType().Name}.StartTurnCycle found no player character.");
         }
 
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", $"{GetType().Name}.StartTurnCycle", $"RegisteredCount: {characterTurnDataDict.Count}");
+
+        isCycleRunning = true;
         SortCharacters();
 
         currentTurnIndex = 0;
@@ -254,6 +307,8 @@ public abstract class BaseTurnManager : MonoBehaviour
 
         GameDebugger.Instance.LogInfo(
             $"{GetType().Name}.ExecuteNextTurn: Starting turn for [{character.IInteractableID}] {character.Name} Delay={delay}");
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", $"{GetType().Name}.ExecuteNextTurn starting entity turn", $"Delay: {delay}", character);
 
         if (TurnOrchestrator.Instance != null)
         {
@@ -370,6 +425,10 @@ public abstract class BaseTurnManager : MonoBehaviour
     protected virtual void EndCycle()
     {
         GameDebugger.Instance.LogInfo($"{GetType().Name}.EndCycle: Turn cycle complete.");
+        isCycleRunning = false;
+        isPlayerTurn = false;
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", $"{GetType().Name}.EndCycle", $"RegisteredCount: {characterTurnDataDict.Count}");
 
         if (TurnOrchestrator.Instance != null)
         {
@@ -419,9 +478,36 @@ public abstract class BaseTurnManager : MonoBehaviour
 
     public virtual Dictionary<int, string> GetRegisteredCharacters()
     {
-        return characterTurnDataDict.Values
-            .Where(d => d.Character != null)
-            .ToDictionary(d => d.Character.IInteractableID, d => d.Character.Name);
+        Dictionary<int, string> registeredCharacters = new Dictionary<int, string>();
+        List<string> duplicates = new List<string>();
+
+        foreach (var data in characterTurnDataDict.Values)
+        {
+            if (data == null) continue;
+
+            var character = data.Character;
+            if (character == null) continue;
+
+            int id = character.IInteractableID;
+            if (registeredCharacters.ContainsKey(id))
+            {
+                duplicates.Add($"[{id}] {character.Name} ({character.GetType().Name})");
+                continue;
+            }
+
+            registeredCharacters[id] = character.Name;
+        }
+
+        if (duplicates.Count > 0)
+        {
+            string duplicateDetails = string.Join(", ", duplicates);
+            GameDebugger.Instance.LogWarning($"{GetType().Name}.GetRegisteredCharacters: Duplicate character IDs skipped: {duplicateDetails}");
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogWarning("Duplicate registered-character IDs found",
+                $"{GetType().Name}.GetRegisteredCharacters skipped duplicate IDs: {duplicateDetails}");
+        }
+
+        return registeredCharacters;
     }
 
     public virtual void LogAllRegisteredCharacters()

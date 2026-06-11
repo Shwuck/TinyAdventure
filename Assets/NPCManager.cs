@@ -68,6 +68,8 @@ public class NPCManager : MonoBehaviour
 
 		if (!TurnOrchestrator.Instance.IsCharacterRegistered(npc))
 		{
+			// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+			TurnDiagnosticsLogger.LogEvent("[REGISTRATION]", "NPCManager.EnsureRegistered before TurnOrchestrator.RegisterCharacter", null, npc);
 			TurnOrchestrator.Instance.RegisterCharacter(npc);
 			GameDebugger.Instance.LogInfo($"NPCManager: Registered '{npc.Name}' with TurnOrchestrator.");
 		}
@@ -80,6 +82,8 @@ public class NPCManager : MonoBehaviour
 
 		if (TurnOrchestrator.Instance.IsCharacterRegistered(npc))
 		{
+			// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+			TurnDiagnosticsLogger.LogEvent("[DEREGISTRATION]", "NPCManager.EnsureDeregistered before TurnOrchestrator.DeregisterCharacter", null, npc);
 			TurnOrchestrator.Instance.DeregisterCharacter(npc);
 			GameDebugger.Instance.LogInfo($"NPCManager: Deregistered '{npc.Name}' from TurnOrchestrator.");
 		}
@@ -221,6 +225,8 @@ public class NPCManager : MonoBehaviour
             }
 
             // helper instead of direct call
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[ENTITY REMOVAL]", "NPCManager.RemoveNPCsFromNestedArea removing NPC", null, npc);
             EnsureDeregistered(npc);
         }
 
@@ -285,6 +291,8 @@ private void TransferNPCGroupToNestedArea(NPCGroup npcGroup, INestedArea nestedA
         npc.IsInNestedArea = true;
         npc.CurrentNestedArea = nestedArea;
         Debug.Log($"'{npc.Name}' placed at {npcPosition} within nested area.");
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "NPCManager.PlaceNPC placed NPC in nested area", $"NestedArea: {nestedArea?.Name} ({nestedArea?.NestedAreaID})", npc);
 
 		EnsureRegistered(npc);
     }
@@ -317,6 +325,8 @@ private void TransferNPCGroupToNestedArea(NPCGroup npcGroup, INestedArea nestedA
 				npc.CurrentNestedArea = nestedArea;
 
 				GameDebugger.Instance.LogInfo($"'{npc.Name}' placed at {npcPosition} within nested area.");
+				// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+				TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "NPCManager.PlaceNPCs placed NPC group member in nested area", $"NestedArea: {nestedArea?.Name} ({nestedArea?.NestedAreaID})\nGroup: {npcGroup.GroupName}", npc);
 
 				// Use the helper (idempotent)
 				EnsureRegistered(npc);

@@ -474,6 +474,8 @@ public class PlayerController : MonoBehaviour
 
 	private void EnterNestedArea(Cell cellWithNestedArea)
 	{
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "PlayerController.EnterNestedArea begin", $"CellID: {cellWithNestedArea?.CellID}\nHasNestedArea: {cellWithNestedArea?.hasNestedArea}");
 		if (cellWithNestedArea == null || !cellWithNestedArea.hasNestedArea) return;
 
 		isInNestedArea = true;
@@ -528,22 +530,22 @@ public class PlayerController : MonoBehaviour
 
 		// Turn Orchestrator (use singleton)
 		var orchestrator = TurnOrchestrator.Instance;
-		Debug.Log("Registering player character with TurnOrchestrator.");
 		GameManager.Instance.ActiveTurnManager = true;
 		PlayerStats.Instance.RegisteredInTurnManager = true;
-
-		if (!orchestrator.IsCharacterRegistered(playerCharacter))
-			orchestrator.RegisterCharacter(playerCharacter);
-
-		orchestrator.ValidateCharacterNestedAreas();
-		orchestrator.LogAllRegisteredCharacters();
-		orchestrator.TryUpdateTurnContext();
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "PlayerController.EnterNestedArea before TurnOrchestrator.EnterExplorationArea",
+			$"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})", playerCharacter);
+		orchestrator.EnterExplorationArea(currentNestedArea, playerCharacter);
 
 		UIController.Instance.UpdateMapsAfterAction();
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogTurnSummary("PlayerController.EnterNestedArea completed", $"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
 	}
 
 	public void EnterNestedAreaWithinNestedArea(Cell cellWithNestedArea)
 	{
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "PlayerController.EnterNestedAreaWithinNestedArea begin", $"CellID: {cellWithNestedArea?.CellID}\nHasNestedArea: {cellWithNestedArea?.hasNestedArea}");
 		// Deregister characters from previous nested area (existing behaviour)
 		if (currentNestedArea != null)
 		{
@@ -585,10 +587,14 @@ public class PlayerController : MonoBehaviour
 		orchestrator.ValidateCharacterNestedAreas();
 		orchestrator.LogAllRegisteredCharacters();
 		orchestrator.StartTurnCycle();
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogTurnSummary("PlayerController.EnterNestedAreaWithinNestedArea completed", $"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
 	}
 
 	private void ExitNestedArea()
 	{
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA EXIT]", "PlayerController.ExitNestedArea begin", $"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
 		if (!isInNestedArea || currentNestedArea == null)
 		{
 			Debug.Log("Not currently in a nested area, cannot exit.");
@@ -609,6 +615,8 @@ public class PlayerController : MonoBehaviour
 		TurnOrchestrator.Instance.DeregisterAllCharacters();
 		PlayerStats.Instance.RegisteredInTurnManager = false;
 		GameManager.Instance.ActiveTurnManager = false;
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogTurnSummary("PlayerController.ExitNestedArea completed");
 	}
 
 	private void HandleExitNestedArea()
@@ -652,6 +660,8 @@ public class PlayerController : MonoBehaviour
 
 	public void LeaveNestedAreaToParent()
 	{
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogEvent("[AREA EXIT]", "PlayerController.LeaveNestedAreaToParent begin", $"CurrentNestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
 		if (!isInNestedArea || currentNestedArea == null)
 		{
 			Debug.LogWarning("Player is not currently in a nested area.");
@@ -680,6 +690,8 @@ public class PlayerController : MonoBehaviour
 		CallTrace.Mark(this);
 		Debug.Log("Player returned to the parent nested area.");
 		endOfTurnManager.ConvertNestedTurnsToTime();
+		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+		TurnDiagnosticsLogger.LogTurnSummary("PlayerController.LeaveNestedAreaToParent completed", $"ParentNestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
 	}
 
 	private void MoveToNestedAreaPosition(int nestedAreaID, Vector2Int position)
@@ -1071,6 +1083,14 @@ public class PlayerController : MonoBehaviour
 
     private bool IsPassableInNestedArea(Vector2Int position)
     {
+        if (!currentNestedArea.IsValidPosition(position))
+        {
+            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+            TurnDiagnosticsLogger.LogEvent("[WARNING]", "Nested-area out-of-bounds movement treated as blocked",
+                $"Position: {position}\nNestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
+            return false;
+        }
+
         bool terrainPassable = currentNestedArea.IsPassable(position);
         bool objectsPassable = currentNestedArea.GetObjectsAtPosition(position).All(obj => obj.IsPassable);
 
