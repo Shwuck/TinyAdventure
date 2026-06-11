@@ -29,6 +29,12 @@ public class PostFXOrchestrator : MonoBehaviour
 
 	void Start()
 	{
+		if (settings == null)
+		{
+			Debug.LogWarning("PostFXOrchestrator: RetroVisualSettings is not assigned. Skipping PostFX setup.");
+			return;
+		}
+
 		if (rendererData != null)
 		{
 			crtFeature = rendererData.rendererFeatures

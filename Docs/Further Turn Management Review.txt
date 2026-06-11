@@ -1,0 +1,653 @@
+No files changed.
+
+  1. Executive Summary
+
+  The current turn lifecycle is salvageable but not reliable enough yet for a game where turn state is foundational.
+
+  The core turn engine, /C:/Game Design/Unity/TinyAdventure/Assets/BaseTurnManager.cs, is reasonably coherent: it has a registry, duplicate checks, sorted turn order, player-turn waiting, NPC execution, and
+  cycle restart behavior. The fragile part is the lifecycle around it: entering areas, leaving areas, placing entities, death/removal, and combat transitions.
+
+  The most serious issue is architectural desynchronisation:
+
+  Player visually enters nested area
+  but TurnOrchestrator may still be in MainMap context
+  and registration may only touch allCharacters, not the active manager.
+
+  The intended design appears to be:
+
+  TurnOrchestrator
+  → ExplorationTurnManager
+  → CombatTurnManager
+
+  But the current practical flow is:
+
+  PlayerController / NPCManager / AnimalManager / MonsterManager / BaseNestedArea / Character
+  → direct TurnOrchestrator.RegisterCharacter / DeregisterCharacter calls
+
+  So registration goes through the orchestrator, but the decision of when registration should happen is scattered.
+
+  The system is currently:
+
+  - understandable after tracing,
+  - duplicated in responsibility,
+  - fragile around entry/exit and combat transition,
+  - overcomplicated mostly because ownership is unclear,
+  - still very much recoverable with diagnostics and small policy changes.
+
+  2. Current Turn-State Model
+
+  The current contexts are defined in /C:/Game Design/Unity/TinyAdventure/Assets/TurnOrchestrator.cs:
+
+  MainMap
+  Exploration
+  Combat
+
+  MainMap means turn logic is effectively disabled. TurnOrchestrator.RegisterCharacter() adds to allCharacters, but does not route to a turn manager.
+
+  Exploration means ExplorationTurnManager should contain active turn participants for the current nested area.
+
+  Combat means CombatTurnManager should contain active combatants for the current combat situation.
+
+  Current state containers:
+
+   Container                                       Meaning                                                 Risk
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TurnOrchestrator.allCharacters                  broad global known list for current/active area flow    can contain stale or inactive entities
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   ExplorationTurnManager.characterTurnDataDict    active exploration turn registry                        can be incomplete if context never becomes Exploration
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   CombatTurnManager.characterTurnDataDict         active combat registry                                  can include stale combatants if cleanup misses
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   BaseTurnManager.sortedCharacterList             sorted execution order                                  rebuilt on StartTurnCycle()
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   Character.InTurn                                per-character turn flag                                 cleared on deregistration/end turn
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   PlayerStats.RegisteredInTurnManager             player-side flag                                        can disagree with actual manager registry
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   GameManager.ActiveTurnManager                   global turn activation flag                             combat manager depends on it
+  ──────────────────────────────────────────────  ──────────────────────────────────────────────────────  ────────────────────────────────────────────────────────
+   PlayerStats.InCombat / Character.InCombat       combat flags                                            not clearly tied to TurnContext.Combat
+
+  Exploration behavior:
+
+  - ExplorationTurnManager.OnPlayerTurnStart() resets player MP.
+  - NPCs execute automatically through npc.ExecuteTurnActions().
+  - OnCycleEnded() immediately restarts the cycle.
+  - It is intended to feel continuous.
+
+  Combat behavior:
+
+  - CombatTurnManager.OnPlayerTurnStart() resets AP and MP.
+  - Player turn waits until TurnOrchestrator.PlayerTurnCompleted().
+  - NPC turns execute automatically.
+  - Turn order UI is updated.
+  - Combat cycle restarts while active and while a player exists.
+
+  The distinction exists in code, but the transition into those contexts is not yet reliable.
+
+  3. Turn-Registration Lifecycle Table
+
+   Moment                   Expected context       Should be           Should be                Target                   Required valid data      Current code path         Current risk        Future policy
+                                                   registered          deregistered
+  ━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━
+   1. Player moves main     MainMap                none for nested     nested leftovers         none active              player main position/    PlayerController.Move     stale nested        assert no active
+   map                                             turns                                                                 current cell                                       registration        nested
+                                                                                                                                                                            possible            participants
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   2. Enter first-level     Exploration            player + active     previous active          allCharacters +          CurrentNestedArea,       PlayerController.Enter    context may         call one area-
+   nested area                                     area occupants      participants             exploration              IsInNestedArea,          NestedArea                remain MainMap      entry
+                                                                                                                         positions                                                              registration
+                                                                                                                                                                                                rebuild
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   3. Enter nested from     Exploration or         new area            old area occupants       exploration              parent/current IDs,      EnterNestedAreaWithinN    partial             centralize
+   nested                   Combat reset to        occupants                                                             player position          estedArea                 deregistration,     transition
+                            exploration unless                                                                                                                              direct start
+                            hostile                                                                                                                                         cycle
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   4. Exit to parent        Exploration            parent area         child area occupants     exploration              parent area found,       LeaveNestedAreaToParen    no full             rebuild from
+   nested area                                     occupants                                                             entrance pos             t                         participant         parent occupants
+                                                                                                                                                                            rebuild
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   5. Exit to main map      MainMap                none                all active               none active              main map cell            ExitNestedArea            mostly OK, but      EnterMainMap()
+                                                                       participants                                      resolved                                           stale global        should clear all
+                                                                                                                                                                            possible            active turn
+                                                                                                                                                                                                state
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   6. Re-enter same area    Exploration            current active      stale previous           exploration              area HasVisited,         HandlePlayerReentry +     duplicated or       rebuild
+                                                   occupants           registrations                                     occupants                placement                 stale occupants     idempotently
+                                                                                                                                                                            possible
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   7. Enter visited area    Exploration            active surviving    inactive/dead placed     exploration              visit lifecycle          same                      stale dead/         validate
+                                                   occupants           entities                                          updated                                            inactive risk       occupants before
+                                                                                                                                                                                                register
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   8. Enter newly           Exploration            player + placed     none                     exploration              generated map and        NestedAreaGenerator.Ge    generated-but-      only placed
+   generated area                                  generated                                                             area ID                  nerateNestedArea          unplaced may be     active occupants
+                                                   occupants                                                                                                                confused            register
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   9. Generation fails      previous context       none new            none unless              unchanged                null area detection      generator logs and        half-transition     entry must abort
+                            unchanged                                  transition started                                                         returns                   possible if         atomically
+                                                                                                                                                                            caller proceeds
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   10. Area ref null        no transition          none                invalid active           unchanged                non-null INestedArea     scattered null checks     inconsistent        central guard
+                                                                       entries maybe                                                                                        null handling       before mutation
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   11. Move after           Exploration            player +            none                     exploration              player registered, MP    MoveAndUpdate             if                  context-derived
+   entering                                        occupants                                                             state valid                                        RegisteredInTurn    movement gating
+                                                                                                                                                                            Manager false/
+                                                                                                                                                                            true wrong, MP
+                                                                                                                                                                            behavior wrong
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   12. Move after           MainMap                none                all nested active        none                     player main position     ExitNestedArea then       stale flags can     clear player
+   exiting                                                                                                                                        move                      affect movement     turn flags on
+                                                                                                                                                                                                exit
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   13. NPCs generated       none yet unless        none if unplaced    none                     none                     NPC ID, active state     NPCGenerator              generation vs       no self-
+                            placed                                                                                                                                          placement           registration on
+                                                                                                                                                                            blurred             generation
+                                                                                                                                                                            elsewhere
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   14. Animals generated    none yet unless        none                none                     none                     Animal ID, active        AnimalGenerator,          generated           register only on
+                            placed                                                                                       state                    GeneratedAnimals          animals may be      placement
+                                                                                                                                                                            later placed
+                                                                                                                                                                            repeatedly
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   15. Monsters             none yet unless        none                none                     none                     Monster ID, active       Monster constructor       definite bad        never register
+   generated                placed                                                                                       state                    currently registers       risk                in constructor
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   16. Generated not        none                   none                none                     none                     no cell/current area     generation lists          constructor         generated-but-
+   placed                                                                                                                                                                   registration        unplaced ignored
+                                                                                                                                                                            violates this
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   17. Entity placed in     exploration if         active placed       none                     exploration or           area, position, cell     managers / nested         scattered           area manager/
+   area                     current area active    characters                                   global-known only        collection, active       area / character          registration        orchestrator
+                                                                                                                         true                     helpers                                       decides
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   18. Entity moves         same context           remains             none                     same manager             position/cell flags      Character.Move, area      stale cell/         no register
+   between cells                                   registered if                                                         updated                  update                    object lists        change, validate
+                                                   same area                                                                                                                possible            location
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   19. Entity moves         current context if     if active           old-area active          active manager           new area/position        mixed manager methods     stale old-area      transfer =
+   between areas            entering active        current area        registration                                      valid                                              membership          deregister old,
+                            area                                                                                                                                                                update data,
+                                                                                                                                                                                                register new
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   20. Entity dies          remove from active     none                dead entity              all active managers      IsActive=false,          OnDeath variants          inconsistent        death
+                            turns                                                                                        corpse/remains placed                              hostile update      immediately
+                                                                                                                                                                                                deregisters and
+                                                                                                                                                                                                validates combat
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   21. Despawn              remove active turns    none                despawned entity         all active managers      inactive/removed         manager-specific          possible stale      idempotent
+                                                                                                                         flags                                              global              deregister
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   22. Removed from area    remove active turns    none                removed entity           all active managers      cell/object removal      RemoveObjectFromArea,     some paths          removal always
+                                                                                                                                                  managers                  deregister, some    notifies turn
+                                                                                                                                                                            may not             lifecycle
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   23. Becomes inactive     should not act         none                inactive entity from     active manager           IsActive=false           skip logic protects       stale registry      cleanup pass
+                                                                       active managers                                                            during turns              remains             should purge
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   24. Revived/             register only if       revived active      none                     active context           active true, area,       no clear flow found       undefined           explicit
+   reactivated              active current area    entity                                       manager                  position                                                               reactivation
+                                                                                                                                                                                                policy
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   25. Combat starts        Combat                 player +            exploration active       combat                   hostile status, area,    TryUpdateTurnContext      only works from     explicit
+                                                   combatants          manager suspended/                                combatant list                                     Exploration         BeginCombat(area
+                                                                       cleared                                                                                                                  , cause)
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   26. Combat ends          Exploration            surviving           combatants from          exploration              no hostiles,             TryUpdateTurnContext      may not be          explicit end
+                                                   exploration         combat manager                                    survivors active                                   called after        validation
+                                                   occupants                                                                                                                death
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   27. Hostile status       maybe switch           active hostiles     defeated/inactive        combat/exploration       IsHostileArea fresh      UpdateHostileAreaStatu    stale hostile       recalc on
+   changes                  context                                    hostiles                                                                   s scattered               state               attack/death/
+                                                                                                                                                                                                removal
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   28. All hostiles         exploration            survivors           dead hostiles from       exploration              active hostiles count    death handlers partial    combat may not      post-death
+   defeated                                                            combat                                            zero                                               end                 combat
+                                                                                                                                                                                                validation
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   29. Player dies          probably terminal/     none active         all active               none or paused           player inactive/dead     PlayerStats.Die UI        turn state may      death clears/
+                            death UI                                   participants                                                               only                      continue            suspends turn
+                                                                                                                                                                                                managers
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   30. GameObject           not decisive for       depends on          inactive character       active manager           character IsActive,      mixed                     data object may     turn uses data
+   inactive                 data characters        character data                                                        not GO state                                       still act           activity, not GO
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   31. Scene startup        MainMap                none                none                     none                     manager refs assigned    Awake                     orchestrator        auto-resolve/
+                                                                                                                                                                            refs missing        diagnose
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   32. Awake/Start          no registration        none                none                     none                     singleton                constructors call         constructor risk    no registration
+   ordering                 before managers                                                                              availability             orchestrator                                  in constructors
+                            ready
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   33. Missing              no active turns        none                none                     none                     manager refs             scene has null refs       definite null       resolve or fail
+   orchestrator refs        safe                                                                                                                                            risk if path        loudly
+                                                                                                                                                                            used
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   34. Duplicate            one registration       existing remains    none                     same manager             same ID                  BaseTurnManager warns     protected per       idempotent no-op
+   register                 only                                                                                                                                            manager
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   35. Deregister           no-op warning          none                none                     none                     ID maybe absent          BaseTurnManager warns     noisy but           idempotent info/
+   missing                                                                                                                                                                  protected           warn by severity
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   36. Stale in             should be removed      none                stale entity             orchestrator list        active/area false        possible                  central list can    reconciliation
+   allCharacters            if inactive/left                                                                                                                                diverge             pass
+                            active lifecycle
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   37. Stale in             should be purged       none                wrong-area/dead          exploration              active + current area    skip logic protects       stale list          validate before
+   Exploration                                                         entity                                                                     execution                 noise/order risk    each cycle/
+                                                                                                                                                                                                transition
+  ───────────────────────  ─────────────────────  ──────────────────  ───────────────────────  ───────────────────────  ───────────────────────  ────────────────────────  ──────────────────  ──────────────────
+   38. Stale in Combat      should be purged       none                noncombat/dead entity    combat                   active combatant         skip logic protects       combat flow         remove on death/
+                            immediately                                                                                                           some                      corruption risk     end combat
+
+  4. Exploration Registration Policy
+
+  Exploration registration should begin only after a nested-area transition has fully succeeded.
+
+  Recommended policy:
+
+  - Area entry should register all current-area occupants in one batch.
+  - The player should be explicitly registered first.
+  - The participant list should be rebuilt from the current area’s actual occupants.
+  - Generated-but-not-placed entities should never register.
+  - Dead, inactive, despawned, removed, or expired entities should never register.
+  - Previous-area entities may remain in persistent world data, but not in the active exploration manager.
+  - Repeated entry should rebuild or validate the list idempotently.
+  - NPCs/animals/monsters should not self-register.
+  - If no NPCs/animals/monsters exist, exploration should still register the player or run a lightweight player/world turn mode.
+
+  The exploration entry policy should be:
+
+  Complete area transition
+  → set player location state
+  → populate/restore area
+  → collect active occupants from area
+  → clear exploration manager
+  → register player first
+  → register active occupants
+  → set context Exploration
+  → start/continue exploration cycle
+
+  Exploration should feel continuous. The player should not need combat-style AP decisions for every world tick unless the design explicitly wants that.
+
+  5. Combat Registration Policy
+
+  Combat should be stricter than exploration.
+
+  Recommended policy:
+
+  - Combat should start through an explicit orchestrator method, even if the trigger is inferred.
+  - Hostile-area status can be the trigger, but transition should be explicit:
+
+  TurnOrchestrator.BeginCombat(activeArea, cause)
+
+  Combatants should be selected by policy, not by accident.
+
+  Good default combatant policy:
+
+  - always include the player,
+  - include active hostile entities in the current area,
+  - include active allies already engaged,
+  - include neutral bystanders only if design says they participate,
+  - exclude dead/inactive/despawned/generated-unplaced entities,
+  - exclude previous-area entities,
+  - exclude current-area noncombatants unless they are intentionally part of combat.
+
+  CombatTurnManager should own a separate combatant list. It may be rebuilt from current area occupants or copied from exploration participants, but rebuilding from authoritative area occupants is safer.
+
+  Combat start should:
+
+  Pause or clear exploration active turns
+  → build combatant list
+  → clear combat manager
+  → register player
+  → register combatants
+  → reset AP/MP at turn start only
+  → start combat cycle
+
+  Combat end should:
+
+  detect no active hostiles / player dead / flee / scripted end
+  → clear combat manager
+  → clear combat flags on survivors
+  → rebuild exploration participant list from current area
+  → resume exploration
+
+  Combat should not be treated as faster exploration. It has its own stricter participant set and player input gating.
+
+  6. Deregistration Policy
+
+  Deregistration should be idempotent.
+
+  Rules:
+
+  - Leaving an area: deregister all active occupants from active managers in one batch.
+  - Entering a different nested area: deregister old active area, update location state, register new active area.
+  - Returning to parent area: rebuild from parent occupants.
+  - Returning to main map: clear exploration and combat managers; clear active context to MainMap.
+  - Death: immediately remove from all active turn managers and mark inactive/dead.
+  - Despawn/removal/expiry: immediately remove from active turn managers.
+  - Inactivity: should prevent turns immediately; cleanup pass should remove the entity.
+  - Combat ending: clear combat manager completely, then rebuild exploration.
+  - Player death: suspend/clear active turn managers.
+  - Scene reload/reset: clear all registries.
+  - Failed entry/generation: do not change context or registration if transition did not complete.
+
+  When should an entity remain in allCharacters?
+
+  - Only if allCharacters is intentionally “current area known participants.”
+  - If it is meant to be active-session registry, remove inactive/left/dead entities.
+  - If it is meant to be persistent world registry, rename/rethink it later. Right now it behaves like active lifecycle state, so stale entries are dangerous.
+
+  7. Recommended Ownership Model
+
+   Script                    Should own                                                     Should not own                                         Register/deregister?
+  ━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PlayerController          input, player movement commands                                global turn lifecycle, area lifecycle orchestration    no, except via orchestrator request
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   PlayerStats               player state/read model                                        initiating transitions, turn authority                 no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   CurrentPlayerCharacter    character data/stats/location mirror                           global location truth                                  no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   TurnOrchestrator          context, active participant policy, public registration API    UI rendering, generation                               yes, sole public route
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   BaseTurnManager           registry, ordering, cycle execution                            deciding who belongs globally                          internal only
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   ExplorationTurnManager    exploration participants and cycle                             combatants                                             via orchestrator only
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   CombatTurnManager         combatants, AP/MP combat turn flow                             exploration registration                               via orchestrator only
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   AreaEntryCoordinator      area entry population and validation                           input/UI/turn internals                                should call orchestrator batch method
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   NestedAreaManager         maybe future area registry                                     current mostly empty singleton                         no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   BaseNestedArea            area map, occupants, lifecycle data                            direct turn registration                               expose occupants; no direct registration long-term
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   MapGenerator              main map and nested-area lookup                                turn decisions                                         no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   NPCGenerator              create NPCs                                                    place/register active participants                     no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   AnimalGenerator           create animals                                                 register generated animals                             no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   MonsterGenerator          create monsters                                                register in constructor/generation                     no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   Character                 character behavior/combat/death event                          constructor registration/global turn state             should notify or call central death removal only temporarily
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   NPC                       NPC-specific death/interactions                                turn policy                                            no direct long-term
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   Animal                    animal-specific death/interactions                             turn policy                                            no direct long-term
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   Monster                   monster-specific behavior                                      constructor registration                               no
+  ────────────────────────  ─────────────────────────────────────────────────────────────  ─────────────────────────────────────────────────────  ──────────────────────────────────────────────────────────────
+   UIController              UI display                                                     gameplay turn state                                    no
+
+  TurnOrchestrator should be the only public route.
+
+  PlayerController should not directly register participants.
+
+  BaseNestedArea should expose occupants, not decide turn lifecycle.
+
+  Entities should never register themselves from constructors.
+
+  Death handlers can temporarily call orchestrator deregistration, but long term they should notify a lifecycle service or orchestrator method like OnEntityRemovedFromActiveArea.
+
+  UIController should observe turn state, not own it.
+
+  8. Registration And Deregistration Invariants
+
+  Global invariants:
+
+  - If context is MainMap, no exploration or combat participants should be active.
+  - If the player is visually in a nested area, context should not be MainMap.
+  - TurnOrchestrator.allCharacters should agree with the active area policy.
+  - No manager should contain duplicate IInteractableID.
+  - Missing manager refs should be diagnosed before first registration.
+
+  Exploration invariants:
+
+  - ExplorationTurnManager contains only active, alive, placed entities in the current nested area.
+  - Player is registered when exploration is active.
+  - Previous-area entities do not take exploration turns.
+  - Generated-but-unplaced entities are absent.
+  - Exploration can run with only the player.
+
+  Combat invariants:
+
+  - CombatTurnManager contains only active combatants.
+  - Player is registered in combat unless dead.
+  - Combat manager is empty after combat ends.
+  - Exploration manager is paused or inactive during combat.
+  - Dead/inactive combatants are removed before the next turn.
+
+  Area-entry invariants:
+
+  - Area exists.
+  - Area map exists.
+  - Player position is valid.
+  - PlayerStats, PlayerController, and CurrentPlayerCharacter agree.
+  - Entity position, cell membership, CurrentNestedArea, and IsInNestedArea are correct before registration.
+
+  Area-exit invariants:
+
+  - Active managers are cleared or rebuilt.
+  - Player nested data is cleared or transferred.
+  - Old area entities do not keep taking turns.
+  - Main map context has no nested turn participants.
+
+  Death/removal invariants:
+
+  - Dead entity does not receive turns.
+  - Inactive entity does not receive turns.
+  - Removed entity is not in cell occupant list and not in active turn manager.
+  - Hostile-area status is recalculated after death/removal.
+
+  9. Predictive Failure-Mode Matrix
+
+   Failure             Trigger/code path             Bad state                 Scope          Gameplay symptom              Severity       Likelihood              Diagnostic                   Smallest future
+                                                                                                                                                                                                fix
+  ━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━
+   Nested entry        PlayerController.EnterNest    player in area,           both           turns/combat do not start     high           high                    log context after entry      call
+   leaves context      edArea                        orchestrator still                       correctly                                                                                         orchestrator
+   MainMap                                           MainMap                                                                                                                                    area-entry path
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Missing             scene startup                 null managers             both           null exceptions when          high           high                    Awake ref summary            auto-resolve or
+   orchestrator                                                                               orchestrator path used                                                                            wire scene
+   refs
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Monster             monster generation            registered with no        combat         unplaced monster in           high           medium                  registration with null       remove
+   constructor                                       valid area                               registry                                                             area warning                 constructor
+   registers early                                                                                                                                                                              registration
+                                                                                                                                                                                                later
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Combat cannot       attack after bad entry        hostile area but no       combat         enemies do not enter          high           high if entry bug       hostile true + context       force
+   start from                                        combat context                           strict combat                                present                 MainMap warning              exploration
+   MainMap                                                                                                                                                                                      context on entry
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Dead hostile        death                         inactive in manager       combat         skipped turns/noisy/stale     high           medium                  dead registered audit        deregister on
+   remains                                                                                    combat                                                                                            death + validate
+   registered
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Combat does not     death path misses context     context remains Combat    combat         stuck combat UI/turns         high           medium                  no hostiles but context      post-death
+   end after all       update                                                                                                                                      Combat                       EvaluateCombatEn
+   hostiles dead                                                                                                                                                                                d
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Exploration list    entry only registers          missing NPC/animal        exploration    world feels dead              medium-high    high                    area occupant count vs       rebuild from
+   incomplete          player or placed calls        turns                                                                                                         manager count                area occupants
+                       miss
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Previous area       area transfer                 wrong-area                exploration    old NPCs act offscreen        high           medium                  wrong-area audit             clear/rebuild on
+   entities still                                    participants                                                                                                                               area transition
+   active
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Entity visually     placement/move bug            skipped by manager        both           visible NPC never acts        medium         medium                  cell occupant area           placement
+   in cell but                                                                                                                                                     mismatch                     validation
+   stale
+   CurrentNestedAre
+   a
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Entity correct      context switch                exploration entity in     both           wrong turn order              high           medium                  manager/context mismatch     clear target
+   data but wrong                                    combat or reverse                                                                                             report                       manager on
+   manager                                                                                                                                                                                      switch
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Player flag         RegisteredInTurnManager       movement AP/MP gating     both           movement blocked/free         medium         medium                  compare flag to registry     derive from
+   disagrees with      stale                         wrong                                    incorrectly                                                                                       orchestrator
+   manager
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Deregister          repeated cleanup              warnings/no action        both           console noise                 low            high                    deregister result code       idempotent
+   missing entity                                                                                                                                                                               cleanup logging
+   spam
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Inactive            UI/scene disable              data still acts           both           invisible actor takes         medium         possible                active data/no GO audit      use data-state
+   GameObject but                                                                             turns                                                                                             policy
+   active data
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Failed              null area after generation    player state partially    exploration    stuck/no area                 high           possible                transition transaction       mutate state
+   generation half-                                  changed                                                                                                       log                          only after area
+   entry                                                                                                                                                                                        valid
+  ──────────────────  ────────────────────────────  ────────────────────────  ─────────────  ────────────────────────────  ─────────────  ──────────────────────  ───────────────────────────  ──────────────────
+   Duplicate IDs       bad generation                wrong duplicate           both           entity never acts             high           unlikely                ID collision assertion       validate unique
+                                                     rejection                                                                                                                                  IDs
+
+  Already protected:
+
+  - duplicate registration within one BaseTurnManager,
+  - null character registration,
+  - wrong-area characters are skipped,
+  - inactive characters are skipped,
+  - deregistering an absent character does not crash.
+
+  10. Diagnostics Before Refactor
+
+  Top diagnostics to add later:
+
+   Diagnostic                      Where                         When                      Normal output                                  Bad output
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Orchestrator reference check    TurnOrchestrator.Awake        scene startup             Combat=OK Exploration=OK                       Combat=NULL Exploration=NULL
+  ──────────────────────────────  ────────────────────────────  ────────────────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────
+   Context/location audit          after area entry/exit         transition end            Context=Exploration Area=123 PlayerArea=123    Context=MainMap Area=123
+  ──────────────────────────────  ────────────────────────────  ────────────────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────
+   Participant count summary       after registration rebuild    entry/combat start/end    Area occupants=5 Exploration=5 Combat=0        Area occupants=5 Exploration=1
+  ──────────────────────────────  ────────────────────────────  ────────────────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────
+   Stale registered audit          before turn cycle             StartTurnCycle            no stale entries                               dead/wrong-area listed
+  ──────────────────────────────  ────────────────────────────  ────────────────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────
+   Combat mismatch audit           combat start/end/death        combat lifecycle          hostiles/combatants agree                      no hostiles but combat active
+  ──────────────────────────────  ────────────────────────────  ────────────────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────
+   Cell/data mismatch audit        after placement               entity placement          entity area/position/cell agree                visible entity has null area
+  ──────────────────────────────  ────────────────────────────  ────────────────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────
+   Duplicate source log            registration                  every register            idempotent existing                            duplicate with conflicting area/context
+
+  Why this helps: it lets you prove the lifecycle before changing ownership.
+
+  11. Minimal Future Patch Plan
+
+  Phase 0: Documentation only
+  Files: docs.
+  Risk: none.
+  Document contexts, registration rules, and invariants.
+
+  Phase 1: Diagnostics only
+  Files: TurnOrchestrator.cs, BaseTurnManager.cs, PlayerController.cs.
+  Risk: low.
+  Add context/manager/participant summaries.
+  Behavior unchanged.
+  Test: enter/exit nested area, attack, kill, exit.
+
+  Phase 2: Safe wiring and null checks
+  Files: TurnOrchestrator.cs.
+  Risk: low.
+  Auto-resolve missing CombatTurnManager / ExplorationTurnManager or log hard error.
+  Behavior unchanged except avoiding null failures.
+  Test: scene startup, enter nested area.
+
+  Phase 3: Exploration registration stability
+  Files: TurnOrchestrator.cs, PlayerController.cs, maybe AreaEntryCoordinator.cs.
+  Risk: medium.
+  Add a single method like EnterExplorationArea(INestedArea area, Character player).
+  Clear/rebuild exploration participants from current area.
+  Test: new area, visited area, empty area, NPC/animal area.
+
+  Phase 4: Combat registration stability
+  Files: TurnOrchestrator.cs, CombatTurnManager.cs, Character.cs.
+  Risk: medium.
+  Add explicit BeginCombat / EndCombatIfResolved.
+  Rebuild combatants from active current-area combat policy.
+  Test: attack neutral, fight hostile, kill all hostiles, return to exploration.
+
+  Phase 5: Deregistration and expiry cleanup
+  Files: BaseNestedArea.cs, NPCManager.cs, AnimalManager.cs, MonsterManager.cs, Character.cs.
+  Risk: medium-high.
+  Make death/despawn/removal call one idempotent lifecycle path.
+  Test: kill NPC/animal/monster, despawn group, leave area.
+
+  Phase 6: Larger architecture improvement
+  Files: many.
+  Risk: high.
+  Introduce a small AreaTransitionService or make AreaEntryCoordinator the real transition owner.
+  Only do this after diagnostics prove current flow.
+
+  12. Direct Questions
+
+  1. Reliable enough for exploration? No.
+  2. Reliable enough for combat? No.
+  3. Exploration vs combat distinction clear enough? Conceptually yes, lifecycle no.
+  4. Single source of truth for active turn participants? No.
+  5. Single source of truth for current area? No.
+  6. Should TurnOrchestrator be the only public route? Yes.
+  7. Should area entry register occupants in one batch? Yes.
+  8. Should area exit deregister occupants in one batch? Yes.
+  9. Should combat have a separate combatant list? Yes.
+  10. Should entities register from constructors? No.
+  11. Should PlayerController directly register participants? No, not long term.
+  12. Should BaseNestedArea directly register participants? No, expose occupants.
+  13. Most dangerous desync risk? Player in nested area while orchestrator remains MainMap.
+  14. Safest first diagnostic? TurnOrchestrator context/manager/participant summary after area entry.
+  15. Safest first actual patch later? Auto-resolve/log missing orchestrator manager refs.
+  16. What not to refactor yet? Character, full interaction system, full nested-area hierarchy, JSON/data model, serialized field names.
+
+  13. Final Summary
+
+  Top 10 desynchronisation risks:
+
+  1. Nested entry does not switch orchestrator to Exploration.
+  2. TurnOrchestrator manager refs are missing in scene YAML.
+  3. Registering while context is MainMap only updates allCharacters.
+  4. Monster constructor registration before placement.
+  5. Death/removal not consistently ending combat or recalculating hostile status.
+  6. Previous-area entities remaining active.
+  7. Generated-but-unplaced entities becoming registered.
+  8. PlayerController/PlayerStats/CurrentPlayerCharacter disagreeing on area.
+  9. Combat manager retaining stale combatants after combat.
+  10. Exploration manager missing active current-area occupants.
+
+  Top 5 diagnostics:
+
+  1. Orchestrator manager-ref check on Awake.
+  2. Context/location audit after every area transition.
+  3. Area occupant count versus active manager count.
+  4. Dead/inactive/wrong-area registered audit before turn cycle.
+  5. Combatant/hostile status audit after every death/removal.
+
+  Top 5 invariants:
+
+  1. Player visually in nested area implies context is Exploration or Combat.
+  2. ExplorationTurnManager only contains active current-area occupants.
+  3. CombatTurnManager only contains active combatants.
+  4. Dead/inactive/unplaced entities never receive turns.
+  5. Leaving an area clears or rebuilds active participants.
+
+  Recommended exploration policy: after a successful nested-area entry, rebuild exploration participants from the authoritative current area, register the player first, register only active placed occupants,
+  ignore generated/unplaced/dead/inactive entities, and allow exploration to continue even if the player is alone.
+
+  Recommended combat policy: combat should start through an explicit orchestrator method, even if triggered by hostile-area status. Combat should clear or pause exploration, build a strict combatant list,
+  always include the player if alive, include active hostiles/engaged allies by policy, reset AP/MP on turns, wait for player action, and end by clearing combat and rebuilding exploration.
+
+  Recommended deregistration policy: deregistration should be idempotent and centralized. Area exit, death, despawn, expiry, inactivity, combat end, player death, and failed transitions should all remove
+  affected entities from active managers safely, then validate counts and context.
+
+  Safest first patch batch later: add TurnOrchestrator manager-reference diagnostics/auto-resolution, add context/participant summaries, and add an area-entry audit. Do not alter behavior until those logs
+  prove the current state.
+
+  Golden rule: An entity may only receive turns if the TurnOrchestrator can prove it is active, alive, placed in the current active area, registered in exactly one appropriate active manager, and valid for the
+  current context.

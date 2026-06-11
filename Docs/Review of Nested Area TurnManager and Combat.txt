@@ -1,0 +1,870 @@
+What I asked:
+
+Do not edit files.
+
+I want an excruciatingly detailed technical review of three related TinyAdventure systems that have historically been difficult to structure correctly:
+
+1. Entering and exiting nested cells / nested areas and the related calls.
+2. Registering and deregistering characters, objects, NPCs, animals, monsters, and the player with the turn-based system.
+3. Combat subscription and combat turn flow as a subsection of the turn system.
+
+This is an analysis task only. Do not apply fixes. Do not refactor. Do not change scenes, prefabs, JSON data, packages, ProjectSettings, or scripts. You may inspect code, scene YAML, prefab YAML, and data files where relevant.
+
+Context:
+
+* TinyAdventure has a main map and nested areas.
+* The player can move around the main map, enter nested cells/areas, explore them, and potentially enter combat.
+* The project has a TurnOrchestrator, BaseTurnManager, ExplorationTurnManager, CombatTurnManager, PlayerController, PlayerStats, AreaEntryCoordinator, NestedAreaManager, BaseNestedArea, MapGenerator, and many entity/object generators.
+* I have previously struggled with the structure of nested-area entry/exit and turn registration.
+* I want to know whether the current architecture is sound, fragile, overcomplicated, duplicated, or salvageable.
+
+Please review the following areas in detail:
+
+## 1. Nested area entry and exit flow
+
+Inspect all relevant scripts and explain the full flow for:
+
+* Player moving on the main map.
+* Detecting or selecting a nested area/cell.
+* Entering a nested area.
+* Initialising or restoring the nested area.
+* Moving the player into the nested area.
+* Displaying the nested area visually.
+* Registering relevant entities in that nested area.
+* Exiting back to the main map.
+* Preserving state between main map and nested area.
+* Handling repeated entry into the same nested area.
+* Handling failed entry, invalid nested area data, null current cells, or missing area references.
+
+Please identify:
+
+* Which script owns each step.
+* Which script should own each step, if the current ownership is muddled.
+* Where PlayerController is doing too much.
+* Where PlayerStats is storing location/state.
+* How AreaEntryCoordinator, NestedAreaManager, BaseNestedArea, MapGenerator, and UIController interact.
+* Whether nested areas are treated as data, scene objects, runtime objects, UI state, or all of the above.
+* Whether the system has a clear source of truth for current location.
+
+## 2. Turn system subscription and registration
+
+Inspect the turn system in detail.
+
+Please explain:
+
+* How characters/entities are registered with the turn system.
+* How they are deregistered.
+* How the project decides whether something belongs to MainMap, Exploration, or Combat.
+* How TurnOrchestrator switches between modes.
+* How BaseTurnManager manages turn order.
+* How ExplorationTurnManager differs from CombatTurnManager.
+* How PlayerController signals turn completion.
+* How NPCs, animals, monsters, and other actors are added to or removed from the active turn cycle.
+* What happens when entering a nested area.
+* What happens when leaving a nested area.
+* What happens when combat begins.
+* What happens when combat ends.
+* What happens if an entity dies, despawns, leaves the area, or becomes inactive.
+* What happens if the same entity is registered twice.
+* What happens if an entity remains registered after it should have been removed.
+
+Please identify:
+
+* The current source of truth for active turn participants.
+* Whether registration is centralised or scattered.
+* Whether deregistration is reliable.
+* Whether turn participants are tied to scene objects, data objects, or both.
+* Whether object lifetime and turn lifetime are clearly aligned.
+* Whether there are race conditions or ordering problems around Awake, Start, generation, area entry, and combat start.
+
+## 3. Combat subscription and combat flow
+
+Inspect combat-specific code and explain:
+
+* How combat starts.
+* Which script decides that combat has begun.
+* How combatants are selected.
+* How combatants are registered.
+* How player AP/MP and enemy AP/MP are reset.
+* How hostile turns are processed.
+* How turn order is displayed.
+* How player combat actions complete their turn.
+* How combat ends.
+* How dead or defeated enemies are removed.
+* How the system returns to exploration after combat.
+* Whether combat is cleanly separated from exploration turns.
+* Whether combat currently depends too much on PlayerController, UIController, or global singletons.
+
+Please identify:
+
+* Whether combat has a clear state machine.
+* Whether combat has a reliable list of active combatants.
+* Whether combat can accidentally include non-combat entities.
+* Whether combatants can remain subscribed after combat.
+* Whether combat can begin while exploration registration is still active.
+* Whether combat transitions are safe when entering or exiting nested areas.
+
+## 4. Ownership and responsibility review
+
+For each important script involved, explain its current responsibility and whether that responsibility is appropriate.
+
+Include at least:
+
+* PlayerController
+* PlayerStats
+* TurnOrchestrator
+* BaseTurnManager
+* ExplorationTurnManager
+* CombatTurnManager
+* AreaEntryCoordinator
+* NestedAreaManager
+* BaseNestedArea
+* MapGenerator
+* UIController
+* NPCGenerator
+* AnimalGenerator
+* MonsterGenerator
+* Character
+* NPC
+* Animal
+* Monster
+
+For each one, answer:
+
+* What does it currently own?
+* What should it own?
+* What should it not own?
+* What dependencies does it have?
+* What depends on it?
+* Is it central, supporting, or misplaced?
+* Is it safe to modify?
+* What would break if it changed?
+
+## 5. Architecture risk assessment
+
+Please identify any of the following:
+
+* Circular dependencies.
+* Hidden dependencies via singletons.
+* Hidden dependencies via inspector references.
+* Direct UI calls from gameplay systems.
+* Turn registration happening in multiple places.
+* Nested-area entry logic split across too many scripts.
+* Player location state duplicated between systems.
+* Scene object lifetime not matching gameplay lifetime.
+* Combat state mixed into exploration state.
+* Null-reference risks.
+* Duplicate registration risks.
+* Missing deregistration risks.
+* Dead or archived systems confusing the current flow.
+* Places where a missing JSON/data entry could break state rather than simply reduce content.
+
+Separate findings into:
+
+* Definite problems.
+* Likely problems.
+* Possible concerns.
+* Things that look okay.
+
+## 6. Desired architecture recommendation
+
+After reviewing the current implementation, recommend what the architecture should ideally look like, but keep it realistic for a solo Unity project.
+
+Please answer:
+
+* Should nested-area entry/exit be centralised into one coordinator?
+* Should TurnOrchestrator be the only public route into turn registration?
+* Should CombatTurnManager own combatants separately from exploration participants?
+* Should PlayerController stop directly managing area transitions or turn registration?
+* Should entities subscribe themselves, or should the area/combat manager register them?
+* Should current location be owned by PlayerStats, AreaEntryCoordinator, or another state object?
+* Should UIController be notified through events rather than direct calls?
+* What should be event-driven, and what should remain direct method calls?
+* What would be overengineering for this project?
+
+## 7. Proposed improvement plan
+
+Give me a staged plan that improves these systems safely.
+
+Break it into phases:
+
+Phase 0: Documentation only.
+
+* What should be documented before touching code?
+
+Phase 1: Diagnostics and safety checks.
+
+* What null guards, duplicate-registration checks, deregistration logs, or debug summaries should be added?
+
+Phase 2: Low-risk cleanup.
+
+* What can be cleaned without changing behaviour?
+
+Phase 3: Structural improvements.
+
+* What ownership changes would make the system cleaner?
+
+Phase 4: Combat-specific improvements.
+
+* What should be improved in combat registration, combat state, and combat cleanup?
+
+Phase 5: Larger refactor, only if justified.
+
+* What would a cleaner long-term architecture look like?
+
+For each proposed step, include:
+
+* Files likely affected.
+* Risk level.
+* Why it helps.
+* What behaviour must remain unchanged.
+* What I should test in Unity afterwards.
+
+## 8. Specific questions to answer directly
+
+Please answer these clearly:
+
+1. Is the nested-area entry/exit system currently understandable?
+2. Is it robust?
+3. Is there a single source of truth for where the player is?
+4. Is turn registration centralised enough?
+5. Is deregistration safe enough?
+6. Is combat cleanly separated from exploration?
+7. What is the most dangerous part of the current design?
+8. What is the safest first improvement?
+9. What should absolutely not be refactored yet?
+10. If you inherited this project, what would you do first?
+
+## 9. Output format
+
+Please produce the review in clear sections:
+
+* Executive summary.
+* Current nested-area flow.
+* Current turn-registration flow.
+* Current combat flow.
+* Dependency map.
+* Responsibility table.
+* Risk register.
+* Recommended target architecture.
+* Safe phased improvement plan.
+* First suggested patch batch.
+* Things to leave alone for now.
+
+Do not edit files.
+Do not apply fixes.
+Do not create new files yet.
+Wait for my approval before making any changes.
+
+
+
+How Codex Replied:
+
+ No files were edited.
+
+  Executive Summary
+
+  The current architecture is salvageable, but the nested-area / turn / combat stack is fragile because the intended central coordinator is not actually the only path being used.
+
+  The biggest finding is this: TurnOrchestrator.EnterNestedArea(INestedArea area) appears to be the intended clean entry point for switching into exploration mode, clearing old registrations, registering area
+  characters, and enabling exploration turns. But normal player entry does not call it. PlayerController.EnterNestedArea(...) directly mutates player state, calls population systems, manually registers the
+  player, then calls TryUpdateTurnContext(). Because TurnOrchestrator.CurrentContext starts as MainMap, that registration does not reach either ExplorationTurnManager or CombatTurnManager.
+
+  That means the current code can appear to work visually while the turn architecture is only partially engaged.
+
+  A second major finding: in /C:/Game Design/Unity/TinyAdventure/Assets/Scenes/SampleScene.unity, the active TurnOrchestrator object has both serialized manager references as {fileID: 0}:
+
+  combatManager: {fileID: 0}
+  explorationTurnManager: {fileID: 0}
+
+  Separate CombatTurnManager and ExplorationTurnManager GameObjects exist in the scene, but the orchestrator is not wired to them. This may not throw immediately because the normal nested-area path currently
+  does not call TurnOrchestrator.EnterNestedArea, but it will break once the orchestrator path is used.
+
+  So the system is understandable after tracing it, but not robust yet.
+
+  Current Nested-Area Flow
+
+  Main-map movement starts in /C:/Game Design/Unity/TinyAdventure/Assets/PlayerController.cs.
+
+  The active movement chain is:
+
+  PlayerController.Update()
+  → HandleKeyboardInput()
+  → HandleKeyHold()
+  → MoveAndUpdate()
+  → Move()
+  → UpdatePlayerPosition()
+  → UpdateAllPlayerStats()
+  → MapDisplayUI.UpdateBothMaps()
+  → UpdateDescription()
+  → UpdateAdaptiveActionMenu()
+
+  On the main map, Move():
+
+  - checks passability through IsCellPassable
+  - reads the current Cell from MapGenerator
+  - updates fog of war
+  - moves playerPosition
+  - updates currentCellID, currentRegion, currentPlayerCell
+  - updates PlayerStats
+  - refreshes maps and description
+
+  Entering a nested area happens through ToggleNestedArea() when E is pressed, or through PlayerStats.DescendIntoNestedArea() / EnterDungeon() / EnterCave() forwarding back into PlayerController.
+
+  The active entry chain is:
+
+  PlayerController.ToggleNestedArea()
+  → TryEnterOrGenerateNestedArea()
+  → HandleMainMapTransition() or HandleNestedAreaTransition()
+  → NestedAreaGenerator.GenerateNestedArea(...) if needed
+  → PlayerController.EnterNestedArea(...) or EnterNestedAreaWithinNestedArea(...)
+
+  For main map to nested area, HandleMainMapTransition():
+
+  - gets the current main-map cell from MapGenerator
+  - sets enteringCell
+  - sets currentCellID
+  - generates a nested area if currentCell.hasNestedArea is false
+  - calls private EnterNestedArea(currentCell)
+
+  EnterNestedArea(Cell cellWithNestedArea) then:
+
+  - sets local PlayerController.isInNestedArea = true
+  - saves previousNestedAreaID
+  - saves mainMapCellID
+  - sets parentNestedAreaID
+  - saves mainMapPosition
+  - sets isInMainMap = false
+  - assigns currentNestedArea = cellWithNestedArea.NestedArea
+  - moves playerPosition to currentNestedArea.EntrancePosition
+  - activates nestedAreaPanel
+  - marks the nested entrance cell as player-present
+  - calls currentNestedArea.HandlePlayerReentry() if visited before
+  - calls AreaEntryCoordinator.HandleOnEnterFromMainMap(...)
+  - updates IDs and message log
+  - calls UpdateNestedAreaStats() / UpdateDescription()
+  - manually syncs PlayerStats.Instance.CurrentPlayerCharacter.CurrentNestedArea
+  - sets GameManager.Instance.ActiveTurnManager = true
+  - sets PlayerStats.Instance.RegisteredInTurnManager = true
+  - manually registers the player with TurnOrchestrator.RegisterCharacter
+  - validates/logs turn registrations
+  - calls TurnOrchestrator.TryUpdateTurnContext()
+  - refreshes maps through UIController
+
+  That is a lot of ownership in one method.
+
+  Nested area within nested area uses EnterNestedAreaWithinNestedArea(Cell cellWithNestedArea):
+
+  - deregisters characters in the previous nested area
+  - updates parent/current nested IDs
+  - sets isInMainMap = false, isInNestedArea = true
+  - assigns currentNestedArea = cellWithNestedArea.NestedArea
+  - moves player to the new nested area entrance
+  - activates nested UI
+  - calls AreaEntryCoordinator.HandleOnEnterFromNestedArea
+  - updates stats and description
+  - registers player if not already registered
+  - validates/logs
+  - calls orchestrator.StartTurnCycle()
+
+  This deeper-entry path is closer to turn-system usage than first-level entry, but still bypasses TurnOrchestrator.EnterNestedArea.
+
+  Exit to main map uses:
+
+  ToggleNestedArea()
+  → ExitNestedArea()
+  → HandleExitNestedArea()
+  → currentNestedArea.HandlePlayerExit(mapGenerator)
+  → TurnOrchestrator.DeregisterAllCharacters()
+
+  HandleExitNestedArea() only exits if:
+
+  currentNestedArea.NestedAreaLevel == 0 ||
+  currentNestedArea.ParentCellID == currentNestedArea.MainMapCellID
+
+  On exit it:
+
+  - updates NPC group status
+  - marks the current nested cell visited
+  - sets isInNestedArea = false
+  - sets isInMainMap = true
+  - resolves main-map coordinates by searching for the cell containing the nested area
+  - calls currentNestedArea.HandlePlayerExit(mapGenerator)
+  - clears currentNestedArea
+  - clears nested positions
+  - syncs PlayerStats
+  - updates description
+
+  LeaveNestedAreaToParent() handles returning from deeper areas to a parent nested area. It uses PlayerStats.Instance.FacingCellParentID, finds the parent nested area through
+  MapGenerator.FindNestedAreaBasedOnNestedAreaID, calls MoveToNestedAreaPosition, then updates currentNestedArea, nestedMapPosition, map display, stats, description, and action menu.
+
+  Nested Area State Model
+
+  Nested areas are all of these at once:
+
+  - runtime data containers
+  - procedural map holders
+  - object/character containers
+  - generation contexts
+  - reentry/exit lifecycle handlers
+  - partial turn-registration helpers
+  - hostile-area state holders
+
+  BaseNestedArea owns:
+
+  - AreaMap
+  - generated and placed animals/monsters
+  - corpses/carcasses/plants
+  - HasVisited, LastDayVisited, LastSeasonVisited
+  - IsHostileArea
+  - GetAllCharactersInArea
+  - HandlePlayerExit
+  - HandlePlayerReentry
+  - UpdateHostileAreaStatus
+  - object add/remove/replace helpers
+  - turn registration helpers
+
+  That is workable for a solo project, but it means nested areas are not pure data. They are active runtime model objects.
+
+  Source Of Truth For Location
+
+  There is no single source of truth.
+
+  Location is duplicated across:
+
+  - PlayerController.playerPosition
+  - PlayerController.nestedMapPosition
+  - PlayerController.currentNestedArea
+  - PlayerController.isInNestedArea
+  - PlayerController.isInMainMap
+  - PlayerStats.Position
+  - PlayerStats.MainMapPosition
+  - PlayerStats.NestedMapPosition
+  - PlayerStats.CurrentNestedArea
+  - PlayerStats.IsInNestedArea
+  - PlayerStats.IsInMainMap
+  - PlayerStats.CurrentPlayerCharacter.Position
+  - PlayerStats.CurrentPlayerCharacter.NestedMapPosition
+  - PlayerStats.CurrentPlayerCharacter.CurrentNestedArea
+  - cell flags such as isPlayerPresent and isPassable
+
+  PlayerController.UpdateAllPlayerStats() is the main syncing bridge. That makes PlayerController the practical source of truth, while PlayerStats is the global read model. The issue is that other systems also
+  mutate PlayerStats and Character.CurrentNestedArea, so the boundary is porous.
+
+  Current Turn-Registration Flow
+
+  The intended architecture is:
+
+  TurnOrchestrator
+  → ExplorationTurnManager or CombatTurnManager
+  → BaseTurnManager registration/cycle logic
+
+  BaseTurnManager owns the actual active turn data:
+
+  - characterTurnDataDict
+  - sortedCharacterList
+  - currentTurnIndex
+  - isPlayerTurn
+
+  Registration in BaseTurnManager.RegisterCharacter is keyed by Character.IInteractableID. Duplicate IDs are rejected with a warning.
+
+  Turn order is:
+
+  Register characters
+  → StartTurnCycle()
+  → SortCharacters()
+  → ExecuteNextTurn()
+  → OnPlayerTurnStart() or OnNPCTurnExecute()
+  → EndTurnForCharacter()
+  → ExecuteNextTurn()
+  → EndCycle()
+
+  ExplorationTurnManager differs from combat mostly by:
+
+  - no delay
+  - skips characters not in PlayerStats.Instance.CurrentNestedArea
+  - resets player move points
+  - calls PlayerController.Instance.UpdateAdaptiveActionMenu()
+  - restarts continuously after cycle end
+
+  CombatTurnManager differs by:
+
+  - respects GameManager.Instance.ActiveTurnManager
+  - uses delay when the area is hostile
+  - resets player AP and MP
+  - updates turn order UI
+  - invokes OnPlayerTurn
+  - restarts while active and while a player exists in the registry
+
+  The problem is not the base turn engine. The base engine is fairly coherent. The problem is how characters get into it.
+
+  Registration currently happens from many places:
+
+  - TurnOrchestrator.RegisterCharacter
+  - PlayerController.EnterNestedArea
+  - PlayerController.EnterNestedAreaWithinNestedArea
+  - NPCManager.PlaceNPC
+  - NPCManager.PlaceNPCs
+  - AnimalManager.PlaceAnimal
+  - MonsterManager.PlaceMonster
+  - BaseNestedArea.AddMonster
+  - BaseNestedArea.RemoveObjectFromArea
+  - Character.PlaceInNestedArea
+  - Character.RemoveFromNestedArea
+  - Character.LeaveArea
+  - Monster constructor
+  - Monster.OnDeath
+  - NPC.OnDeath
+  - Animal.OnDeath
+
+  Most of those call TurnOrchestrator, so the public route is somewhat centralized. But the decision of when to register or deregister is scattered.
+
+  The current source of truth for active participants is split:
+
+  - TurnOrchestrator.allCharacters is a broad list of all registered characters known to the orchestrator.
+  - ExplorationTurnManager.characterTurnDataDict is the active exploration list.
+  - CombatTurnManager.characterTurnDataDict is the active combat list.
+  - INestedArea.GetAllCharactersInArea() can reconstruct area occupants from cells.
+
+  Those can diverge.
+
+  The most important behavioral issue: if TurnOrchestrator.CurrentContext == MainMap, TurnOrchestrator.RegisterCharacter adds to allCharacters but does not register into either turn manager. Since normal
+  first-level nested entry does not call TurnOrchestrator.EnterNestedArea, that is likely what happens on ordinary entry.
+
+  Current Combat Flow
+
+  Combat appears to be inferred, not explicitly started.
+
+  The flow is approximately:
+
+  Player/NPC attacks
+  → Character.PerformAttack(...)
+  → target.IsHostile = true
+  → target.Stance = Hostile
+  → CurrentNestedArea.UpdateHostileAreaStatus()
+  → TurnOrchestrator.TryUpdateTurnContext()
+  → if CurrentContext == Exploration and area.IsHostileArea
+  → SwitchToCombatMode()
+
+  But there is a catch: TryUpdateTurnContext() only switches into combat if the current context is already Exploration.
+
+  if (CurrentContext == TurnContext.Exploration && hasHostiles)
+      SwitchToCombatMode();
+
+  If normal entry leaves the orchestrator in MainMap, combat will not start through this path.
+
+  Combatants are selected in SwitchToCombatMode() from TurnOrchestrator.allCharacters, filtered by:
+
+  character.IsInNestedArea &&
+  character.CurrentNestedArea == PlayerStats.Instance.CurrentNestedArea
+
+  Then each is registered into CombatTurnManager.
+
+  This means combatants are not chosen from a dedicated combat encounter list. They are chosen from all known characters in the current nested area.
+
+  That is simple and probably appropriate for the project, but it depends on:
+
+  - allCharacters being accurate
+  - each character having correct IsInNestedArea
+  - each character having correct CurrentNestedArea
+  - the player being present in the same data model
+  - IsHostileArea being recalculated at the right time
+
+  Enemy turns call Character.ExecuteTurnActions(). That resets AP, ensures state machine exists, switches hostile characters into HostileState, updates the state machine, then runs movement toward cells of
+  interest.
+
+  Player combat turns are started by CombatTurnManager.OnPlayerTurnStart():
+
+  - updates turn order UI
+  - resets player AP
+  - resets player MP
+  - updates adaptive action menu
+  - invokes OnPlayerTurn
+
+  Player combat actions usually come from adaptive action buttons in PlayerController. Button clicks execute interactions and call turnOrchestrator.PlayerTurnCompleted() when AP is exhausted or a pending
+  action consumes the turn.
+
+  Combat ends only when:
+
+  area.IsHostileArea becomes false
+  → TurnOrchestrator.TryUpdateTurnContext()
+  → SwitchToExplorationMode()
+
+  I did not find a strong explicit “combat ended now, clean up combat state” flow. Death methods deregister some entities and mark inactive, but hostile-area status updates are inconsistent after death/
+  removal.
+
+  Dependency Map
+
+  Core nested-area dependencies:
+
+  PlayerController
+  → MapGenerator
+  → NestedAreaGenerator
+  → AreaEntryCoordinator
+  → NPCManager
+  → AnimalManager
+  → TurnOrchestrator
+  → UIController
+  → MapDisplayUI
+  → EndOfTurnManager
+  → PlayerStats
+
+  Turn dependencies:
+
+  TurnOrchestrator
+  → ExplorationTurnManager
+  → CombatTurnManager
+  → PlayerStats
+  → GameManager
+  → UIController
+  → PlayerController
+
+  Entity registration dependencies:
+
+  NPCManager / AnimalManager / MonsterManager / BaseNestedArea / Character
+  → TurnOrchestrator
+  → BaseTurnManager
+
+  Combat dependencies:
+
+  Character.PerformAttack
+  → CurrentNestedArea.UpdateHostileAreaStatus
+  → StateMachine / HostileState
+  → MessageLogManager
+  → UIEffects / UIController for player damage shake
+  → TurnOrchestrator indirectly via TryUpdateTurnContext elsewhere
+
+  UI dependencies from gameplay systems are direct and frequent:
+
+  - PlayerController calls UIController, MapDisplayUI
+  - CombatTurnManager calls UIController
+  - Character.TakeDamage calls UIEffects and UIController
+  - PlayerStats.Die calls UIController
+
+  Responsibility Table
+
+   Script                    Currently owns                                                                  Should own                                                        Risk
+  ━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PlayerController          input, movement, area transitions, state sync, turn registration, UI            input, player movement commands, maybe action-menu trigger        Very central, risky
+                             refresh, action menu
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   PlayerStats               global player state, location mirror, combat stats, panel state, some           read model / player runtime state                                 Central, risky
+                             transition commands
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   TurnOrchestrator          context switching, global character list, routing to managers                   sole public turn registration/context API                         Central, currently underused
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   BaseTurnManager           actual turn registry and cycle engine                                           exactly this                                                      Important but relatively coherent
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   ExplorationTurnManager    exploration turn behavior                                                       exploration turn behavior only                                    Medium
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   CombatTurnManager         combat turn behavior, UI updates                                                combat turn behavior, combatants, combat state hooks              Medium-high
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   AreaEntryCoordinator      environment/NPC/animal placement on entry                                       entry population/audit only                                       Good supporting role
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   NestedAreaManager         mostly empty legacy singleton                                                   probably nothing or future registry facade                        Low, possibly obsolete
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   BaseNestedArea            map/object storage, reentry/exit, hostile status, registration helpers          nested area model and lifecycle; less direct turn registration    Central model, medium-high
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   MapGenerator              main map, nested area list lookup, cell lookup                                  map and nested-area registry                                      Central but stable
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   UIController              broad UI refresh and panels                                                     UI only                                                           Central UI risk
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   NPCGenerator              creates/configures NPC data                                                     generation only                                                   Supporting
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   AnimalGenerator           creates animal data and generation lists                                        generation only                                                   Supporting
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   MonsterGenerator          likely creates monster data                                                     generation only                                                   Supporting
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   Character                 stats, movement, combat, state machine, location helpers, turn registration     character behavior, combat stats, local movement                  Very large, risky
+                             helpers
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   NPC                       NPC data/interactions/death                                                     NPC-specific behavior                                             Medium
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   Animal                    animal data/interactions/death                                                  animal-specific behavior                                          Medium
+  ────────────────────────  ──────────────────────────────────────────────────────────────────────────────  ────────────────────────────────────────────────────────────────  ───────────────────────────────────
+   Monster                   monster data/combat/death, constructor registration                             monster-specific behavior, not constructor registration           Medium-high
+
+  Risk Register
+
+  Definite problems:
+
+  - TurnOrchestrator scene references for combatManager and explorationTurnManager are missing in SampleScene.
+  - Normal first-level nested entry does not call TurnOrchestrator.EnterNestedArea, so CurrentContext likely remains MainMap.
+  - When CurrentContext is MainMap, TurnOrchestrator.RegisterCharacter does not register into a concrete turn manager.
+  - Combat transition only triggers from Exploration, not from MainMap.
+  - Monster registers itself with TurnOrchestrator in its constructor, before placement/location may be valid.
+  - Turn registration decisions are scattered across managers, entities, and nested areas.
+  - Player location state is duplicated across several objects.
+  - PlayerStats calls back into PlayerController for area transitions, which reverses expected ownership.
+
+  Likely problems:
+
+  - Deregistration is not consistently paired with every placement path.
+  - BaseNestedArea.HandlePlayerExit() deregisters NPCs/animals but not monsters via its private DeregisterAllCharacters() implementation.
+  - Death/removal may leave IsHostileArea stale unless something later calls UpdateHostileAreaStatus.
+  - TurnOrchestrator.allCharacters can retain stale inactive characters if deregistration is missed.
+  - PlayerStats.InCombat appears separate from TurnOrchestrator.CurrentContext; it may not reliably reflect actual combat context.
+  - GameManager.ActiveTurnManager, PlayerStats.RegisteredInTurnManager, PlayerStats.InCombat, Character.InCombat, and TurnOrchestrator.CurrentContext are overlapping state flags.
+
+  Possible concerns:
+
+  - LeaveNestedAreaToParent() uses FacingCellParentID and FacingCellCoordinates; if facing-cell state is stale, parent exit can target the wrong area.
+  - MapGenerator.FindNestedAreaBasedOnNestedAreaID() depends on nestedAreas being complete and free of duplicate IDs.
+  - GetAllCharactersInArea() depends on characters being placed into the expected cell collections.
+  - Animals are stored in cell.Animals, while NPCs/monsters are often stored in cell.Objects; rendering and registration paths may treat those differently.
+  - BaseTurnManager.ValidateCharacterNestedAreas() and overrides can “correct” character area data, which may hide the original source of bad registration.
+
+  Things that look okay:
+
+  - BaseTurnManager duplicate registration protection by IInteractableID is useful.
+  - BaseTurnManager adjusts currentTurnIndex when removing registered characters.
+  - ExplorationTurnManager and CombatTurnManager both skip inactive/wrong-area characters.
+  - AreaEntryCoordinator is a good direction: it removes some population responsibility from PlayerController.
+  - MapDisplayUI reads from PlayerStats.CurrentNestedArea and can display nested areas independently of turn registration.
+
+  Recommended Target Architecture
+
+  For this project, I would keep the architecture Unity-friendly and avoid a large framework.
+
+  The ideal shape:
+
+  PlayerController
+  → requests movement / area transition
+
+  AreaEntryCoordinator or AreaTransitionService
+  → owns enter/exit nested area flow
+  → updates PlayerLocationState / PlayerStats
+  → asks population managers to place entities
+  → calls TurnOrchestrator.EnterNestedArea / EnterMainMap
+  → tells UI to refresh
+
+  TurnOrchestrator
+  → only public route for turn registration/context switching
+  → owns Exploration vs Combat context
+  → owns combat transition checks
+
+  ExplorationTurnManager
+  → owns exploration participants only
+
+  CombatTurnManager
+  → owns combat participants only
+
+  NestedArea
+  → owns area map and contained entities
+  → does not directly decide turn registration except through clear lifecycle calls
+
+  Yes, nested-area entry/exit should be centralized into one coordinator.
+
+  Yes, TurnOrchestrator should be the only public route into turn registration. Managers can still call it, but they should not decide context.
+
+  Yes, CombatTurnManager should own combatants separately from exploration participants.
+
+  Yes, PlayerController should stop directly managing area transitions and turn registration over time.
+
+  Entities should generally not subscribe themselves in constructors. Area/combat managers should register them after placement.
+
+  Current location should probably remain visible through PlayerStats, but the write authority should be centralized. A small PlayerLocationState or AreaTransitionCoordinator would be cleaner than letting
+  every system mutate PlayerStats.
+
+  UI can remain direct-call for now for major refreshes. Events would help later for OnAreaEntered, OnAreaExited, OnCombatStarted, OnCombatEnded, but converting everything to events immediately would be
+  overengineering.
+
+  Safe Phased Improvement Plan
+
+  Phase 0: Documentation only
+  Files: docs only.
+  Risk: none.
+  Document the intended state machine: MainMap → Exploration → Combat → Exploration → MainMap, plus who may register characters.
+  Test: none.
+
+  Phase 1: Diagnostics and safety checks
+  Files likely: TurnOrchestrator.cs, maybe PlayerController.cs.
+  Risk: low.
+  Add manager null diagnostics in TurnOrchestrator.Awake. Add a debug summary showing current context, global count, exploration count, combat count, active area ID.
+  Behavior must remain unchanged.
+  Test: enter main game, enter nested area, attack something, exit.
+
+  Phase 2: Low-risk cleanup
+  Files likely: TurnOrchestrator.cs, PlayerController.cs.
+  Risk: low-medium.
+  Make TurnOrchestrator auto-resolve missing CombatTurnManager / ExplorationTurnManager with FindObjectOfType if inspector refs are null. This avoids scene wiring breakage without changing assets.
+  Behavior must remain unchanged except avoiding null failures.
+  Test: confirm no null warnings except intentional diagnostics.
+
+  Phase 3: Structural improvements
+  Files likely: PlayerController.cs, TurnOrchestrator.cs, AreaEntryCoordinator.cs.
+  Risk: medium.
+  Change first-level nested entry to call a single orchestrator/coordinator path that sets CurrentContext = Exploration and registers area participants once.
+  Behavior must preserve visual entry, animal/NPC placement, player position, reentry handling, and UI refresh.
+  Test: enter fresh nested area, leave, re-enter same area, enter deeper area, return to parent.
+
+  Phase 4: Combat-specific improvements
+  Files likely: TurnOrchestrator.cs, CombatTurnManager.cs, Character.cs, BaseNestedArea.cs.
+  Risk: medium-high.
+  Create explicit combat start/end diagnostics. Recalculate hostile-area status after death/removal. Ensure defeated enemies are deregistered from combat and removed from active combatants.
+  Behavior must preserve current combat interactions and AP/MP rules.
+  Test: attack NPC/animal/monster, kill target, verify turn order, verify combat ends.
+
+  Phase 5: Larger refactor only if justified
+  Files likely: PlayerController.cs, PlayerStats.cs, AreaEntryCoordinator.cs, BaseNestedArea.cs, managers.
+  Risk: high.
+  Introduce a small location/area transition service. Remove direct turn registration from constructors and entity placement helpers. Make area entry/exit emit simple events for UI refresh.
+  Behavior must remain identical from the player perspective.
+  Test full loop: generate map, generate character, enter area, fight, loot, exit, re-enter, enter deeper area.
+
+  First Suggested Patch Batch
+
+  I would not start with refactoring.
+
+  Patch Batch B should be diagnostics and safe wiring only:
+
+  1. TurnOrchestrator.cs
+     Add null checks in Awake() for combatManager and explorationTurnManager. If null, find them in scene. Log clear warnings.
+     Risk: low.
+     Why: scene currently has managers but missing serialized refs.
+
+  2. TurnOrchestrator.cs
+     Add a public debug summary method for current context and registered counts.
+     Risk: low.
+     Why: lets you validate behavior without changing flow.
+
+  3. PlayerController.cs
+     Add temporary diagnostic logs around nested entry showing orchestrator context before/after entry.
+     Risk: low.
+     Why: confirms whether normal entry leaves context stuck in MainMap.
+
+  I would not yet change the actual entry path to call TurnOrchestrator.EnterNestedArea. That is probably the right direction, but it may change gameplay timing and registrations.
+
+  Direct Answers
+
+  1. Is nested-area entry/exit currently understandable?
+     Understandable after tracing, but not locally obvious.
+
+  2. Is it robust?
+     No. It works visually, but state ownership and turn context are fragile.
+
+  3. Is there a single source of truth for where the player is?
+     No. PlayerController is the practical writer, PlayerStats is the global mirror, and CurrentPlayerCharacter also stores location.
+
+  4. Is turn registration centralized enough?
+     No. Calls route through TurnOrchestrator, but registration decisions are scattered.
+
+  5. Is deregistration safe enough?
+     Not yet. Duplicate protection exists, but missed deregistration and stale global lists remain likely.
+
+  6. Is combat cleanly separated from exploration?
+     Partially in manager classes, but not cleanly in state flow. Combat depends on hostile-area polling and shared registrations.
+
+  7. What is the most dangerous part of the current design?
+     Normal nested entry bypasses TurnOrchestrator.EnterNestedArea, so the orchestrator context can remain MainMap while the player is inside a nested area.
+
+  8. What is the safest first improvement?
+     Add TurnOrchestrator diagnostics and auto-resolve missing manager refs without changing gameplay flow.
+
+  9. What should absolutely not be refactored yet?
+     Do not rewrite Character, BaseNestedArea, or the full interaction system yet. Do not change serialized field names. Do not replace the turn system wholesale.
+
+  10. If I inherited this project, what would I do first?
+     I would document the intended state machine, add runtime diagnostics to prove actual context/registration state, then make TurnOrchestrator safely resolve its managers before touching behavior.
+
+─ Worked for 4m 54s ─────────────────────────────────────────────────────────────────────────────────────────────

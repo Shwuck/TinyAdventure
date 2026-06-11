@@ -134,6 +134,7 @@ public class ItemDataLoader : MonoBehaviour, IDataLoader
         { WeaponType.Sharp, new List<DamageType> { DamageType.Slashing, DamageType.Piercing } },
         { WeaponType.Blunt, new List<DamageType> { DamageType.Bludgeoning, DamageType.Crushing } },
         { WeaponType.Serrated, new List<DamageType> { DamageType.Rending } },
+        { WeaponType.Ranged, new List<DamageType> { DamageType.Piercing } },
         { WeaponType.Magic, new List<DamageType> { DamageType.Magic } }
     };
 

@@ -1,0 +1,344 @@
+• No files were edited.
+
+  High-Level Pipeline
+
+  TinyAdventure’s display pipeline is mostly TextMeshPro UI rendering, not sprite/tilemap rendering.
+
+  The rough flow is:
+
+  JSON/data + generated runtime state
+          ↓
+  Managers/generators build world objects, cells, NPCs, items, nested areas
+          ↓
+  PlayerStats, GameManager, MapGenerator, PlayerController hold current state
+          ↓
+  UIController refreshes panels and map display
+          ↓
+  MapDisplayUI converts world state into TMP rich-text strings
+          ↓
+  TextMeshProUGUI fields, buttons, panels, colors, effects, and optional post-FX appear on screen
+
+  The main files involved are:
+
+  - /C:/Game Design/Unity/TinyAdventure/Assets/UI/MapDisplayUI.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/UIController.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/PlayerController.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/UI/InventoryUI.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/DialoguePanelUI.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/UI Panels/TradePanelUI.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/MessageLogUIManager.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/UIEffects.cs
+  - /C:/Game Design/Unity/TinyAdventure/Assets/PostFXOrchestrator.cs
+
+  1. Data Becomes Runtime State
+
+  Most visual output starts from data-driven runtime objects:
+
+  - JSON under Assets/StreamingAssets feeds loaders such as item, race, dialogue, recipe, personality, and generation systems.
+  - MapGenerator produces the main Cell[,] map.
+  - Each Cell contains terrain, weather, magic level, ownership/faction info, landmarks, villages, camps, dungeons, caves, nested areas, and object collections.
+  - Nested maps come from INestedArea.GetNestedMap().
+  - NPCs, animals, items, containers, interactables, and environmental objects are generated and placed into cells.
+  - PlayerStats.Instance acts as the shared current-state snapshot: player position, current cell, current nested area, keyboard panel, active character, money, map mode, and so on.
+
+  Assumption: the data loaders and generators are responsible for populating PermaLists, item definitions, NPC templates, terrain rules, etc. The display layer generally consumes the generated result rather
+  than loading JSON directly.
+
+  2. Game State Controls What Display Mode Is Used
+
+  The display mode is chosen mostly by GameManager and PlayerStats.
+
+  Important flags/state include:
+
+  - PlayerStats.Instance.IsInMainMap
+  - PlayerStats.Instance.IsInNestedArea
+  - PlayerStats.Instance.Position
+  - PlayerStats.Instance.MainMapPosition
+  - PlayerStats.Instance.NestedAreaPosition
+  - PlayerStats.Instance.CurrentNestedArea
+  - PlayerStats.Instance.CurrentCell
+  - PlayerStats.Instance.SwapOutputs
+  - GameManager.Instance.showFullMap
+  - GameManager.Instance.showMagicMap
+  - GameManager.Instance.showSubMap
+  - GameManager.Instance.showFactions
+  - GameManager.Instance.showWeatherMap
+  - GameManager.Instance.highlightPOI
+
+  Those determine whether the UI shows:
+
+  - normal terrain map
+  - magic map
+  - subterranean map
+  - faction/ownership map
+  - weather map
+  - main map plus nested map
+  - swapped main/nested output
+
+  3. Main Map Rendering
+
+  MapDisplayUI.UpdateBothMaps() is the central map refresh method.
+
+  When the player is on the main map:
+
+  PlayerStats position
+          ↓
+  MapGenerator.GetCell(position)
+          ↓
+  GameManager display flags
+          ↓
+  MapDisplayUI selects a rendering mode
+          ↓
+  TextMeshPro map string is rebuilt
+          ↓
+  mapDisplayText.text is assigned
+
+  The normal main map renderer is UpdateMapDisplay().
+
+  It loops over either:
+
+  - the full map, if showFullMap is enabled, or
+  - a region around the player otherwise.
+
+  For each cell it decides what symbol to show:
+
+  - player position: X
+  - unseen cell: ?
+  - visible terrain: terrain symbol
+  - highlighted point of interest: i
+  - seasonal/climate terrain colors via GetColoredSymbolForTerrain
+
+  The output is not a tilemap. It is a long string containing symbols and TMP rich-text color tags, for example:
+
+  <color=#00AA00>F</color>
+  <color=#FFFFFF>?</color>
+  <color=#FFFF00>X</color>
+
+  That string is assigned to a TMP_Text field.
+
+  4. Alternative Map Layers
+
+  MapDisplayUI has separate rendering methods for special map views:
+
+  - UpdateMagicMapDisplay() renders cells based on cell.MagicLevel.
+  - UpdateSubterraneanMapDisplay() renders cell.SubterraneanTerrain.
+  - UpdateFactionMapDisplay() colors terrain by faction/ownership state.
+  - UpdateWeatherMapDisplay() renders weather symbols/colors from cell.CurrentWeather.
+
+  These are alternate textual projections of the same Cell[,] data.
+
+  The important point: the map is one data structure, but the UI can render different “lenses” over it.
+
+  5. Nested Area Rendering
+
+  When the player is inside a nested area, MapDisplayUI.UpdateNestedMapDisplay() renders the nested map.
+
+  The flow is:
+
+  PlayerStats.CurrentNestedArea
+          ↓
+  INestedArea.GetNestedMap()
+          ↓
+  Nested Cell[,] loop
+          ↓
+  terrain/object/player/visibility symbol chosen
+          ↓
+  nestedMapDisplayText.text assigned
+
+  Nested display priority appears to be:
+
+  1. Player position gets X.
+  2. If active objects exist in the cell, display a character/object symbol.
+  3. If the cell can be seen by NPCs and shift is held, display *.
+  4. Otherwise display terrain.
+
+  A notable behavior: nested rendering primarily checks cell.Objects. If NPCs or animals are stored only in separate NPCs / Animals collections and not also represented in Objects, they may not appear on the
+  nested map. I am not saying this is definitely broken, only that the renderer’s visible-object path depends heavily on how generators populate Cell.Objects.
+
+  6. Player Movement Updates the Visual State
+
+  PlayerController is the bridge between input, game state, and display refresh.
+
+  Movement flow is roughly:
+
+  Keyboard input / button action
+          ↓
+  PlayerController validates move
+          ↓
+  Player position and cell state mutate
+          ↓
+  PlayerStats is updated
+          ↓
+  MapDisplayUI.UpdateBothMaps()
+          ↓
+  PlayerController.UpdateDescription()
+          ↓
+  Adaptive action menu refreshes
+          ↓
+  UIController may also refresh maps/panels
+
+  PlayerController handles:
+
+  - main-map movement
+  - nested-area movement
+  - entering nested areas
+  - exiting nested areas
+  - facing direction
+  - description text
+  - adaptive action buttons
+  - interaction execution
+
+  The current location description is also text-based. PlayerController.UpdateMainMapDescription() and UpdateNestedAreaDescription() build natural-language descriptions and write them into descriptionText.
+
+  7. UIController Is the Main Screen Coordinator
+
+  UIController is the broad UI coordinator.
+
+  Once GameManager.Instance.GameStarted is true, its Update() refreshes several visible pieces:
+
+  - map display via UpdateMaps()
+  - date/time text from TimeManager
+  - message log via MessageLogUIManager
+  - player name button text
+  - current cell text
+  - player character details
+  - keyboard shortcut handling
+  - panel visibility
+
+  It also controls many panel GameObjects:
+
+  - inventory
+  - crafting
+  - cooking
+  - smithing
+  - trade
+  - dialogue
+  - donation
+  - village info
+  - hint panel
+  - death panel
+  - greyout panel
+  - main menu / character creation / map generation panels
+
+  So the visual pipeline has two layers:
+
+  MapDisplayUI = renders maps
+  UIController = orchestrates the wider UI screen and panels
+
+  8. Panels Render Their Own Text
+
+  Many UI panels are self-contained renderers over shared state.
+
+  Examples:
+
+  - InventoryUI reads PlayerStats.Instance.CurrentPlayerCharacter.Inventory, builds item/equipment text, highlights selected rows with TMP tags, and creates action buttons.
+  - TradePanelUI reads player/NPC inventories, generates player item text, NPC item text, trade list text, money totals, and selected-item descriptions.
+  - DialoguePanelUI reads an NPC, asks DialogueManager for dialogue responses, then instantiates response/option prefabs.
+  - MessageLogUIManager keeps a filtered list of messages and writes the last 15 visible entries to a TMP field.
+
+  These panels generally do not draw world visuals directly. They read current game objects and render text/buttons.
+
+  9. Adaptive Action Menu
+
+  The adaptive action menu is generated dynamically by PlayerController.
+
+  The flow is:
+
+  Current nested cell / facing cell
+          ↓
+  Find interactable objects/environment
+          ↓
+  Ask each interaction whether it is available
+          ↓
+  Instantiate action button prefab
+          ↓
+  Set TMP button text
+          ↓
+  Attach click listener
+          ↓
+  Click mutates state and refreshes UI
+
+  This means available buttons are a visual projection of nearby interactable state, not a static UI list.
+
+  10. Styling, Colors, Fonts, and Effects
+
+  Visual styling is layered on top of the text/panel system.
+
+  ColourSettingsPanelUI lets dropdowns choose colors from ColourPool.AllColours, then calls:
+
+  - UIController.UpdatePanelColors(color)
+  - UIController.UpdateBackgroundColor(color)
+  - UIController.UpdateMapColor(color)
+
+  UIController applies those colors to Image components or selected map/background objects.
+
+  FontManager.ApplyFontStyleToAllTextMeshPro() finds all TMP components and applies a chosen font asset.
+
+  UIEffects wraps DOTween effects:
+
+  - shake
+  - fade
+  - move
+  - pulse
+  - panel glow
+  - border glow
+  - text brightness fades
+
+  UIController uses this for time-of-day brightness changes across panels.
+
+  11. Optional Post-Processing Layer
+
+  PostFXOrchestrator is a visual-only layer above the normal UI/game rendering.
+
+  It can control:
+
+  - URP renderer feature named CRTFeature
+  - CRT material values
+  - overlay opacity
+  - panel wear materials
+  - UI jitter components
+  - reduce-motion behavior through UIEffects
+
+  After Patch Batch A, if RetroVisualSettings is missing, this system logs a warning and skips setup instead of throwing. That means the game should continue visually without post-FX.
+
+  This layer should be treated as optional decoration unless specific UI effects become required by design.
+
+  12. What Actually Appears on Screen
+
+  Most of what the player sees is produced by four mechanisms:
+
+  1. TMP map strings
+     Main map and nested map are generated as colored text grids.
+
+  2. TMP descriptive text
+     Current cell, player details, messages, item descriptions, NPC dialogue, trade info, and inventory are all text fields.
+
+  3. Unity UI GameObjects
+     Panels, buttons, dropdowns, overlays, and prefabs are activated/deactivated or instantiated at runtime.
+
+  4. Styling/effects layer
+     Image colors, TMP font/color tags, DOTween animations, and optional URP CRT effects alter presentation.
+
+  Main Risks In The Display Pipeline
+
+  The central risky scripts are:
+
+  - MapDisplayUI: owns the core map-to-text rendering logic.
+  - UIController: owns broad UI refresh and panel orchestration.
+  - PlayerController: mutates player/world state and directly triggers visual refreshes.
+  - PlayerStats: shared state used by almost every visual system.
+
+  The main structural risks are:
+
+  - Display refresh is split between per-frame UIController.Update() and direct calls from PlayerController.
+  - PlayerController and PlayerStats both hold important player-position/state information.
+  - Many UI references are inspector-wired, so missing fields can cause null issues.
+  - Map rendering rebuilds large TMP strings frequently.
+  - Visual representation depends on data conventions, especially nested cells and cell.Objects.
+  - Optional post-FX and UI effects are mixed with core UI, though they are mostly separable.
+
+  Summary
+
+  TinyAdventure’s display system is a data-driven text UI. The world exists as generated cells, objects, NPCs, items, and player state. MapDisplayUI turns that state into colored text maps. UIController keeps
+  the surrounding panels current. PlayerController updates the game state and forces map/description/action-menu refreshes after movement and interactions. Panel scripts like inventory, trade, dialogue, and
+  message log render their own text/button views from shared runtime state. Optional color, font, animation, and CRT systems sit on top of that core pipeline.
