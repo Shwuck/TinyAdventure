@@ -187,6 +187,11 @@ public class TurnOrchestrator : MonoBehaviour
 		int occupantsConsidered = 0;
 		int occupantsRegistered = 0;
 		int duplicatePlayerSkipped = 0;
+		int duplicateOccupantsSkipped = 0;
+		int wrongAreaOccupantsSkipped = 0;
+		int inactiveOccupantsSkipped = 0;
+		int deadButRegistered = 0;
+		HashSet<int> registeredOccupantIds = new HashSet<int> { playerCharacter.IInteractableID };
 		var occupants = area.GetAllCharactersInArea();
 
 		foreach (var character in occupants)
@@ -206,8 +211,18 @@ public class TurnOrchestrator : MonoBehaviour
 				continue;
 			}
 
+			if (!registeredOccupantIds.Add(character.IInteractableID))
+			{
+				duplicateOccupantsSkipped++;
+				// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+				TurnDiagnosticsLogger.LogWarning("TurnOrchestrator.EnterExplorationArea duplicate occupant skipped",
+					$"Area: {area.Name} ({area.NestedAreaID})\nDuplicateID: {character.IInteractableID}", character);
+				continue;
+			}
+
 			if (!character.IsActive)
 			{
+				inactiveOccupantsSkipped++;
 				// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 				TurnDiagnosticsLogger.LogWarning("TurnOrchestrator.EnterExplorationArea inactive occupant skipped",
 					$"Area: {area.Name} ({area.NestedAreaID})", character);
@@ -216,6 +231,7 @@ public class TurnOrchestrator : MonoBehaviour
 
 			if (!character.IsInNestedArea || character.CurrentNestedArea != area)
 			{
+				wrongAreaOccupantsSkipped++;
 				// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 				TurnDiagnosticsLogger.LogWarning("TurnOrchestrator.EnterExplorationArea wrong-area occupant skipped",
 					$"Area: {area.Name} ({area.NestedAreaID})", character);
@@ -224,6 +240,7 @@ public class TurnOrchestrator : MonoBehaviour
 
 			if (!character.IsAlive)
 			{
+				deadButRegistered++;
 				// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 				TurnDiagnosticsLogger.LogWarning("TurnOrchestrator.EnterExplorationArea registering IsAlive false occupant",
 					"IsAlive is currently not reliable enough to filter here; registering for diagnostics continuity.", character);
@@ -243,6 +260,10 @@ public class TurnOrchestrator : MonoBehaviour
 			$"Occupants considered: {occupantsConsidered}\n" +
 			$"Occupants registered: {occupantsRegistered}\n" +
 			$"Duplicate player registration skipped: {duplicatePlayerSkipped}\n" +
+			$"Duplicate occupant IDs skipped: {duplicateOccupantsSkipped}\n" +
+			$"Wrong-area occupants skipped: {wrongAreaOccupantsSkipped}\n" +
+			$"Inactive occupants skipped: {inactiveOccupantsSkipped}\n" +
+			$"Dead-but-registered occupants: {deadButRegistered}\n" +
 			$"allCharacters.Count: {allCharacters.Count}\n" +
 			$"Exploration.Count: {DiagnosticExplorationRegisteredCount}\n" +
 			$"Combat.Count: {DiagnosticCombatRegisteredCount}");
@@ -268,6 +289,8 @@ public class TurnOrchestrator : MonoBehaviour
 			$"allCharacters.Count: {allCharacters.Count}\n" +
 			$"Exploration.Count: {DiagnosticExplorationRegisteredCount}\n" +
 			$"Combat.Count: {DiagnosticCombatRegisteredCount}");
+		// CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+		NestedMapDebugger.LogSnapshot(area, "SNAPSHOT_ENTER_AREA EnterExplorationArea completed");
 	}
 
 

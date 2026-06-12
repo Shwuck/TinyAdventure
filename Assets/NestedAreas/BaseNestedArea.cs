@@ -536,21 +536,126 @@ public abstract class BaseNestedArea : INestedArea
 
     public List<Monster> GetAllMonstersInArea()
     {
-        return new List<Monster>(MonstersInArea);
+        List<Monster> allMonsters = new List<Monster>();
+
+        foreach (var monster in MonstersInArea)
+        {
+            if (monster != null && !allMonsters.Contains(monster))
+            {
+                allMonsters.Add(monster);
+            }
+        }
+
+        if (AreaMap != null)
+        {
+            for (int x = 0; x < AreaMap.GetLength(0); x++)
+            {
+                for (int y = 0; y < AreaMap.GetLength(1); y++)
+                {
+                    Cell cell = AreaMap[x, y];
+                    if (cell?.Objects == null) continue;
+
+                    foreach (var monster in cell.Objects.OfType<Monster>())
+                    {
+                        if (monster != null && !allMonsters.Contains(monster))
+                        {
+                            allMonsters.Add(monster);
+                        }
+                    }
+                }
+            }
+        }
+
+        return allMonsters;
     }
 
     public virtual List<Character> GetAllCharactersInArea()
     {
         List<Character> allCharacters = new List<Character>();
+        Dictionary<int, Character> seenById = new Dictionary<int, Character>();
+        int cellObjectCharacters = 0;
+        int cellAnimals = 0;
+        int listNPCs = 0;
+        int listAnimals = 0;
+        int listMonsters = 0;
 
-        // Get all NPCs
-        allCharacters.AddRange(GetAllNPCsInArea());
+        void AddCharacter(Character character, string source)
+        {
+            if (character == null) return;
 
-        // Get all Animals
-        allCharacters.AddRange(GetAllAnimalsInArea());
+            if (seenById.TryGetValue(character.IInteractableID, out Character existing))
+            {
+                if (!ReferenceEquals(existing, character))
+                {
+                    TurnDiagnosticsLogger.LogWarning(
+                        "BaseNestedArea.GetAllCharactersInArea duplicate occupant skipped",
+                        $"NestedArea: {Name} ({NestedAreaID})\nSource: {source}\nDuplicateID: {character.IInteractableID}",
+                        character);
+                }
+                return;
+            }
 
-        // Get all Monsters
-        allCharacters.AddRange(GetAllMonstersInArea());
+            seenById[character.IInteractableID] = character;
+            allCharacters.Add(character);
+        }
+
+        if (AreaMap != null)
+        {
+            for (int x = 0; x < AreaMap.GetLength(0); x++)
+            {
+                for (int y = 0; y < AreaMap.GetLength(1); y++)
+                {
+                    Cell cell = AreaMap[x, y];
+                    if (cell == null) continue;
+
+                    if (cell.Objects != null)
+                    {
+                        foreach (var character in cell.Objects.OfType<Character>())
+                        {
+                            cellObjectCharacters++;
+                            AddCharacter(character, $"Cell.Objects[{x},{y}]");
+                        }
+                    }
+
+                    if (cell.Animals != null)
+                    {
+                        foreach (var animal in cell.Animals)
+                        {
+                            cellAnimals++;
+                            AddCharacter(animal, $"Cell.Animals[{x},{y}]");
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (var npc in GetAllNPCsInArea())
+        {
+            listNPCs++;
+            AddCharacter(npc, "GetAllNPCsInArea");
+        }
+
+        foreach (var animal in GetAllAnimalsInArea())
+        {
+            listAnimals++;
+            AddCharacter(animal, "GetAllAnimalsInArea");
+        }
+
+        foreach (var monster in GetAllMonstersInArea())
+        {
+            listMonsters++;
+            AddCharacter(monster, "GetAllMonstersInArea");
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[OCCUPANT AUDIT]", "BaseNestedArea.GetAllCharactersInArea",
+            $"NestedArea: {Name} ({NestedAreaID})\n" +
+            $"Visible occupant count: {cellObjectCharacters + cellAnimals}\n" +
+            $"Cell.Objects character count: {cellObjectCharacters}\n" +
+            $"Cell.Animals count: {cellAnimals}\n" +
+            $"GetAllNPCsInArea count: {listNPCs}\n" +
+            $"GetAllAnimalsInArea count: {listAnimals}\n" +
+            $"GetAllMonstersInArea count: {listMonsters}\n" +
+            $"GetAllCharactersInArea.Count: {allCharacters.Count}");
 
         return allCharacters;
     }
@@ -697,14 +802,13 @@ public abstract class BaseNestedArea : INestedArea
             for (int y = 0; y < Size; y++)
             {
                 Cell cell = AreaMap[x, y];
-                if (cell.isNPCPresent)
+                if (cell?.Objects == null) continue;
+
+                foreach (var npc in cell.Objects.OfType<NPC>())
                 {
-                    foreach (var obj in cell.Objects)
+                    if (!allNPCs.Contains(npc))
                     {
-                        if (obj is NPC npc)
-                        {
-                            allNPCs.Add(npc);
-                        }
+                        allNPCs.Add(npc);
                     }
                 }
             }
@@ -720,7 +824,29 @@ public abstract class BaseNestedArea : INestedArea
             for (int y = 0; y < Size; y++)
             {
                 Cell cell = AreaMap[x, y];
-                allAnimals.AddRange(cell.Animals);
+                if (cell == null) continue;
+
+                if (cell.Animals != null)
+                {
+                    foreach (var animal in cell.Animals)
+                    {
+                        if (animal != null && !allAnimals.Contains(animal))
+                        {
+                            allAnimals.Add(animal);
+                        }
+                    }
+                }
+
+                if (cell.Objects != null)
+                {
+                    foreach (var animal in cell.Objects.OfType<Animal>())
+                    {
+                        if (animal != null && !allAnimals.Contains(animal))
+                        {
+                            allAnimals.Add(animal);
+                        }
+                    }
+                }
             }
         }
         return allAnimals;
@@ -1212,12 +1338,32 @@ public abstract class BaseNestedArea : INestedArea
             Cell cell = GetCellAtPosition(position);
             if (cell != null)
             {
+                INestedArea areaBefore = animal.CurrentNestedArea;
+                bool wasInNestedArea = animal.IsInNestedArea;
+
                 animal.Position = position; // Update animal position
                 animal.NestedMapPosition = position; // Update nested map position
+                animal.IsInNestedArea = true;
+                animal.CurrentNestedArea = this;
+                animal.CanLeaveArea = true;
                 animal.IsActive = true; // Set animal to active
 
                 cell.isPassable = false; // Set cell to impassable
                 cell.Animals.Add(animal); // Add animal to the cell's animal list
+
+                // CODEXLOG002_MOVEMENT_AI: temporary animal location-state diagnostic.
+                MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "BaseNestedArea.AddAnimal assigned animal area state",
+                    $"Source collection: Cell.Animals[{position.x},{position.y}]\n" +
+                    $"Cell position: {position}\n" +
+                    $"CurrentNestedArea before: {MovementAIDiagnosticsLogger.FormatArea(areaBefore)}\n" +
+                    $"CurrentNestedArea after: {MovementAIDiagnosticsLogger.FormatArea(animal.CurrentNestedArea)}\n" +
+                    $"IsInNestedArea before: {wasInNestedArea}\n" +
+                    $"IsInNestedArea after: {animal.IsInNestedArea}\n" +
+                    $"Area assignment repaired: {areaBefore != this || !wasInNestedArea}\n" +
+                    "Repair source/method: BaseNestedArea.AddAnimal",
+                    animal);
+                // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
+                TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "BaseNestedArea.AddAnimal placed animal in nested area", $"NestedArea: {Name} ({NestedAreaID})\nSource collection: Cell.Animals[{position.x},{position.y}]", animal);
 
                 Debug.Log($"Animal {animal.Name} added to cell at position {position}.");
             }

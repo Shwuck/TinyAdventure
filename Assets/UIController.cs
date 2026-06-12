@@ -261,6 +261,11 @@ public class UIController : MonoBehaviour
 
     public void UpdateMapsAfterAction()
     {
+        // CODEXLOG002_MOVEMENT_AI: temporary map refresh diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[MAP REFRESH]", "UIController.UpdateMapsAfterAction",
+            $"mapDisplayUI assigned: {mapDisplayUI != null}\n" +
+            $"Player area: {MovementAIDiagnosticsLogger.FormatArea(PlayerStats.Instance?.CurrentNestedArea)}\n" +
+            $"Player position: {PlayerStats.Instance?.CurrentPlayerCharacter?.NestedMapPosition.ToString() ?? "NULL"}");
         UpdateMaps();
     }
 

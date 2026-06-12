@@ -84199,3 +84199,21 @@ combatManager.Assigned: True
 explorationTurnManager.Assigned: True
 WARNING: Context is Exploration but ExplorationTurnManager has zero participants.
 
+CODEXLOG001_TURNLIFECYCLE [SHUTDOWN] 2026-06-11 22:51:54 | frame=74162
+Event: TurnOrchestrator.OnApplicationQuit
+Scene: SampleScene
+Context: Exploration
+CurrentNestedArea:  (ID=10, Level=3)
+PlayerStats.CurrentNestedArea:  (ID=10, Level=3)
+PlayerCharacter.CurrentNestedArea:  (ID=10, Level=3)
+PlayerStats.IsInNestedArea: True
+PlayerStats.IsInMainMap: False
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 0
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+WARNING: Context is Exploration but ExplorationTurnManager has zero participants.
+

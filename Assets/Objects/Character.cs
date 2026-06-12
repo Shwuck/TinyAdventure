@@ -177,18 +177,67 @@ public class Character : IInteractable
 
     public bool MoveInDirection(Direction direction) => TryMove(direction);
 
+    public void ResetMovePointsForTurn()
+    {
+        // Centralized so future turn movement rules can account for status, species, injuries, encumbrance, terrain, or other modifiers.
+        MovePoints = MaxMovePoints;
+    }
+
     private bool TryMove(Direction direction)
     {
+        Vector2Int sourcePosition = NestedMapPosition;
+        Vector2Int targetPosition = NestedMapPosition + DirectionToVector(direction);
+        int currentCellObjectCount = -1;
+        int targetCellObjectCount = -1;
+        bool targetPassable = false;
+        if (CurrentNestedArea != null && IsWithinMapBounds(sourcePosition, CurrentNestedArea))
+        {
+            Cell currentCell = CurrentNestedArea.GetCellAtPosition(sourcePosition);
+            currentCellObjectCount = currentCell?.Objects?.Count ?? -1;
+        }
+
+        if (CurrentNestedArea != null && IsWithinMapBounds(targetPosition, CurrentNestedArea))
+        {
+            Cell targetCell = CurrentNestedArea.GetCellAtPosition(targetPosition);
+            targetCellObjectCount = targetCell?.Objects?.Count ?? -1;
+            targetPassable = targetCell != null && targetCell.isPassable && (targetCell.Objects == null || targetCell.Objects.All(obj => obj != null && obj.IsPassable));
+        }
+
+        // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.TryMove begin",
+            $"Movement attempted: True\n" +
+            $"Direction: {direction}\n" +
+            $"Source position: {sourcePosition}\n" +
+            $"Target position: {targetPosition}\n" +
+            $"Current area: {MovementAIDiagnosticsLogger.FormatArea(CurrentNestedArea)}\n" +
+            $"MovePoints before: {MovePoints}\n" +
+            $"Target passable precheck: {targetPassable}\n" +
+            $"Old cell occupant count: {currentCellObjectCount}\n" +
+            $"New cell occupant count: {targetCellObjectCount}",
+            this);
+        // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+        NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_BEFORE_ENTITY_MOVE");
+
         if (MovePoints <= 0)
         {
             Debug.LogWarning($"{Name} has no MovePoints left to move.");
+            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.TryMove blocked",
+                $"Movement attempted: True\nBlocked reason: no MovePoints\nPosition changed: False\nPosition after: {NestedMapPosition}",
+                this);
+            // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+            NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_AFTER_ENTITY_MOVE_BLOCKED_NO_MP");
             return false;
         }
 
-        Vector2Int targetPosition = NestedMapPosition + DirectionToVector(direction);
-
         if (!IsValidMove(targetPosition))
         {
+            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.TryMove blocked",
+                $"Movement attempted: True\nBlocked reason: IsValidMove returned false\nTarget position: {targetPosition}\nPosition changed: False\nPosition after: {NestedMapPosition}",
+                this);
+            // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+            NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_AFTER_ENTITY_MOVE_BLOCKED_INVALID");
             return false;
         }
 
@@ -196,6 +245,18 @@ public class Character : IInteractable
         MovePoints--;
 
         Debug.Log($"{Name} moved {direction} to {targetPosition}. Remaining MovePoints: {MovePoints}");
+        // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.TryMove end",
+            $"Movement attempted: True\n" +
+            $"Movement succeeded: True\n" +
+            $"Position before: {sourcePosition}\n" +
+            $"Position after: {NestedMapPosition}\n" +
+            $"Position changed: {NestedMapPosition != sourcePosition}\n" +
+            $"MovePoints after: {MovePoints}\n" +
+            $"Map refresh requested: False",
+            this);
+        // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+        NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_AFTER_ENTITY_MOVE");
         return true;
     }
 
@@ -203,12 +264,20 @@ public class Character : IInteractable
     {
         if (!IsWithinMapBounds(targetPosition, CurrentNestedArea))
         {
+            // CODEXLOG002_MOVEMENT_AI: temporary movement validation diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.IsValidMove out of bounds",
+                $"Target position: {targetPosition}\nCurrent area: {MovementAIDiagnosticsLogger.FormatArea(CurrentNestedArea)}",
+                this);
             return HandleOutOfBoundsMovement();
         }
 
         if (!IsCellPassable(targetPosition, CurrentNestedArea))
         {
             Debug.LogWarning($"{Name} encountered an impassable cell at {targetPosition}.");
+            // CODEXLOG002_MOVEMENT_AI: temporary movement validation diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.IsValidMove blocked",
+                $"Target position: {targetPosition}\nBlocked reason: impassable cell or blocking object",
+                this);
             return false;
         }
 
@@ -233,11 +302,20 @@ public class Character : IInteractable
     private void ExecuteMovement(Direction direction, Vector2Int targetPosition)
     {
         DirectionFacing = direction;
+        Vector2Int positionBefore = NestedMapPosition;
+        int oldCellBefore = -1;
+        int newCellBefore = -1;
+        bool oldCellRemoval = false;
+        bool newCellAdd = false;
 
         // Debugging Logs
         if (CurrentNestedArea == null)
         {
             Debug.LogError($"ExecuteMovement: CurrentNestedArea is NULL for {Name} before getting cell at {NestedMapPosition}");
+            // CODEXLOG002_MOVEMENT_AI: temporary movement execution diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.ExecuteMovement aborted",
+                $"Movement attempted: True\nBlocked reason: CurrentNestedArea null\nTarget position: {targetPosition}",
+                this);
             return;
         }
 
@@ -248,22 +326,47 @@ public class Character : IInteractable
         {
             Debug.LogError($"ExecuteMovement: Current cell at {NestedMapPosition} is NULL!");
         }
+        oldCellBefore = currentCell?.Objects?.Count ?? -1;
 
         Cell targetCell = CurrentNestedArea.GetCellAtPosition(targetPosition);
         if (targetCell == null)
         {
             Debug.LogError($"ExecuteMovement: Target cell at {targetPosition} is NULL!");
         }
+        newCellBefore = targetCell?.Objects?.Count ?? -1;
 
-        currentCell?.Objects.Remove(this);
+        if (currentCell?.Objects != null)
+        {
+            oldCellRemoval = currentCell.Objects.Remove(this);
+        }
         if (currentCell != null) currentCell.isPassable = true;
 
         // Update Position
         NestedMapPosition = targetPosition;
 
-        targetCell?.Objects.Add(this);
+        if (targetCell?.Objects != null)
+        {
+            targetCell.Objects.Add(this);
+            newCellAdd = targetCell.Objects.Contains(this);
+        }
         if (targetCell != null) CurrentCell = targetCell;
         if (targetCell != null) targetCell.isPassable = false;
+        // CODEXLOG002_MOVEMENT_AI: temporary movement execution diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.ExecuteMovement completed",
+            $"Movement attempted: True\n" +
+            $"Direction: {direction}\n" +
+            $"Source position: {positionBefore}\n" +
+            $"Target position: {targetPosition}\n" +
+            $"Position after: {NestedMapPosition}\n" +
+            $"Movement succeeded: {NestedMapPosition == targetPosition}\n" +
+            $"Old cell removal: {oldCellRemoval}\n" +
+            $"New cell add: {newCellAdd}\n" +
+            $"Old cell occupant count before: {oldCellBefore}\n" +
+            $"Old cell occupant count after: {currentCell?.Objects?.Count.ToString() ?? "NULL"}\n" +
+            $"New cell occupant count before: {newCellBefore}\n" +
+            $"New cell occupant count after: {targetCell?.Objects?.Count.ToString() ?? "NULL"}\n" +
+            $"Map refresh requested: False",
+            this);
     }
 
 
@@ -272,11 +375,19 @@ public class Character : IInteractable
         if (MovePoints <= 0)
         {
             Debug.LogWarning($"{Name} has no MovePoints left to move.");
+            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.MoveTowards blocked",
+                $"Target position: {targetPos}\nBlocked reason: no MovePoints",
+                this);
             return false;
         }
 
         // Determine the best direction to move towards target position
         Direction direction = GetDirection(NestedMapPosition, targetPos, true);
+        // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.MoveTowards selected direction",
+            $"Selected movement target: {targetPos}\nSelected direction: {direction}",
+            this);
 
         // Try to move in the calculated direction
         return TryMove(direction);
@@ -285,9 +396,20 @@ public class Character : IInteractable
 
     public void MoveRelativeToCharacter(Character target, bool moveTowards)
     {
-        if (MovePoints <= 0) return;
+        if (MovePoints <= 0)
+        {
+            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.MoveRelativeToCharacter blocked",
+                $"Target: {target?.Name ?? "NULL"}\nMoveTowards: {moveTowards}\nBlocked reason: no MovePoints",
+                this);
+            return;
+        }
 
         Direction direction = GetDirection(NestedMapPosition, target.NestedMapPosition, moveTowards);
+        // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.MoveRelativeToCharacter selected direction",
+            $"Target: {target?.Name ?? "NULL"}\nTarget position: {target?.NestedMapPosition.ToString() ?? "NULL"}\nMoveTowards: {moveTowards}\nSelected direction: {direction}",
+            this);
         TryMove(direction);
     }
 
@@ -298,13 +420,26 @@ public class Character : IInteractable
 
     public bool SimpleMovement(int cellsToMove, Direction direction)
     {
+        Vector2Int positionBefore = NestedMapPosition;
+        // CODEXLOG002_MOVEMENT_AI: temporary forced-movement diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[SHOVE]", "Character.SimpleMovement begin",
+            $"Cells to move: {cellsToMove}\nDirection: {direction}\nTarget position first step: {NestedMapPosition + DirectionToVector(direction)}",
+            this);
         for (int i = 0; i < cellsToMove; i++)
         {
             if (MovePoints <= 0 || !TryMove(direction))
             {
+                // CODEXLOG002_MOVEMENT_AI: temporary forced-movement diagnostic.
+                MovementAIDiagnosticsLogger.LogWarning("Character.SimpleMovement failed",
+                    $"Forced movement attempted: True\nStep: {i + 1}\nPosition before: {positionBefore}\nPosition after: {NestedMapPosition}\nPosition changed: {NestedMapPosition != positionBefore}",
+                    this);
                 return false;
             }
         }
+        // CODEXLOG002_MOVEMENT_AI: temporary forced-movement diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[SHOVE]", "Character.SimpleMovement completed",
+            $"Forced movement attempted: True\nPosition before: {positionBefore}\nPosition after: {NestedMapPosition}\nPosition changed: {NestedMapPosition != positionBefore}",
+            this);
         return true;
     }
 
@@ -312,14 +447,53 @@ public class Character : IInteractable
     {
         List<Direction> possibleDirections = Enum.GetValues(typeof(Direction))
             .Cast<Direction>()
-            .Where(dir => IsValidMove(NestedMapPosition + DirectionToVector(dir)))
+            .Where(dir => IsValidMoveCandidate(NestedMapPosition + DirectionToVector(dir)))
             .ToList();
+        // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveInRandomDirection candidates",
+            $"Candidate count: {possibleDirections.Count}\nCandidates: {string.Join(", ", possibleDirections)}",
+            this);
 
         if (possibleDirections.Count > 0)
         {
             Direction randomDirection = possibleDirections[UnityEngine.Random.Range(0, possibleDirections.Count)];
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveInRandomDirection selected",
+                $"Selected action: Move\nSelected direction: {randomDirection}\nTarget cell: {NestedMapPosition + DirectionToVector(randomDirection)}",
+                this);
             TryMove(randomDirection);
         }
+        else
+        {
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.MoveInRandomDirection no valid move",
+                "Selected action: None\nReason for no movement: no valid adjacent directions",
+                this);
+        }
+    }
+
+    private bool IsValidMoveCandidate(Vector2Int targetPosition)
+    {
+        INestedArea area = CurrentNestedArea;
+        if (area == null)
+        {
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement candidate diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.MoveInRandomDirection candidate skipped",
+                $"Target position: {targetPosition}\nReason: CurrentNestedArea null during candidate probe",
+                this);
+            return false;
+        }
+
+        if (!IsWithinMapBounds(targetPosition, area))
+        {
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement candidate diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveInRandomDirection candidate out of bounds",
+                $"Target position: {targetPosition}\nCurrent area: {MovementAIDiagnosticsLogger.FormatArea(area)}\nCandidate accepted: False\nLeaveArea invoked: False",
+                this);
+            return false;
+        }
+
+        return IsCellPassable(targetPosition, area);
     }
 
     public virtual void LeaveArea()
@@ -1121,6 +1295,19 @@ public class Character : IInteractable
 
     public void ExecuteTurnActions()
     {
+        Vector2Int positionBefore = NestedMapPosition;
+        int apBefore = ActionPoints;
+        int mpBefore = MovePoints;
+        // CODEXLOG002_MOVEMENT_AI: temporary ExecuteTurnActions diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[EXECUTE TURN ACTIONS]", "Character.ExecuteTurnActions begin",
+            $"Position before: {positionBefore}\n" +
+            $"AP before: {apBefore}\n" +
+            $"MP before: {mpBefore}\n" +
+            $"Stance: {Stance}\n" +
+            $"Status: {Status}\n" +
+            $"State machine type: {MovementAIDiagnosticsLogger.FormatStateMachine(this)}\n" +
+            $"Current state: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}",
+            this);
         GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Starting turn. Stance: {Stance}, State: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}, Max AP: {MaxActionPoints}, Current AP: {ActionPoints}");
 
         // Reset Action Points
@@ -1132,6 +1319,10 @@ public class Character : IInteractable
         {
             stateMachine = new StateMachine(this);
             GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - State machine was NULL. Initialized a new one.");
+            // CODEXLOG002_MOVEMENT_AI: temporary ExecuteTurnActions diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[EXECUTE TURN ACTIONS]", "Character.ExecuteTurnActions initialized state machine",
+                "Early exit reason: None\nState machine was NULL and has been initialized.",
+                this);
         }
 
         // If NPC has no active state, default to IdleState
@@ -1139,6 +1330,10 @@ public class Character : IInteractable
         {
             stateMachine.ChangeState(new IdleState());
             GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - No current state. Defaulting to IdleState.");
+            // CODEXLOG002_MOVEMENT_AI: temporary ExecuteTurnActions diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[EXECUTE TURN ACTIONS]", "Character.ExecuteTurnActions defaulted state",
+                "Early exit reason: None\nPrevious current state was NULL\nNew current state: IdleState",
+                this);
         }
 
         // Ensure NPCs in combat are actually in HostileState
@@ -1161,13 +1356,32 @@ public class Character : IInteractable
 
         // **Update State Machine**
         GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Updating state machine: {stateMachine.CurrentState?.GetType().Name ?? "No Current State"}");
+        // CODEXLOG002_MOVEMENT_AI: temporary AI decision diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions updating state machine",
+            $"State before update: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}\nStance: {Stance}\nTarget: {Target?.Name ?? "NULL"}",
+            this);
         stateMachine.Update();
 
         // Movement Logic
+        // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions calling MoveToCellsOfInterest",
+            $"CellsOfInterest count: {CellsOfInterest?.Count ?? -1}\nPosition before call: {NestedMapPosition}",
+            this);
         MoveToCellsOfInterest();
 
         // Final Log for Turn Execution
         GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Turn actions executed. Remaining AP: {ActionPoints}");
+        // CODEXLOG002_MOVEMENT_AI: temporary ExecuteTurnActions diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[EXECUTE TURN ACTIONS]", "Character.ExecuteTurnActions end",
+            $"Position before: {positionBefore}\n" +
+            $"Position after: {NestedMapPosition}\n" +
+            $"Position changed: {NestedMapPosition != positionBefore}\n" +
+            $"AP before: {apBefore}\n" +
+            $"AP after: {ActionPoints}\n" +
+            $"MP before: {mpBefore}\n" +
+            $"MP after: {MovePoints}\n" +
+            $"State after: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}",
+            this);
     }
 
     public void OnTurnEnd()
@@ -1269,12 +1483,22 @@ public class Character : IInteractable
     {
         // If an action is already logged, stick to it.
         if (CharacterActionManager.Instance.GetCharacterAction(this) != null)
+        {
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveToCellsOfInterest no action",
+                $"Selected action: None\nReason for no movement: existing logged action {CharacterActionManager.Instance.GetCharacterAction(this)}",
+                this);
             return;
+        }
 
         // Ensure CurrentNestedArea is valid
         if (CurrentNestedArea == null)
         {
             Debug.LogWarning($"{Name} has no CurrentNestedArea. Cannot move.");
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+            MovementAIDiagnosticsLogger.LogWarning("Character.MoveToCellsOfInterest no area",
+                "Selected action: None\nReason for no movement: CurrentNestedArea null",
+                this);
             return;
         }
 
@@ -1286,11 +1510,19 @@ public class Character : IInteractable
         if (!availableCells.Any())
         {
             Debug.LogWarning($"{Name} has no valid CellsOfInterest. Moving randomly.");
+            // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveToCellsOfInterest fallback random",
+                $"Selected action: MoveRandom\nReason: no valid CellsOfInterest\nCellsOfInterest count: {CellsOfInterest?.Count ?? -1}",
+                this);
             MoveInRandomDirection();
             return;
         }
 
         Vector2Int targetPos = availableCells[UnityEngine.Random.Range(0, availableCells.Count)];
+        // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveToCellsOfInterest selected target",
+            $"Selected action: MoveToCellOfInterest\nTarget cell: {targetPos}\nAvailable target count: {availableCells.Count}",
+            this);
 
         // Log action before moving to prevent conflicts
         CharacterActionManager.Instance.LogAction(this, $"MovingTo_{IInteractableID}_{targetPos}");

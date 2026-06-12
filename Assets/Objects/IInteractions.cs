@@ -297,7 +297,52 @@ public class ShoveInteraction : IInteraction
         {
             Direction shoveDirection = PlayerStats.Instance.PlayerFacing;
             int shoveStrength = 1;
+            Vector2Int positionBefore = npc.NestedMapPosition;
+            INestedArea areaBefore = npc.CurrentNestedArea;
+            Vector2Int intendedTarget = positionBefore + DirectionToVector(shoveDirection);
+            bool targetInBounds = areaBefore != null && areaBefore.IsValidPosition(intendedTarget);
+            Cell targetCell = targetInBounds ? areaBefore.GetCellAtPosition(intendedTarget) : null;
+            bool targetPassable = areaBefore != null && targetInBounds && areaBefore.IsPassable(intendedTarget);
+            int oldCellObjectCountBefore = areaBefore != null && areaBefore.IsValidPosition(positionBefore)
+                ? areaBefore.GetCellAtPosition(positionBefore)?.Objects?.Count ?? -1
+                : -1;
+            int targetCellObjectCountBefore = targetCell?.Objects?.Count ?? -1;
+
+            // CODEXLOG002_MOVEMENT_AI: temporary shove diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[SHOVE]", "ShoveInteraction.ExecuteInteraction begin",
+                $"Target position before: {positionBefore}\n" +
+                $"Intended shove direction: {shoveDirection}\n" +
+                $"Intended target cell: {intendedTarget}\n" +
+                $"Target in bounds: {targetInBounds}\n" +
+                $"Passable: {targetPassable}\n" +
+                $"Old cell occupant count before: {oldCellObjectCountBefore}\n" +
+                $"Target cell occupant count before: {targetCellObjectCountBefore}\n" +
+                "Forced movement attempted: True",
+                npc);
+            // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+            NestedMapDebugger.LogSnapshotForMovement(areaBefore, npc, "SNAPSHOT_BEFORE_SHOVE");
+
             bool wasShoved = npc.SimpleMovement(shoveStrength, shoveDirection);
+            Vector2Int positionAfter = npc.NestedMapPosition;
+            bool positionChanged = positionAfter != positionBefore;
+            Cell oldCellAfter = areaBefore?.GetCellAtPosition(positionBefore);
+            Cell newCellAfter = areaBefore?.GetCellAtPosition(positionAfter);
+            bool oldCellStillContainsTarget = oldCellAfter?.Objects?.Contains(npc) ?? false;
+            bool newCellContainsTarget = newCellAfter?.Objects?.Contains(npc) ?? false;
+
+            // CODEXLOG002_MOVEMENT_AI: temporary shove diagnostic.
+            MovementAIDiagnosticsLogger.LogEvent("[SHOVE]", "ShoveInteraction.ExecuteInteraction end",
+                $"Target position before: {positionBefore}\n" +
+                $"Target position after: {positionAfter}\n" +
+                $"Forced movement attempted: True\n" +
+                $"Forced movement succeeded: {wasShoved}\n" +
+                $"Position changed: {positionChanged}\n" +
+                $"Old cell still contains target: {oldCellStillContainsTarget}\n" +
+                $"New cell contains target: {newCellContainsTarget}\n" +
+                "Map refresh requested: False",
+                npc);
+            // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+            NestedMapDebugger.LogSnapshotForMovement(areaBefore, npc, "SNAPSHOT_AFTER_SHOVE");
 
             if (wasShoved)
             {
@@ -315,6 +360,19 @@ public class ShoveInteraction : IInteraction
         }
 
         EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+    }
+
+    // CODEXLOG002_MOVEMENT_AI: temporary shove diagnostic helper.
+    private static Vector2Int DirectionToVector(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.North: return Vector2Int.up;
+            case Direction.South: return Vector2Int.down;
+            case Direction.West: return Vector2Int.left;
+            case Direction.East: return Vector2Int.right;
+            default: return Vector2Int.zero;
+        }
     }
 
     public bool IsAvailable(IInteractable entity, PlayerInventory inventory)

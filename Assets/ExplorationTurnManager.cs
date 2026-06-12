@@ -73,7 +73,49 @@ public class ExplorationTurnManager : BaseTurnManager
             $"[ExplorationTurnManager] Executing exploration turn for NPC {npc.Name}.");
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute", null, npc);
+        Vector2Int positionBefore = npc != null ? npc.NestedMapPosition : Vector2Int.zero;
+        int apBefore = npc != null ? npc.ActionPoints : -1;
+        int mpBeforeReset = npc != null ? npc.MovePoints : -1;
+        int maxMovePoints = npc != null ? npc.MaxMovePoints : -1;
+
+        if (npc != null)
+        {
+            npc.ResetMovePointsForTurn();
+        }
+
+        int mpAfterReset = npc != null ? npc.MovePoints : -1;
+        int apAfterMovementReset = npc != null ? npc.ActionPoints : -1;
+        // CODEXLOG002_MOVEMENT_AI: temporary NPC exploration movement-resource diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute movement point reset",
+            $"Movement points before NPC exploration turn reset: {mpBeforeReset}\n" +
+            $"Movement points after NPC exploration turn reset: {mpAfterReset}\n" +
+            $"MaxMovePoints used: {maxMovePoints}\n" +
+            $"AP before NPC exploration turn reset: {apBefore}\n" +
+            $"AP after NPC exploration turn reset: {apAfterMovementReset}\n" +
+            "Reset source/method: ExplorationTurnManager.OnNPCTurnExecute -> Character.ResetMovePointsForTurn\n" +
+            "ExecuteTurnActions will reset AP: True",
+            npc);
+
+        // CODEXLOG002_MOVEMENT_AI: temporary entity-turn movement diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute begin",
+            $"Calling ExecuteTurnActions: {npc != null}\n" +
+            $"Position before: {positionBefore}\n" +
+            $"AP before: {apBefore}\n" +
+            $"MP before reset: {mpBeforeReset}\n" +
+            $"MP after reset: {mpAfterReset}",
+            npc);
         npc.ExecuteTurnActions();
+        // CODEXLOG002_MOVEMENT_AI: temporary entity-turn movement diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute end",
+            $"Position before: {positionBefore}\n" +
+            $"Position after: {npc?.NestedMapPosition.ToString() ?? "NULL"}\n" +
+            $"Position changed: {npc != null && npc.NestedMapPosition != positionBefore}\n" +
+            $"AP before: {apBefore}\n" +
+            $"AP after: {npc?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"MP before reset: {mpBeforeReset}\n" +
+            $"MP after reset: {mpAfterReset}\n" +
+            $"MP after: {npc?.MovePoints.ToString() ?? "NULL"}",
+            npc);
     }
 
     protected override void OnCycleEnded()

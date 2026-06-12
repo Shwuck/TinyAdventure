@@ -546,12 +546,15 @@ public class PlayerController : MonoBehaviour
 	{
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "PlayerController.EnterNestedAreaWithinNestedArea begin", $"CellID: {cellWithNestedArea?.CellID}\nHasNestedArea: {cellWithNestedArea?.hasNestedArea}");
-		// Deregister characters from previous nested area (existing behaviour)
-		if (currentNestedArea != null)
+		if (cellWithNestedArea == null || !cellWithNestedArea.hasNestedArea || cellWithNestedArea.NestedArea == null)
 		{
-			Debug.Log($"Deregistering characters from Nested Area {currentNestedAreaID} before moving deeper.");
-			TurnOrchestrator.Instance.DeregisterCharactersInNestedArea(currentNestedArea);
+			TurnDiagnosticsLogger.LogWarning("PlayerController.EnterNestedAreaWithinNestedArea invalid target",
+				$"CellID: {cellWithNestedArea?.CellID}\nHasNestedArea: {cellWithNestedArea?.hasNestedArea}");
+			return;
 		}
+
+		int previousExplorationCount = TurnOrchestrator.Instance != null ? TurnOrchestrator.Instance.DiagnosticExplorationRegisteredCount : -1;
+		int previousAllCharactersCount = TurnOrchestrator.Instance != null ? TurnOrchestrator.Instance.DiagnosticAllCharactersCount : -1;
 
 		previousNestedAreaID = currentNestedArea?.NestedAreaID ?? -1;
 		parentNestedAreaID = cellWithNestedArea.ParentAreaID;
@@ -577,18 +580,40 @@ public class PlayerController : MonoBehaviour
 
 		var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
 		var orchestrator = TurnOrchestrator.Instance;
-
-		if (!orchestrator.IsCharacterRegistered(playerCharacter))
+		if (orchestrator == null)
 		{
-			Debug.Log($"Re-registering player character in Nested Area {currentNestedAreaID}.");
-			orchestrator.RegisterCharacter(playerCharacter);
+			TurnDiagnosticsLogger.LogWarning("PlayerController.EnterNestedAreaWithinNestedArea missing orchestrator",
+				$"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})", playerCharacter);
+			return;
 		}
 
+		if (playerCharacter != null)
+		{
+			playerCharacter.CurrentNestedArea = currentNestedArea;
+			playerCharacter.IsInNestedArea = true;
+			playerCharacter.NestedMapPosition = playerPosition;
+		}
+
+		GameManager.Instance.ActiveTurnManager = true;
+		PlayerStats.Instance.RegisteredInTurnManager = true;
+
+		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "Nested-to-nested entry using orchestrated exploration entry",
+			$"PreviousNestedAreaID: {previousNestedAreaID}\n" +
+			$"NewNestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})\n" +
+			$"Previous Exploration.Count: {previousExplorationCount}\n" +
+			$"Previous allCharacters.Count: {previousAllCharactersCount}", playerCharacter);
+		orchestrator.EnterExplorationArea(currentNestedArea, playerCharacter);
 		orchestrator.ValidateCharacterNestedAreas();
 		orchestrator.LogAllRegisteredCharacters();
-		orchestrator.StartTurnCycle();
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-		TurnDiagnosticsLogger.LogTurnSummary("PlayerController.EnterNestedAreaWithinNestedArea completed", $"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})");
+		TurnDiagnosticsLogger.LogTurnSummary("PlayerController.EnterNestedAreaWithinNestedArea completed",
+			$"NestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})\n" +
+			$"Previous active participants cleared by EnterExplorationArea: True\n" +
+			$"Player registered in active manager: {orchestrator.DiagnosticIsCharacterRegisteredInActiveManager(playerCharacter)}\n" +
+			$"Exploration.Count: {orchestrator.DiagnosticExplorationRegisteredCount}\n" +
+			$"allCharacters.Count: {orchestrator.DiagnosticAllCharactersCount}");
+		// CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+		NestedMapDebugger.LogSnapshot(currentNestedArea, "SNAPSHOT_ENTER_NESTED_FROM_NESTED PlayerController.EnterNestedAreaWithinNestedArea completed");
 	}
 
 	private void ExitNestedArea()
@@ -600,6 +625,8 @@ public class PlayerController : MonoBehaviour
 			Debug.Log("Not currently in a nested area, cannot exit.");
 			return;
 		}
+		// CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
+		NestedMapDebugger.LogSnapshot(currentNestedArea, "SNAPSHOT_EXIT_AREA PlayerController.ExitNestedArea before exit handling");
 
 		if (MessageLogManager.Instance != null)
 		{
@@ -1242,35 +1269,42 @@ public class PlayerController : MonoBehaviour
         }
 
         UnityAction extendedOnClickAction = () =>
-        {
-            UpdatePlayerStatsInstance();
+		{
+			UpdatePlayerStatsInstance();
 
-            if (PlayerStats.Instance.ActionPoints >= actionPointCost)
-            {
-                // Deduct AP
-                PlayerStats.Instance.ActionPoints -= actionPointCost;
-                baseOnClickAction.Invoke();
+			/*
+			TEMP DISABLED:
+			AP spending, pending actions, and turn completion should not happen here.
 
-				// End the turn only if all AP has been used
+			Reason:
+			CreateActionButton() is only the UI wrapper. The actual action execution methods
+			already handle AP checks/deductions. Keeping this block active can cause actions
+			to be charged twice, or fail after AP is spent before the action runs.
+
+			if (PlayerStats.Instance.ActionPoints >= actionPointCost)
+			{
+				PlayerStats.Instance.ActionPoints -= actionPointCost;
+				baseOnClickAction.Invoke();
+
 				if (PlayerStats.Instance.ActionPoints == 0)
 				{
 					turnOrchestrator.PlayerTurnCompleted();
 				}
+			}
+			else
+			{
+				PlayerStats.Instance.PendingActionPointsCost = actionPointCost - PlayerStats.Instance.ActionPoints;
+				PlayerStats.Instance.ActionPoints = 0;
+				PlayerStats.Instance.HasPendingAction = true;
 
-            }
-            else
-            {
-                // Store the remaining AP cost for the next turn
-                PlayerStats.Instance.PendingActionPointsCost = actionPointCost - PlayerStats.Instance.ActionPoints;
-                PlayerStats.Instance.ActionPoints = 0;
-                PlayerStats.Instance.HasPendingAction = true;
-
-				// End the turn since AP is exhausted
 				turnOrchestrator.PlayerTurnCompleted();
-            }
+			}
+			*/
 
-            UpdateAdaptiveActionMenu();
-        };
+			baseOnClickAction.Invoke();
+
+			UpdateAdaptiveActionMenu();
+		};
 
         button.onClick.AddListener(extendedOnClickAction);
     }
