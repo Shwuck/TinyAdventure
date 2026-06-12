@@ -716,12 +716,10 @@ public class Character : IInteractable
                 }
             }
 
-            string hitBodyPart = target.GetRandomBodyPart();
+			GameDebugger.Instance.LogInfo($"{Name} PerformAttack: Final Damage -> {string.Join(", ", damageByType.Select(kv => kv.Key + ": " + kv.Value))}");
 
-            GameDebugger.Instance.LogInfo($"{Name} PerformAttack: Final Damage -> {string.Join(", ", damageByType.Select(kv => kv.Key + ": " + kv.Value))}");
-
-            target.TakeDamage(damageByType, this, isCriticalHit);
-            ApplyOnHitEffects(target);
+			target.TakeDamage(damageByType, this, isCriticalHit);
+			ApplyOnHitEffects(target);
         }
         else
         {
@@ -1061,103 +1059,107 @@ public class Character : IInteractable
         return finalResistance;
     }
 
-    public void TakeDamage(Dictionary<DamageType, int> incomingDamage, Character attacker, bool isCriticalHit = false)
+public void TakeDamage(Dictionary<DamageType, int> incomingDamage, Character attacker, bool isCriticalHit = false)
+{
+    if (incomingDamage == null || incomingDamage.Count == 0)
     {
-        float totalDamage = 0;
-        List<string> combatMessages = new List<string>();
+        GameDebugger.Instance.LogWarning($"{Name} TakeDamage called with no incoming damage.");
+        return;
+    }
 
-        foreach (var damageEntry in incomingDamage)
+    float totalDamage = 0;
+    List<string> combatMessages = new List<string>();
+
+    // Pick one actual body-part instance for this incoming hit.
+    // This uses Anatomy's recursive lookup, so subparts can be hit too.
+    BodyPart targetPart = Anatomy?.GetRandomBodyPart();
+
+    if (targetPart == null)
+    {
+        GameDebugger.Instance.LogWarning($"{Name} has no valid body part to take damage.");
+        return;
+    }
+
+    string attackerName = attacker != null ? attacker.Name : "Unknown attacker";
+
+    foreach (var damageEntry in incomingDamage)
+    {
+        DamageType damageType = damageEntry.Key;
+        int rawDamage = damageEntry.Value;
+
+        // Apply resistance
+        float resistance = GetResistance(damageType);
+        int mitigatedDamage = Mathf.RoundToInt(rawDamage * (1 - resistance / 100f));
+
+        if (mitigatedDamage > 0)
         {
-            DamageType damageType = damageEntry.Key;
-            int rawDamage = damageEntry.Value;
+            targetPart.TakeDamage(mitigatedDamage, this);
+            totalDamage += mitigatedDamage;
+            ModifyHealth(-mitigatedDamage);
 
-            // Determine a random body part to be hit
-            string targetPartName = GetRandomBodyPart();
-            if (string.IsNullOrEmpty(targetPartName) || !Anatomy.BodyParts.ContainsKey(targetPartName))
+            if (isCriticalHit)
             {
-                GameDebugger.Instance.LogWarning($"{Name} has no valid body part to take damage.");
-                continue;
-            }
-
-            BodyPart targetPart = Anatomy.BodyParts[targetPartName].FirstOrDefault();
-            if (targetPart == null) continue;
-
-            // Apply resistance
-            float resistance = GetResistance(damageType);
-            int mitigatedDamage = Mathf.RoundToInt(rawDamage * (1 - resistance / 100f));
-
-            if (mitigatedDamage > 0)
-            {
-                targetPart.TakeDamage(mitigatedDamage, this);
-                totalDamage += mitigatedDamage;
-                ModifyHealth(-mitigatedDamage);
-
-                // **Use isCriticalHit flag passed from PerformAttack**
-                if (isCriticalHit)
-                {
-                    MessageLogManager.Instance.Log("combat_critical", attacker.Name, Name, mitigatedDamage, targetPart.Name, damageType);
-                }
-                else
-                {
-                    MessageLogManager.Instance.Log("combat_hit", attacker.Name, Name, mitigatedDamage, targetPart.Name, damageType);
-                }
+                MessageLogManager.Instance.Log("combat_critical", attackerName, Name, mitigatedDamage, targetPart.Name, damageType);
             }
             else
             {
-                MessageLogManager.Instance.Log("combat_armor_block", attacker.Name, Name, rawDamage);
-            }
-
-            if (targetPart.IsLost)
-            {
-                MessageLogManager.Instance.Log("combat_status", Name, $"Lost {targetPart.Name}", "Permanent");
-                HandleLosingLimb(targetPart);
-            }
-
-            if (targetPart.IsVital && targetPart.IsLost)
-            {
-                MessageLogManager.Instance.Log("combat_status", Name, "Fatally Injured", "Instant Death");
-                Die();
-                return;
+                MessageLogManager.Instance.Log("combat_hit", attackerName, Name, mitigatedDamage, targetPart.Name, damageType);
             }
         }
-
-        // **Trigger UI Shake when the PlayerCharacter takes damage**
-        if (this == PlayerStats.Instance.CurrentPlayerCharacter)
+        else
         {
-            float shakeStrength = Mathf.Clamp(totalDamage * 0.5f, 5f, 20f); // Scale shake based on damage
-            float shakeDuration = 0.3f; // Adjust duration if needed
-
-            Debug.Log($"[TakeDamage] Screen shake triggered! Damage: {totalDamage}, Shake Strength: {shakeStrength}, Duration: {shakeDuration}");
-
-            // Use DOTween-based Shake UI
-            UIEffects.Instance.ShakeUI(UIController.Instance.uiCombatPanel.GetComponent<RectTransform>(), shakeDuration, shakeStrength);
+            MessageLogManager.Instance.Log("combat_armor_block", attackerName, Name, rawDamage);
         }
 
-        if (!IsActive || CurrentNestedArea == null)
+        if (targetPart.IsLost)
         {
-            // CODEXLOG003_ACTIONS_AAM: temporary combat reaction diagnostic.
-            ActionAAMDiagnosticsLogger.LogEvent("[COMBAT REACTION]", "TakeDamage skipping hostility/ally alert for inactive or area-less target",
-                $"Target: {FormatCombatReactionCharacter(this)}\n" +
-                $"Attacker: {FormatCombatReactionCharacter(attacker)}\n" +
-                $"TargetIsActive: {IsActive}\n" +
-                $"TargetNestedArea: {FormatCombatReactionArea(CurrentNestedArea)}\n" +
-                $"AttackerNestedArea: {FormatCombatReactionArea(attacker?.CurrentNestedArea)}");
+            MessageLogManager.Instance.Log("combat_status", Name, $"Lost {targetPart.Name}", "Permanent");
+            HandleLosingLimb(targetPart);
+        }
+
+        if (targetPart.IsVital && targetPart.IsLost)
+        {
+            MessageLogManager.Instance.Log("combat_status", Name, "Fatally Injured", "Instant Death");
+            Die();
             return;
         }
-
-        // If the character was docile before, they should now become hostile
-        if (Stance != NPCStance.Hostile)
-        {
-            GameDebugger.Instance.LogInfo($"{Name} was attacked by {attacker.Name}. Becoming hostile.");
-            Stance = NPCStance.Hostile;
-            IsHostile = true;
-            Target = attacker;
-            stateMachine.ChangeState(new HostileState());
-        }
-
-        // If the attacked character has allies, notify them
-        AlertNearbyAllies(this);
     }
+
+    // Trigger UI Shake when the PlayerCharacter takes actual damage
+    if (totalDamage > 0 && this == PlayerStats.Instance.CurrentPlayerCharacter)
+    {
+        float shakeStrength = Mathf.Clamp(totalDamage * 0.5f, 5f, 20f);
+        float shakeDuration = 0.3f;
+
+        Debug.Log($"[TakeDamage] Screen shake triggered! Damage: {totalDamage}, Shake Strength: {shakeStrength}, Duration: {shakeDuration}");
+
+        UIEffects.Instance.ShakeUI(UIController.Instance.uiCombatPanel.GetComponent<RectTransform>(), shakeDuration, shakeStrength);
+    }
+
+    if (!IsActive || CurrentNestedArea == null)
+    {
+        ActionAAMDiagnosticsLogger.LogEvent("[COMBAT REACTION]", "TakeDamage skipping hostility/ally alert for inactive or area-less target",
+            $"Target: {FormatCombatReactionCharacter(this)}\n" +
+            $"Attacker: {FormatCombatReactionCharacter(attacker)}\n" +
+            $"TargetIsActive: {IsActive}\n" +
+            $"TargetNestedArea: {FormatCombatReactionArea(CurrentNestedArea)}\n" +
+            $"AttackerNestedArea: {FormatCombatReactionArea(attacker?.CurrentNestedArea)}");
+        return;
+    }
+
+    // If the character was docile before, they should now become hostile
+    if (Stance != NPCStance.Hostile)
+    {
+        GameDebugger.Instance.LogInfo($"{Name} was attacked by {attackerName}. Becoming hostile.");
+        Stance = NPCStance.Hostile;
+        IsHostile = true;
+        Target = attacker;
+        stateMachine.ChangeState(new HostileState());
+    }
+
+    // If the attacked character has allies, notify them
+    AlertNearbyAllies(this);
+}
 
     public void ApplyScarToBodyPart(string bodyPartName)
     {
@@ -1192,19 +1194,19 @@ public class Character : IInteractable
     }
 
     // Ensure losing a body part removes equipped items
-    public void HandleLosingLimb(BodyPart lostPart)
-    {
-        List<EquipmentSlot> affectedSlots = GetEquipmentSlotsForBodyPart(lostPart.Name);
+public void HandleLosingLimb(BodyPart lostPart)
+{
+    List<EquipmentSlot> affectedSlots = GetEquipmentSlotsForBodyPart(lostPart);
 
-        foreach (var slot in affectedSlots)
+    foreach (var slot in affectedSlots)
+    {
+        if (EquippedItems.TryGetValue(slot, out Item lostItem))
         {
-            if (EquippedItems.TryGetValue(slot, out Item lostItem))
-            {
-                UnEquipItem(slot);
-                GameDebugger.Instance.LogInfo($"{Name} lost their {lostPart.Name}, removing {lostItem.ItemInGameName} from {slot}.");
-            }
+            UnEquipItem(slot);
+            GameDebugger.Instance.LogInfo($"{Name} lost their {lostPart.Name}, removing {lostItem.ItemInGameName} from {slot}.");
         }
     }
+}
 
     public void ApplyOnHitEffects(Character target)
     {
@@ -1228,11 +1230,10 @@ public class Character : IInteractable
         Debug.Log($"{Name} has no special death behavior.");
     }
 
-    private string GetRandomBodyPart()
-    {
-        List<string> possibleTargets = Anatomy.BodyParts.Keys.ToList();
-        return possibleTargets[UnityEngine.Random.Range(0, possibleTargets.Count)];
-    }
+private BodyPart GetRandomBodyPart()
+{
+    return Anatomy?.GetRandomBodyPart();
+}
 
     private void DisplayCombatMessages(List<string> messages)
     {
@@ -1769,23 +1770,32 @@ public class Character : IInteractable
     }
 
     // Retrieve equipment slots associated with a body part
-    private List<EquipmentSlot> GetEquipmentSlotsForBodyPart(string bodyPartName)
-    {
-        List<EquipmentSlot> foundSlots = new List<EquipmentSlot>();
+private List<EquipmentSlot> GetEquipmentSlotsForBodyPart(BodyPart bodyPart)
+{
+    List<EquipmentSlot> foundSlots = new List<EquipmentSlot>();
 
-        if (Anatomy.BodyParts.TryGetValue(bodyPartName, out List<BodyPart> parts))
+    void CollectSlots(BodyPart part)
+    {
+        if (part == null)
         {
-            foreach (var part in parts)
-            {
-                if (part.EquipmentSlots != null && part.EquipmentSlots.Count > 0)
-                {
-                    foundSlots.AddRange(part.EquipmentSlots);
-                }
-            }
+            return;
         }
 
-        return foundSlots;
+        if (part.EquipmentSlots != null && part.EquipmentSlots.Count > 0)
+        {
+            foundSlots.AddRange(part.EquipmentSlots);
+        }
+
+        foreach (var subPart in part.SubParts)
+        {
+            CollectSlots(subPart);
+        }
     }
+
+    CollectSlots(bodyPart);
+
+    return foundSlots.Distinct().ToList();
+}
 
     #endregion
 

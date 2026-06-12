@@ -26,15 +26,15 @@ public class Anatomy
         }
     }
 
-    public bool HasBodyPart(string partName)
-    {
-        return BodyParts.ContainsKey(partName) && BodyParts[partName].Any(part => !part.IsLost);
-    }
+	public bool HasBodyPart(string partName)
+	{
+		return FindBodyParts(partName, includeLost: false).Count > 0;
+	}
 
-    public bool HasBodyPartType(string bodyPartType)
-    {
-        return BodyParts.Values.Any(parts => parts.Any(part => part.BodyPartType == bodyPartType && !part.IsLost));
-    }
+	public bool HasBodyPartType(string bodyPartType)
+	{
+		return FindBodyParts(bodyPartType, includeLost: false).Count > 0;
+	}
 
     private List<EquipmentSlot> activeEquipmentSlots = new List<EquipmentSlot>();
 
@@ -111,6 +111,72 @@ public class Anatomy
             BodyParts.Select(kvp =>
                 $"- {kvp.Key} ({kvp.Value.Count}): " + string.Join(", ", kvp.Value.Select(part => part.ToString()))));
     }
+	
+	public IEnumerable<BodyPart> GetAllBodyParts(bool includeLost = true)
+{
+    foreach (var rootPart in BodyParts.Values.SelectMany(parts => parts))
+    {
+        foreach (var part in TraverseBodyPart(rootPart, includeLost))
+        {
+            yield return part;
+        }
+    }
+}
+
+private IEnumerable<BodyPart> TraverseBodyPart(BodyPart part, bool includeLost)
+{
+    if (part == null)
+    {
+        yield break;
+    }
+
+    if (includeLost || !part.IsLost)
+    {
+        yield return part;
+    }
+
+    foreach (var subPart in part.SubParts)
+    {
+        foreach (var child in TraverseBodyPart(subPart, includeLost))
+        {
+            yield return child;
+        }
+    }
+}
+
+public List<BodyPart> FindBodyParts(string partNameOrType, bool includeLost = false)
+{
+    if (string.IsNullOrWhiteSpace(partNameOrType))
+    {
+        return new List<BodyPart>();
+    }
+
+    return GetAllBodyParts(includeLost)
+        .Where(part =>
+            string.Equals(part.Name, partNameOrType, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(part.BodyPartType, partNameOrType, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+}
+
+public BodyPart GetRandomBodyPart(string partNameOrType = null, bool includeSubParts = true)
+{
+    List<BodyPart> candidates = string.IsNullOrWhiteSpace(partNameOrType)
+        ? GetAllBodyParts(includeLost: false).ToList()
+        : FindBodyParts(partNameOrType, includeLost: false);
+
+    if (!includeSubParts)
+    {
+        candidates = candidates.Where(part => part.ParentPart == null).ToList();
+    }
+
+    if (candidates.Count == 0)
+    {
+        return null;
+    }
+
+    return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+}
+	
 }
 
 

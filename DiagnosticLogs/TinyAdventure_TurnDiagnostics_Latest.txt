@@ -46516,3 +46516,26 @@ WARNING: ExplorationTurnManager contains NPC 'Edda Flintrock' [11] but CurrentNe
 WARNING: ExplorationTurnManager contains NPC 'Freya Hargrave' [12] but IsActive is false.
 WARNING: ExplorationTurnManager contains NPC 'Freya Hargrave' [12] but CurrentNestedArea is null during nested-area context.
 
+CODEXLOG001_TURNLIFECYCLE [SHUTDOWN] 2026-06-12 20:26:12 | frame=38410
+Event: TurnOrchestrator.OnApplicationQuit
+Scene: SampleScene
+Context: Combat
+CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerCharacter.CurrentNestedArea: Village0 (ID=1, Level=0)
+PlayerStats.IsInNestedArea: False
+PlayerStats.IsInMainMap: True
+PlayerStats.RegisteredInTurnManager: False
+PlayerStats.InCombat: False
+allCharacters.Count: 0
+Exploration.Count: 8
+Combat.Count: 0
+combatManager.Assigned: True
+explorationTurnManager.Assigned: True
+WARNING: Context is Combat but CombatTurnManager has zero participants.
+WARNING: ExplorationTurnManager contains participants while TurnOrchestrator context is Combat.
+WARNING: ExplorationTurnManager contains NPC 'Edda Flintrock' [11] but IsActive is false.
+WARNING: ExplorationTurnManager contains NPC 'Edda Flintrock' [11] but CurrentNestedArea is null during nested-area context.
+WARNING: ExplorationTurnManager contains NPC 'Freya Hargrave' [12] but IsActive is false.
+WARNING: ExplorationTurnManager contains NPC 'Freya Hargrave' [12] but CurrentNestedArea is null during nested-area context.
+

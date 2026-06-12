@@ -911,40 +911,33 @@ public class NPCGenerator : MonoBehaviour
         }
     }
 
-    private void MarkBodyPartAsLost(NPC npc, string partName)
-    {
-        if (!npc.Anatomy.HasBodyPart(partName))
-        {
-            Debug.LogWarning($"[NPCGenerator] {npc.Name} does not have a {partName} to lose.");
-            return;
-        }
+private void MarkBodyPartAsLost(NPC npc, string partName)
+{
+    BodyPart part = npc.Anatomy.GetRandomBodyPart(partName);
 
-        foreach (var part in npc.Anatomy.BodyParts[partName])
-        {
-            if (!part.IsLost) // Only apply to parts that aren't already lost
-            {
-                part.LosePart();
-                Debug.Log($"[NPCGenerator] {npc.Name} has lost a {partName}.");
-                return; // Exit after losing one part (prevents removing multiple of the same type)
-            }
-        }
+    if (part == null)
+    {
+        Debug.LogWarning($"[NPCGenerator] {npc.Name} does not have a {partName} to lose.");
+        return;
     }
 
-    private void AddScarToBodyPart(NPC npc, string partName)
-    {
-        if (!npc.Anatomy.HasBodyPart(partName))
-        {
-            Debug.LogWarning($"[NPCGenerator] {npc.Name} does not have a {partName} to scar.");
-            return;
-        }
+    part.LosePart();
+    Debug.Log($"[NPCGenerator] {npc.Name} has lost their {part.Name}.");
+}
 
-        foreach (var part in npc.Anatomy.BodyParts[partName])
-        {
-            part.IncreaseScar();
-            Debug.Log($"[NPCGenerator] {npc.Name} now has a scar on their {partName}. (Severity: {part.Scars})");
-            return; // Stops after modifying one matching body part
-        }
+private void AddScarToBodyPart(NPC npc, string partName)
+{
+    BodyPart part = npc.Anatomy.GetRandomBodyPart(partName);
+
+    if (part == null)
+    {
+        Debug.LogWarning($"[NPCGenerator] {npc.Name} does not have a {partName} to scar.");
+        return;
     }
+
+    part.IncreaseScar();
+    Debug.Log($"[NPCGenerator] {npc.Name} now has a scar on their {part.Name}. Severity: {part.Scars}");
+}
     #endregion
 
 }
