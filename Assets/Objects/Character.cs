@@ -1133,6 +1133,18 @@ public class Character : IInteractable
             UIEffects.Instance.ShakeUI(UIController.Instance.uiCombatPanel.GetComponent<RectTransform>(), shakeDuration, shakeStrength);
         }
 
+        if (!IsActive || CurrentNestedArea == null)
+        {
+            // CODEXLOG003_ACTIONS_AAM: temporary combat reaction diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[COMBAT REACTION]", "TakeDamage skipping hostility/ally alert for inactive or area-less target",
+                $"Target: {FormatCombatReactionCharacter(this)}\n" +
+                $"Attacker: {FormatCombatReactionCharacter(attacker)}\n" +
+                $"TargetIsActive: {IsActive}\n" +
+                $"TargetNestedArea: {FormatCombatReactionArea(CurrentNestedArea)}\n" +
+                $"AttackerNestedArea: {FormatCombatReactionArea(attacker?.CurrentNestedArea)}");
+            return;
+        }
+
         // If the character was docile before, they should now become hostile
         if (Stance != NPCStance.Hostile)
         {
@@ -1550,7 +1562,13 @@ public class Character : IInteractable
 
         if (attackedAlly.CurrentNestedArea == null)
         {
-            GameDebugger.Instance.LogError($"SeeAllyAttacked: {attackedAlly.Name} has NO nested area. Cannot process reactions.");
+            // CODEXLOG003_ACTIONS_AAM: temporary combat reaction diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[COMBAT REACTION]", "SeeAllyAttacked skipped missing attacked ally area",
+                $"AttackedAlly: {FormatCombatReactionCharacter(attackedAlly)}\n" +
+                $"Attacker: {FormatCombatReactionCharacter(attacker)}\n" +
+                $"AttackedAllyNestedArea: {FormatCombatReactionArea(attackedAlly.CurrentNestedArea)}\n" +
+                $"AttackerNestedArea: {FormatCombatReactionArea(attacker.CurrentNestedArea)}");
+            GameDebugger.Instance.LogWarning($"SeeAllyAttacked: {attackedAlly.Name} has no nested area. Reaction skipped.");
             return;
         }
 
@@ -2064,7 +2082,13 @@ public class Character : IInteractable
 
         if (target.CurrentNestedArea == null)
         {
-            GameDebugger.Instance.LogError($"AlertNearbyAllies: Target {target.Name} has NO nested area. Cannot alert allies.");
+            // CODEXLOG003_ACTIONS_AAM: temporary combat reaction diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[COMBAT REACTION]", "AlertNearbyAllies skipped missing target area",
+                $"Target: {FormatCombatReactionCharacter(target)}\n" +
+                $"Caller: {FormatCombatReactionCharacter(this)}\n" +
+                $"TargetNestedArea: {FormatCombatReactionArea(target.CurrentNestedArea)}\n" +
+                $"CallerNestedArea: {FormatCombatReactionArea(CurrentNestedArea)}");
+            GameDebugger.Instance.LogWarning($"AlertNearbyAllies: Target {target.Name} has no nested area. Ally alert skipped.");
             return;
         }
 
@@ -2091,6 +2115,7 @@ public class Character : IInteractable
     public void ReactToAllyBeingAttacked(Character attackedAlly, Character attacker)
     {
         Debug.Log($"{Name} has witnessed an attack on {attackedAlly.Name} by {attacker.Name}!");
+        IsHostile = true;
 
         if (Stance != NPCStance.Hostile)
         {
@@ -2101,6 +2126,20 @@ public class Character : IInteractable
         }
 
         stateMachine?.HandleStanceChange(Stance);
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary combat reaction diagnostic helper.
+    private static string FormatCombatReactionCharacter(Character character)
+    {
+        if (character == null) return "NULL";
+        return $"{character.Name} [{character.IInteractableID}] ({character.GetType().Name})";
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary combat reaction diagnostic helper.
+    private static string FormatCombatReactionArea(INestedArea area)
+    {
+        if (area == null) return "NULL";
+        return $"{area.Name} (ID={area.NestedAreaID}, Level={area.NestedAreaLevel})";
     }
 
     private bool IsSameFaction(Character ally, Character target)

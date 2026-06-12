@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using UnityEngine.Events;
+using System.Runtime.CompilerServices;
 
 public class PlayerController : MonoBehaviour
 {
@@ -1163,6 +1164,11 @@ public class PlayerController : MonoBehaviour
         if (!isInNestedArea)
         {
             ClearAdaptiveActionMenu();
+            // CODEXLOG003_ACTIONS_AAM: temporary AAM refresh diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[AAM REFRESH]", "UpdateAdaptiveActionMenu skipped outside nested area",
+                $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
+                $"PlayerPosition: {playerPosition}\n" +
+                $"CurrentNestedAreaExists: {currentNestedArea != null}");
             return;
         }
 
@@ -1171,8 +1177,20 @@ public class PlayerController : MonoBehaviour
         Cell[,] currentMap = isInNestedArea ? currentNestedArea.GetNestedMap() : mapGenerator.map;
         Vector2Int facingDirection = GetDirectionVector(currentDirection);
         Vector2Int facingPosition = playerPosition + facingDirection;
+        bool hasCurrentNestedArea = currentNestedArea != null;
+        bool facingPositionValid = IsValidPosition(facingPosition, isInNestedArea);
 
-        if (IsValidPosition(facingPosition, isInNestedArea))
+        // CODEXLOG003_ACTIONS_AAM: temporary AAM refresh diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[AAM REFRESH]", "UpdateAdaptiveActionMenu",
+            $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
+            $"PlayerPosition: {playerPosition}\n" +
+            $"FacingDirection: {currentDirection}\n" +
+            $"FacingDirectionVector: {facingDirection}\n" +
+            $"FacingPosition: {facingPosition}\n" +
+            $"CurrentNestedAreaExists: {hasCurrentNestedArea}\n" +
+            $"FacingCellFound: {facingPositionValid}");
+
+        if (facingPositionValid)
         {
             Cell facingCell = currentMap[facingPosition.x, facingPosition.y];
             PlayerStats.Instance.UpdateFacingCell(facingCell);
@@ -1188,26 +1206,67 @@ public class PlayerController : MonoBehaviour
 
     private void HandleInteractableObjectsInFacingCell(Cell facingCell)
     {
-        ProcessInteractableObjects(facingCell.Objects.OfType<IInteractable>());
-        ProcessInteractableObjects(facingCell.Items.OfType<IInteractable>());
-        ProcessInteractableObjects(facingCell.Animals.OfType<IInteractable>());
+        // CODEXLOG003_ACTIONS_AAM: temporary faced-cell scan diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[FACED CELL]", "Facing cell contents",
+            $"CellID: {facingCell?.CellID.ToString() ?? "NULL"}\n" +
+            $"CellPosition: {facingCell?.Coordinates.ToString() ?? "NULL"}\n" +
+            $"Objects count: {facingCell?.Objects?.Count.ToString() ?? "NULL"}\n" +
+            $"Items count: {facingCell?.Items?.Count.ToString() ?? "NULL"}\n" +
+            $"Animals count: {facingCell?.Animals?.Count.ToString() ?? "NULL"}\n" +
+            $"NPCs count: {facingCell?.NPCs?.Count.ToString() ?? "NULL"}");
+
+        var processedProviders = new HashSet<string>();
+        ProcessInteractableObjects((facingCell.Objects ?? Enumerable.Empty<IInteractable>()).OfType<IInteractable>(), "Objects", processedProviders);
+        ProcessInteractableObjects((facingCell.Items ?? Enumerable.Empty<Item>()).OfType<IInteractable>(), "Items", processedProviders);
+        ProcessInteractableObjects((facingCell.Animals ?? Enumerable.Empty<Animal>()).OfType<IInteractable>(), "Animals", processedProviders);
+        ProcessInteractableObjects((facingCell.NPCs ?? Enumerable.Empty<NPC>()).OfType<IInteractable>(), "NPCs", processedProviders);
     }
 
-    private void ProcessInteractableObjects(IEnumerable<IInteractable> interactables)
+    private void ProcessInteractableObjects(IEnumerable<IInteractable> interactables, string sourceCollection, HashSet<string> processedProviders)
     {
         var playerInventory = PlayerInventory.Instance;
         var addedInteractions = new HashSet<string>(); // Set to keep track of added interactions
 
         foreach (var interactable in interactables)
         {
-            var availableInteractions = interactable.GetAvailableInteractions(playerInventory);
-            Debug.Log($"Found {availableInteractions.Count()} available interactions for {interactable.Name}");
+            if (interactable == null) continue;
 
-            // Filter interactions based on the current AdaptiveActionMenuPanel
-            var filteredInteractions = FilterInteractionsByPanel(availableInteractions);
+            RepairAAMProviderAreaStateIfSafe(interactable, sourceCollection);
 
-            foreach (var interaction in filteredInteractions)
+            string providerKey = GetAAMProviderKey(interactable);
+            if (!processedProviders.Add(providerKey))
             {
+                // CODEXLOG003_ACTIONS_AAM: temporary duplicate-provider diagnostic.
+                ActionAAMDiagnosticsLogger.LogEvent("[PROVIDER SKIPPED]", "Duplicate AAM provider skipped",
+                    $"Provider: {FormatAAMProvider(interactable)}\n" +
+                    $"SourceCollection: {sourceCollection}\n" +
+                    $"ProviderKey: {providerKey}");
+                continue;
+            }
+
+            var availableInteractions = interactable.GetAvailableInteractions(playerInventory).ToList();
+            Debug.Log($"Found {availableInteractions.Count} available interactions for {interactable.Name}");
+
+            // CODEXLOG003_ACTIONS_AAM: temporary action provider diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[PROVIDER FOUND]", "AAM action provider found",
+                $"Provider: {FormatAAMProvider(interactable)}\n" +
+                $"SourceCollection: {sourceCollection}\n" +
+                $"AvailableInteractionsReturned: {availableInteractions.Count}");
+
+            foreach (var interaction in availableInteractions)
+            {
+                if (!IsInteractionVisibleInCurrentPanel(interaction))
+                {
+                    // CODEXLOG003_ACTIONS_AAM: temporary tab filtering diagnostic.
+                    ActionAAMDiagnosticsLogger.LogEvent("[ACTION HIDDEN]", "Action hidden by AAM tab filter",
+                        $"ActionName: {interaction.Name}\n" +
+                        $"InteractionType: {interaction.Type}\n" +
+                        $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
+                        $"Provider: {FormatAAMProvider(interactable)}\n" +
+                        $"SourceCollection: {sourceCollection}");
+                    continue;
+                }
+
                 // Generate the button name
                 string buttonName = interaction.ActionPointCost > 0
                     ? $"{interaction.Name} ({interaction.ActionPointCost} AP) {interactable.Name}"
@@ -1220,6 +1279,15 @@ public class PlayerController : MonoBehaviour
                     addedInteractions.Add(buttonName);
 
                     // Create the button
+                    // CODEXLOG003_ACTIONS_AAM: temporary button creation diagnostic.
+                    ActionAAMDiagnosticsLogger.LogEvent("[BUTTON CREATED]", "AAM interaction button created",
+                        $"ButtonLabel: {buttonName}\n" +
+                        $"ActionName: {interaction.Name}\n" +
+                        $"ActionPointCost: {interaction.ActionPointCost}\n" +
+                        $"InteractionType: {interaction.Type}\n" +
+                        $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
+                        $"Provider: {FormatAAMProvider(interactable)}\n" +
+                        $"SourceCollection: {sourceCollection}");
                     CreateActionButton(buttonName, interaction.ActionPointCost, () => ExecutePlayerAction(interaction, interactable));
                     PlayerStats.Instance.InteractingWithID = interactable.IInteractableID;
                 }
@@ -1247,6 +1315,14 @@ public class PlayerController : MonoBehaviour
                 addedActions.Add(buttonName);
 
                 // Create the button
+                // CODEXLOG003_ACTIONS_AAM: temporary environmental button diagnostic.
+                ActionAAMDiagnosticsLogger.LogEvent("[BUTTON CREATED]", "AAM environmental button created",
+                    $"ButtonLabel: {buttonName}\n" +
+                    $"ActionName: {action.Name}\n" +
+                    $"ActionPointCost: {action.ActionPointCost}\n" +
+                    $"InteractionType: {action.Type}\n" +
+                    $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
+                    $"TargetCell: {facingCell?.Coordinates.ToString() ?? "NULL"}");
                 CreateActionButton(buttonName, action.ActionPointCost, () => ExecuteEnvironmentalAction(action, facingCell));
             }
         }
@@ -1321,22 +1397,43 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerable<IInteraction> FilterInteractionsByPanel(IEnumerable<IInteraction> interactions)
     {
+        return interactions.Where(IsInteractionVisibleInCurrentPanel);
+    }
+
+    private bool IsInteractionVisibleInCurrentPanel(IInteraction interaction)
+    {
         var panelType = PlayerStats.Instance.AdaptiveActionMenuPanel;
 
-        return interactions.Where(interaction =>
+        switch (panelType)
         {
-            switch (panelType)
-            {
-                case AdapativeActionMenu.Combat:
-                    return interaction.Type == InteractionType.Combat;
-                case AdapativeActionMenu.Special:
-                    return interaction.Type == InteractionType.Special;
-                default:
-                    // For all other panels, return everything except Combat and Special
-                    return interaction.Type != InteractionType.Combat &&
-                           interaction.Type != InteractionType.Special;
-            }
-        });
+            case AdapativeActionMenu.Combat:
+                return interaction.Type == InteractionType.Combat;
+            case AdapativeActionMenu.Special:
+                return interaction.Type == InteractionType.Special;
+            default:
+                // For all other panels, return everything except Combat and Special
+                return interaction.Type != InteractionType.Combat &&
+                       interaction.Type != InteractionType.Special;
+        }
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary AAM provider diagnostic helper.
+    private string GetAAMProviderKey(IInteractable interactable)
+    {
+        if (interactable == null) return "null";
+        if (interactable.IInteractableID != 0)
+        {
+            return $"{interactable.GetType().FullName}:{interactable.IInteractableID}";
+        }
+
+        return $"ref:{RuntimeHelpers.GetHashCode(interactable)}";
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary AAM provider diagnostic helper.
+    private string FormatAAMProvider(IInteractable interactable)
+    {
+        if (interactable == null) return "NULL";
+        return $"{interactable.Name} [{interactable.IInteractableID}] ({interactable.GetType().Name})";
     }
     #endregion
 
@@ -1412,7 +1509,40 @@ public class PlayerController : MonoBehaviour
         {
             // Execute the interaction 
             PlayerStats.Instance.Attacking = true;
+            if (interaction.Type == InteractionType.Combat)
+            {
+                Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
+                Character target = entity as Character;
+                // CODEXLOG003_ACTIONS_AAM: temporary combat execution diagnostic.
+                ActionAAMDiagnosticsLogger.LogEvent("[COMBAT EXECUTE]", "Player combat interaction executing",
+                    $"ActionName: {interaction.Name}\n" +
+                    $"ActionPointCost: {actionPointCost}\n" +
+                    $"Attacker: {FormatAAMCharacter(attacker)}\n" +
+                    $"Target: {FormatAAMCharacter(target)}\n" +
+                    $"AttackerNestedArea: {FormatAAMArea(attacker?.CurrentNestedArea)}\n" +
+                    $"TargetNestedArea: {FormatAAMArea(target?.CurrentNestedArea)}\n" +
+                    $"TargetIsActive: {target?.IsActive.ToString() ?? "NULL"}\n" +
+                    $"TargetIsAlive: {target?.IsAlive.ToString() ?? "NULL"}");
+            }
             interaction.ExecuteInteraction(entity, PlayerInventory.Instance);
+            if (interaction.Type == InteractionType.Combat)
+            {
+                Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
+                Character target = entity as Character;
+                INestedArea area = attacker?.CurrentNestedArea ?? target?.CurrentNestedArea ?? PlayerStats.Instance.CurrentNestedArea;
+
+                area?.UpdateHostileAreaStatus();
+                // CODEXLOG001_TURNLIFECYCLE: temporary player-initiated combat transition diagnostic.
+                TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "PlayerController.ExecutePlayerAction after combat action",
+                    $"ActionName: {interaction.Name}\n" +
+                    $"Attacker: {FormatAAMCharacter(attacker)}\n" +
+                    $"Target: {FormatAAMCharacter(target)}\n" +
+                    $"AttackerNestedArea: {FormatAAMArea(attacker?.CurrentNestedArea)}\n" +
+                    $"TargetNestedArea: {FormatAAMArea(target?.CurrentNestedArea)}\n" +
+                    $"AreaUpdated: {FormatAAMArea(area)}\n" +
+                    $"AreaHasHostiles: {area?.IsHostileArea.ToString() ?? "NULL"}");
+                TurnOrchestrator.Instance?.TryUpdateTurnContext();
+            }
             DeductActionPoints(actionPointCost); // Deduct AP and check if the turn should end
             PlayerStats.Instance.Attacking = false;
         }
@@ -1423,6 +1553,56 @@ public class PlayerController : MonoBehaviour
             PlayerStats.Instance.HasPendingAction = true;
             DeductActionPoints(PlayerStats.Instance.ActionPoints); // Set AP to 0 and end the turn
         }
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary combat action diagnostic helper.
+    private string FormatAAMCharacter(Character character)
+    {
+        if (character == null) return "NULL";
+        return $"{character.Name} [{character.IInteractableID}] ({character.GetType().Name})";
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary AAM area-state repair diagnostic helper.
+    private void RepairAAMProviderAreaStateIfSafe(IInteractable interactable, string sourceCollection)
+    {
+        if (!(interactable is Character character)) return;
+        if (currentNestedArea == null) return;
+        if (character.CurrentNestedArea != null && character.CurrentNestedArea != currentNestedArea) return;
+
+        bool repaired = false;
+        string areaBefore = FormatAAMArea(character.CurrentNestedArea);
+        bool isInNestedAreaBefore = character.IsInNestedArea;
+
+        if (character.CurrentNestedArea == null)
+        {
+            character.CurrentNestedArea = currentNestedArea;
+            repaired = true;
+        }
+
+        if (!character.IsInNestedArea)
+        {
+            character.IsInNestedArea = true;
+            repaired = true;
+        }
+
+        if (repaired)
+        {
+            // CODEXLOG003_ACTIONS_AAM: temporary AAM area-state repair diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[PROVIDER AREA REPAIR]", "AAM provider area state repaired from faced cell",
+                $"Provider: {FormatAAMProvider(interactable)}\n" +
+                $"SourceCollection: {sourceCollection}\n" +
+                $"CurrentNestedArea before: {areaBefore}\n" +
+                $"CurrentNestedArea after: {FormatAAMArea(character.CurrentNestedArea)}\n" +
+                $"IsInNestedArea before: {isInNestedAreaBefore}\n" +
+                $"IsInNestedArea after: {character.IsInNestedArea}");
+        }
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary AAM/combat diagnostic helper.
+    private string FormatAAMArea(INestedArea area)
+    {
+        if (area == null) return "NULL";
+        return $"{area.Name} (ID={area.NestedAreaID}, Level={area.NestedAreaLevel})";
     }
 
     private void ExecuteEnvironmentalAction(IEnvironmentalAction action, Cell cell)

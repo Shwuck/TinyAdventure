@@ -1825,7 +1825,21 @@ public class PunchInteraction : BaseCombatInteraction
 
     public override void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
-        if (entity is Character attacker && attacker.Target is Character target)
+        Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
+        Character target = entity as Character;
+
+        // CODEXLOG003_ACTIONS_AAM: temporary Punch actor/target diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[COMBAT EXECUTE]", "PunchInteraction.ExecuteInteraction",
+            $"ActionName: {Name}\n" +
+            $"ActionPointCost: {ActionPointCost}\n" +
+            $"Attacker: {FormatCombatCharacter(attacker)}\n" +
+            $"Target: {FormatCombatCharacter(target)}\n" +
+            $"AttackerNestedArea: {FormatCombatArea(attacker?.CurrentNestedArea)}\n" +
+            $"TargetNestedArea: {FormatCombatArea(target?.CurrentNestedArea)}\n" +
+            $"TargetIsActive: {target?.IsActive.ToString() ?? "NULL"}\n" +
+            $"TargetIsAlive: {target?.IsAlive.ToString() ?? "NULL"}");
+
+        if (attacker != null && target != null)
         {
             attacker.PerformAttack(target, DamageType.Bludgeoning);
         }
@@ -1833,20 +1847,37 @@ public class PunchInteraction : BaseCombatInteraction
 
     public override bool IsAvailable(IInteractable entity, PlayerInventory inventory)
     {
-        if (entity is Character character && character.IsActive)
+        if (!(entity is Character target) || !target.IsActive)
         {
-            // Check if the character has NO weapon equipped in MainHand
-            bool isUnarmed = character.GetMainHandItem() == null;
-
-            // Ensure they have the required anatomy (e.g., hands)
-            bool hasUsableHands = character.Anatomy != null
-                                  && character.Anatomy.CanEquipSlot(EquipmentSlot.MainHand);
-
-            // Return true only if BOTH conditions are met
-            return isUnarmed && hasUsableHands;
+            return false;
         }
 
-        return false;
+        Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
+        if (attacker == null)
+        {
+            return false;
+        }
+
+        if (attacker.Anatomy == null)
+        {
+            return true;
+        }
+
+        return attacker.Anatomy.CanEquipSlot(EquipmentSlot.MainHand);
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary Punch actor/target diagnostic helper.
+    private static string FormatCombatCharacter(Character character)
+    {
+        if (character == null) return "NULL";
+        return $"{character.Name} [{character.IInteractableID}] ({character.GetType().Name})";
+    }
+
+    // CODEXLOG003_ACTIONS_AAM: temporary Punch actor/target diagnostic helper.
+    private static string FormatCombatArea(INestedArea area)
+    {
+        if (area == null) return "NULL";
+        return $"{area.Name} (ID={area.NestedAreaID}, Level={area.NestedAreaLevel})";
     }
 }
 
