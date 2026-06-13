@@ -120,6 +120,18 @@ public class TurnOrchestrator : MonoBehaviour
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[AREA EXIT]", "TurnOrchestrator.EnterMainMap begin");
 		CurrentContext = TurnContext.MainMap;
+		PlayerStats.Instance.InCombat = false;
+		if (PlayerStats.Instance.CurrentPlayerCharacter != null)
+		{
+			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = false;
+			PlayerStats.Instance.CurrentPlayerCharacter.InTurn = false;
+		}
+		foreach (var character in allCharacters)
+		{
+			if (character == null) continue;
+			character.InCombat = false;
+			character.InTurn = false;
+		}
 		explorationTurnManager.ClearCharacters();
 		combatManager.DeregisterAllCharacters();
 		allCharacters.Clear();
@@ -404,22 +416,94 @@ public class TurnOrchestrator : MonoBehaviour
 		TurnDiagnosticsLogger.LogEvent("[COMBAT START]", "TurnOrchestrator.SwitchToCombatMode begin");
 
 		CurrentContext = TurnContext.Combat;
+		PlayerStats.Instance.InCombat = true;
+		if (PlayerStats.Instance.CurrentPlayerCharacter != null)
+		{
+			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = true;
+		}
 		explorationTurnManager.Suspend();
 		combatManager.DeregisterAllCharacters();
 
-		foreach (var character in allCharacters)
+		INestedArea activeArea = PlayerStats.Instance.CurrentNestedArea;
+		List<Character> localCombatParticipants = activeArea != null
+			? activeArea.GetAllCharactersInArea()
+			: allCharacters.Where(character => character != null).ToList();
+		Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+		if (playerCharacter != null && !localCombatParticipants.Contains(playerCharacter))
 		{
-			if (character.IsInNestedArea && character.CurrentNestedArea == PlayerStats.Instance.CurrentNestedArea)
-			{
-				bool isPlayer = character == PlayerStats.Instance.CurrentPlayerCharacter;
-				Trace($"SwitchToCombatMode: register {character.Name} isPlayer={isPlayer}");
-				combatManager.RegisterCharacter(character, isPlayer);
-			}
+			localCombatParticipants.Insert(0, playerCharacter);
 		}
+
+		allCharacters.Clear();
+		HashSet<int> registeredIds = new HashSet<int>();
+		int inactiveSkipped = 0;
+		int wrongAreaSkipped = 0;
+		int duplicateSkipped = 0;
+		int areaStateRepaired = 0;
+		List<string> participantLines = new List<string>();
+
+		foreach (var character in localCombatParticipants)
+		{
+			if (character == null) continue;
+
+			if (!registeredIds.Add(character.IInteractableID))
+			{
+				duplicateSkipped++;
+				continue;
+			}
+
+			if (!character.IsActive)
+			{
+				inactiveSkipped++;
+				continue;
+			}
+
+			if (activeArea != null && character.CurrentNestedArea == null)
+			{
+				character.CurrentNestedArea = activeArea;
+				character.IsInNestedArea = true;
+				areaStateRepaired++;
+			}
+
+			if (activeArea != null && (!character.IsInNestedArea || character.CurrentNestedArea != activeArea))
+			{
+				wrongAreaSkipped++;
+				continue;
+			}
+
+			bool isPlayer = character == PlayerStats.Instance.CurrentPlayerCharacter;
+			character.InCombat = true;
+			allCharacters.Add(character);
+			Trace($"SwitchToCombatMode: register {character.Name} isPlayer={isPlayer}");
+			combatManager.RegisterCharacter(character, isPlayer);
+			participantLines.Add($"{character.Name} [{character.IInteractableID}] Type={character.GetType().Name} Role={BaseTurnManager.GetCombatParticipantRole(character, isPlayer)} IsActive={character.IsActive} IsAlive={character.IsAlive} IsHostile={character.IsHostile} Stance={character.Stance} Area={character.CurrentNestedArea?.Name ?? "NULL"}");
+		}
+
+		int playerCombatRegistrationCount = combatManager.GetRegisteredCharacters()
+			.Count(entry => PlayerStats.Instance.CurrentPlayerCharacter != null &&
+							entry.Key == PlayerStats.Instance.CurrentPlayerCharacter.IInteractableID);
+		// CODEXLOG001_TURNLIFECYCLE: temporary combat player registration diagnostic.
+		TurnDiagnosticsLogger.LogEvent("[PLAYER REGISTRATION]", "TurnOrchestrator.SwitchToCombatMode player combat registration",
+			$"Player: {PlayerStats.Instance.CurrentPlayerCharacter?.Name ?? "NULL"} [{PlayerStats.Instance.CurrentPlayerCharacter?.IInteractableID.ToString() ?? "NULL"}]\n" +
+			$"Player registered in CombatTurnManager: {playerCombatRegistrationCount == 1}\n" +
+			$"PlayerRegistrationCount: {playerCombatRegistrationCount}\n" +
+			$"PlayerDuplicate: {playerCombatRegistrationCount > 1}\n" +
+			$"Combat.Count: {combatManager.DiagnosticRegisteredCount}");
+
+		// CODEXLOG001_TURNLIFECYCLE: temporary combat participant role diagnostic.
+		TurnDiagnosticsLogger.LogEvent("[COMBAT PARTICIPANTS]", "TurnOrchestrator.SwitchToCombatMode registered scene-wide combat participants",
+			$"Area: {activeArea?.Name ?? "NULL"} ({activeArea?.NestedAreaID.ToString() ?? "NULL"})\n" +
+			$"Count: {participantLines.Count}\n" +
+			$"Inactive skipped: {inactiveSkipped}\n" +
+			$"Wrong-area skipped: {wrongAreaSkipped}\n" +
+			$"Duplicate skipped: {duplicateSkipped}\n" +
+			$"Area state repaired: {areaStateRepaired}\n" +
+			$"Participants:\n{(participantLines.Count > 0 ? string.Join("\n", participantLines) : "NONE")}");
 
 		Trace("SwitchToCombatMode→CombatTurnManager.StartTurnCycle");
 		combatManager.StartTurnCycle();
 		GameDebugger.Instance.LogInfo("Switched to Combat mode.");
+		MessageLogManager.Instance?.Log("combat_start", PlayerStats.Instance.CurrentNestedArea?.Name ?? "Hostility");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogTurnSummary("TurnOrchestrator.SwitchToCombatMode completed");
 	}
@@ -432,6 +516,17 @@ public class TurnOrchestrator : MonoBehaviour
 		TurnDiagnosticsLogger.LogEvent("[COMBAT END]", "TurnOrchestrator.SwitchToExplorationMode begin");
 
 		CurrentContext = TurnContext.Exploration;
+		PlayerStats.Instance.InCombat = false;
+		if (PlayerStats.Instance.CurrentPlayerCharacter != null)
+		{
+			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = false;
+		}
+		foreach (var character in allCharacters)
+		{
+			if (character == null) continue;
+			character.InCombat = false;
+			character.InTurn = false;
+		}
 		combatManager.DeregisterAllCharacters();
 		explorationTurnManager.ClearCharacters();
 

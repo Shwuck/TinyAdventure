@@ -1130,10 +1130,34 @@ public void TakeDamage(Dictionary<DamageType, int> incomingDamage, Character att
     {
         float shakeStrength = Mathf.Clamp(totalDamage * 0.5f, 5f, 20f);
         float shakeDuration = 0.3f;
+        UIController uiController = UIController.Instance;
+        UIEffects uiEffects = UIEffects.Instance;
+        GameObject panelToShake = uiController != null ? uiController.panelToShake : null;
+        GameObject combatPanel = uiController != null ? uiController.uiCombatPanel : null;
 
         Debug.Log($"[TakeDamage] Screen shake triggered! Damage: {totalDamage}, Shake Strength: {shakeStrength}, Duration: {shakeDuration}");
+        // CODEXLOG003_ACTIONS_AAM: temporary player damage feedback diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[PLAYER DAMAGE FEEDBACK]", "Player damage screen shake requested",
+            $"Target: {FormatCombatReactionCharacter(this)}\n" +
+            $"Attacker: {FormatCombatReactionCharacter(attacker)}\n" +
+            $"TotalDamage: {totalDamage}\n" +
+            $"ShakeStrength: {shakeStrength}\n" +
+            $"ShakeDuration: {shakeDuration}\n" +
+            $"UIControllerExists: {uiController != null}\n" +
+            $"UIEffectsExists: {uiEffects != null}\n" +
+            $"PanelToShakeExists: {panelToShake != null}\n" +
+            $"PanelToShakeActive: {panelToShake?.activeInHierarchy.ToString() ?? "NULL"}\n" +
+            $"CombatPanelExists: {combatPanel != null}\n" +
+            $"CombatPanelActive: {combatPanel?.activeInHierarchy.ToString() ?? "NULL"}");
 
-        UIEffects.Instance.ShakeUI(UIController.Instance.uiCombatPanel.GetComponent<RectTransform>(), shakeDuration, shakeStrength);
+        if (uiController != null && panelToShake != null && uiEffects != null)
+        {
+            uiController.ApplyPanelShakeOnDamage(shakeStrength, shakeDuration);
+        }
+        else if (uiEffects != null && combatPanel != null)
+        {
+            uiEffects.ShakeUI(combatPanel.GetComponent<RectTransform>(), shakeDuration, shakeStrength);
+        }
     }
 
     if (!IsActive || CurrentNestedArea == null)
@@ -1349,8 +1373,9 @@ private BodyPart GetRandomBodyPart()
                 this);
         }
 
-        // Ensure NPCs in combat are actually in HostileState
-        if (InCombat)
+        // Combat-time membership is a shared clock, not hostile intent.
+        // Only actors already marked hostile should be forced into HostileState.
+        if (InCombat && (IsHostile || Stance == NPCStance.Hostile))
         {
             if (Stance != NPCStance.Hostile)
             {
@@ -1358,6 +1383,16 @@ private BodyPart GetRandomBodyPart()
                 GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - In combat. Switching to HostileState.");
                 stateMachine.HandleStanceChange(NPCStance.Hostile);
             }
+        }
+        else if (InCombat)
+        {
+            // CODEXLOG001_TURNLIFECYCLE: temporary combat participant role diagnostic.
+            TurnDiagnosticsLogger.LogEvent("[COMBAT ROLE]", "Non-hostile combat-time participant kept in current state",
+                $"Role: {BaseTurnManager.GetCombatParticipantRole(this)}\n" +
+                $"Stance: {Stance}\n" +
+                $"IsHostile: {IsHostile}\n" +
+                $"CurrentState: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}",
+                this);
         }
 
         // **Force Hostile NPCs into HostileState if they aren't there already**

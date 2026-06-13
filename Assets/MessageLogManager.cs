@@ -83,6 +83,48 @@ public class MessageLogManager : MonoBehaviour
                 "combat_status" when args.Length >= 3 =>
                     $"{args[0]} is now <color=purple>{args[1]}</color>! ({args[2]} turns)",
 
+                "combat_start" when args.Length >= 1 =>
+                    $"<color=red>Combat started in {args[0]}.</color>",
+
+                "combat_player_turn" when args.Length >= 3 =>
+                    $"<color=green>Your turn.</color> AP: {args[1]}, MP: {args[2]}.",
+
+                "combat_enemy_turn" when args.Length >= 1 =>
+                    $"<color=orange>Enemy turn: {args[0]}.</color>",
+
+                "combat_bystander_turn" when args.Length >= 1 =>
+                    $"<color=grey>Bystander turn: {args[0]}.</color>",
+
+                "combat_animal_turn" when args.Length >= 1 =>
+                    $"<color=yellow>Animal turn: {args[0]}.</color>",
+
+                "combat_monster_turn" when args.Length >= 1 =>
+                    $"<color=orange>Monster turn: {args[0]}.</color>",
+
+                "combat_wait_turn" when args.Length >= 1 =>
+                    $"<color=grey>Wait for your turn. {args[0]} is acting.</color>",
+
+                "combat_no_ap" when args.Length >= 1 =>
+                    $"<color=grey>Not enough AP for {args[0]}.</color>",
+
+                "combat_no_mp" when args.Length >= 1 =>
+                    $"<color=grey>Not enough MP to {args[0]}.</color>",
+
+                "combat_auto_end_no_resources" =>
+                    "<color=grey>No AP or MP remaining. Ending turn.</color>",
+
+                "combat_no_resources_manual_end" =>
+                    "<color=grey>No AP or MP remaining. Press End Turn.</color>",
+
+                "combat_manual_end_turn" =>
+                    "<color=grey>Turn ended.</color>",
+
+                "combat_auto_end_on" =>
+                    "<color=grey>Auto-End Turn: On.</color>",
+
+                "combat_auto_end_off" =>
+                    "<color=grey>Auto-End Turn: Off.</color>",
+
                 "item" when args.Length >= 1 =>
                     $"<color=yellow>You picked up {args[0]}.</color>",
 
@@ -125,6 +167,20 @@ public class MessageLogManager : MonoBehaviour
             "combat_hit" => MessageType.Combat,
             "combat_critical" => MessageType.Combat,
             "combat_miss" => MessageType.Combat,
+            "combat_start" => MessageType.Combat,
+            "combat_player_turn" => MessageType.Combat,
+            "combat_enemy_turn" => MessageType.Combat,
+            "combat_bystander_turn" => MessageType.Combat,
+            "combat_animal_turn" => MessageType.Combat,
+            "combat_monster_turn" => MessageType.Combat,
+            "combat_wait_turn" => MessageType.Combat,
+            "combat_no_ap" => MessageType.Combat,
+            "combat_no_mp" => MessageType.Combat,
+            "combat_auto_end_no_resources" => MessageType.Combat,
+            "combat_no_resources_manual_end" => MessageType.Combat,
+            "combat_manual_end_turn" => MessageType.Combat,
+            "combat_auto_end_on" => MessageType.Combat,
+            "combat_auto_end_off" => MessageType.Combat,
             "combat_status" => MessageType.StatusEffect,
             "combat_armor_block" => MessageType.Defensive,
             "item" => MessageType.Item,
@@ -142,6 +198,20 @@ public class MessageLogManager : MonoBehaviour
             "combat_hit" => false,
             "combat_miss" => false,
             "combat_critical" => false,
+            "combat_start" => false,
+            "combat_player_turn" => false,
+            "combat_enemy_turn" => false,
+            "combat_bystander_turn" => false,
+            "combat_animal_turn" => false,
+            "combat_monster_turn" => false,
+            "combat_wait_turn" => false,
+            "combat_no_ap" => false,
+            "combat_no_mp" => false,
+            "combat_auto_end_no_resources" => false,
+            "combat_no_resources_manual_end" => false,
+            "combat_manual_end_turn" => false,
+            "combat_auto_end_on" => false,
+            "combat_auto_end_off" => false,
             "combat_status" => false,
             "combat_armor_block" => false,
             _ => true  // Only stack non-combat, repeatable messages

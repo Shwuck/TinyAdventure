@@ -88,8 +88,46 @@ public class CombatTurnManager : BaseTurnManager
 
         UIController.Instance.UpdateTurnOrderUI();
 
+        int playerStatsAPBeforeReset = PlayerStats.Instance.ActionPoints;
+        int playerStatsMPBeforeReset = PlayerStats.Instance.MovePoints;
+        int characterAPBeforeReset = playerCharacter != null ? playerCharacter.ActionPoints : -1;
+        int characterMPBeforeReset = playerCharacter != null ? playerCharacter.MovePoints : -1;
         PlayerStats.Instance.ResetActionPoints();
         PlayerStats.Instance.ResetMovePoints();
+        if (playerCharacter != null)
+        {
+            playerCharacter.ActionPoints = PlayerStats.Instance.ActionPoints;
+            playerCharacter.MovePoints = PlayerStats.Instance.MovePoints;
+        }
+        UIController.Instance.UpdateTurnOrderUI();
+        // CODEXLOG001_TURNLIFECYCLE: temporary player combat resource reset diagnostic.
+        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN START]", "CombatTurnManager.OnPlayerTurnStart AP/MP reset",
+            $"APReset: {playerStatsAPBeforeReset} -> {PlayerStats.Instance.ActionPoints}\n" +
+            $"MPReset: {playerStatsMPBeforeReset} -> {PlayerStats.Instance.MovePoints}\n" +
+            $"PlayerStatsAP: {PlayerStats.Instance.ActionPoints}\n" +
+            $"CharacterAPBefore: {characterAPBeforeReset}\n" +
+            $"CharacterAP: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"PlayerStatsMP: {PlayerStats.Instance.MovePoints}\n" +
+            $"CharacterMPBefore: {characterMPBeforeReset}\n" +
+            $"CharacterMP: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            "InputAccepted: True\nPlayerTurn: True",
+            playerCharacter);
+        // CODEXLOG003_ACTIONS_AAM: temporary combat AP ownership diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[AP RESET]", "CombatTurnManager.OnPlayerTurnStart synced player character AP",
+            $"PlayerStats.ActionPoints after reset: {PlayerStats.Instance.ActionPoints}\n" +
+            $"PlayerCharacter.ActionPoints before sync: {characterAPBeforeReset}\n" +
+            $"PlayerCharacter.ActionPoints after sync: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"PlayerStats.MovePoints after reset: {PlayerStats.Instance.MovePoints}");
+        LogTurnOrderDiagnostic("[COMBAT TURN ORDER]", "CombatTurnManager.OnPlayerTurnStart resources reset",
+            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+            $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
+            $"PlayerCharacter.ActionPoints: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"PlayerCharacter.MovePoints: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            "InputAccepted: True\nPlayerTurn: True");
+        MessageLogManager.Instance?.Log("combat_player_turn",
+            playerCharacter != null ? playerCharacter.Name : "Player",
+            PlayerStats.Instance.ActionPoints,
+            PlayerStats.Instance.MovePoints);
         PlayerController.Instance.UpdateAdaptiveActionMenu();
 
         OnPlayerTurn?.Invoke();
@@ -102,6 +140,9 @@ public class CombatTurnManager : BaseTurnManager
         GameDebugger.Instance.LogInfo($"[CombatTurnManager] Executing NPC turn for {npc.Name}.");
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", "CombatTurnManager.OnNPCTurnExecute", null, npc);
+        LogTurnOrderDiagnostic("[COMBAT TURN ORDER]", "CombatTurnManager.OnNPCTurnExecute begin",
+            $"InputAccepted: False\nPlayerTurn: False\nActorRole: {BaseTurnManager.GetCombatParticipantRole(npc)}");
+        LogCombatActorTurnMessage(npc);
 
         Vector2Int positionBefore = npc != null ? npc.NestedMapPosition : Vector2Int.zero;
         int apBefore = npc != null ? npc.ActionPoints : -1;
@@ -137,6 +178,29 @@ public class CombatTurnManager : BaseTurnManager
 
         npc.ExecuteTurnActions();
 
+        bool mapRefreshRequested = UIController.Instance != null;
+        if (mapRefreshRequested)
+        {
+            UIController.Instance.UpdateMapsAfterAction();
+        }
+        // CODEXLOG001_TURNLIFECYCLE: temporary visual refresh diagnostic after combat NPC action.
+        TurnDiagnosticsLogger.LogEvent("[VISUAL REFRESH]", "CombatTurnManager.OnNPCTurnExecute refreshed map after NPC action",
+            $"Reason: NPC combat action completed\n" +
+            $"Actor: {npc?.Name ?? "NULL"} [{npc?.IInteractableID.ToString() ?? "NULL"}]\n" +
+            $"RefreshMethod: UIController.UpdateMapsAfterAction\n" +
+            $"RefreshRequested: {mapRefreshRequested}\n" +
+            $"Position before: {positionBefore}\n" +
+            $"Position after: {npc?.NestedMapPosition.ToString() ?? "NULL"}\n" +
+            $"Position changed: {npc != null && npc.NestedMapPosition != positionBefore}",
+            npc);
+        // CODEXLOG002_MOVEMENT_AI: temporary movement visibility diagnostic after combat NPC action.
+        MovementAIDiagnosticsLogger.LogEvent("[MAP REFRESH]", "CombatTurnManager.OnNPCTurnExecute requested map refresh after NPC action",
+            $"RefreshMethod: UIController.UpdateMapsAfterAction\n" +
+            $"RefreshRequested: {mapRefreshRequested}\n" +
+            $"Position before: {positionBefore}\n" +
+            $"Position after: {npc?.NestedMapPosition.ToString() ?? "NULL"}",
+            npc);
+
         // CODEXLOG002_MOVEMENT_AI: temporary combat entity-turn movement diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "CombatTurnManager.OnNPCTurnExecute end",
             $"Position before: {positionBefore}\n" +
@@ -163,6 +227,9 @@ public class CombatTurnManager : BaseTurnManager
         bool hasPlayer = characterTurnDataDict.Values.Any(d => d.IsPlayer);
         if (characterTurnDataDict.Count > 0 && hasPlayer)
         {
+            // CODEXLOG001_TURNLIFECYCLE: temporary combat turn-cycle restart diagnostic.
+            TurnDiagnosticsLogger.LogEvent("[COMBAT TURN ADVANCE]", "CombatTurnManager.OnCycleEnded restarting combat cycle",
+                $"RegisteredCount: {characterTurnDataDict.Count}\nHasPlayer: {hasPlayer}");
             StartTurnCycle();
         }
         else
@@ -172,6 +239,35 @@ public class CombatTurnManager : BaseTurnManager
     }
 
     #endregion
+
+    private void LogCombatActorTurnMessage(Character actor)
+    {
+        if (actor == null)
+        {
+            MessageLogManager.Instance?.Log("combat_bystander_turn", "Unknown");
+            return;
+        }
+
+        if (actor.IsHostile || actor.Stance == NPCStance.Hostile)
+        {
+            MessageLogManager.Instance?.Log(actor is Monster ? "combat_monster_turn" : "combat_enemy_turn", actor.Name);
+            return;
+        }
+
+        if (actor is Animal)
+        {
+            MessageLogManager.Instance?.Log("combat_animal_turn", actor.Name);
+            return;
+        }
+
+        if (actor is Monster)
+        {
+            MessageLogManager.Instance?.Log("combat_monster_turn", actor.Name);
+            return;
+        }
+
+        MessageLogManager.Instance?.Log("combat_bystander_turn", actor.Name);
+    }
 
     #region Validation / Utilities
 

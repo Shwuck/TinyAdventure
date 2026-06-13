@@ -13,6 +13,7 @@ public class NPCManager : MonoBehaviour
     private Dictionary<Vector2Int, List<NPC>> npcsByCell = new Dictionary<Vector2Int, List<NPC>>();
     private List<NPCGroup> activeNPCGroups = new List<NPCGroup>();
     private List<NPC> allNPCs = new List<NPC>();
+    private readonly HashSet<int> loggedMissingNeedNoops = new HashSet<int>();
     #endregion
 
     #region Singleton
@@ -509,19 +510,40 @@ private void TransferNPCGroupToNestedArea(NPCGroup npcGroup, INestedArea nestedA
 
     public void ClearNPCNeed(NPC npc)
     {
+        if (npc == null)
+        {
+            Debug.LogWarning("Attempted to clear need for null NPC.");
+            return;
+        }
+
         // Check if the NPC exists and has a current need
-        if (npc != null && npc.CurrentNeed != null)
+        if (npc.CurrentNeed != null)
         {
             // Clear the NPC's current need
             npc.CurrentNeed = null;
+            loggedMissingNeedNoops.Remove(npc.NPCID);
 
             // Optionally, log the action for debugging or auditing purposes
             Debug.Log($"Cleared need for NPC '{npc.Name}' (ID: {npc.NPCID}).");
         }
         else
         {
-            // Optionally, handle cases where the NPC or need is null
-            Debug.LogWarning($"Attempted to clear need for NPC '{npc?.Name}' (ID: {npc?.NPCID}), but no need was found or NPC is null.");
+            if (loggedMissingNeedNoops.Add(npc.NPCID))
+            {
+                string trackedInPermaList = (PermaLists.Instance != null && PermaLists.Instance.AllNPCs != null)
+                    ? PermaLists.Instance.AllNPCs.Contains(npc).ToString()
+                    : "NULL";
+                // CODEXLOG001_TURNLIFECYCLE: temporary NPC needs idempotency diagnostic.
+                TurnDiagnosticsLogger.LogEvent("[NPC NEEDS]", "NPCManager.ClearNPCNeed no-op for valid NPC with no active need",
+                    $"NPC.Name: {npc.Name}\n" +
+                    $"NPC.ID: {npc.NPCID}\n" +
+                    $"IsActive: {npc.IsActive}\n" +
+                    $"IsAlive: {npc.IsAlive}\n" +
+                    $"CurrentNestedArea: {npc.CurrentNestedArea?.Name ?? "NULL"}\n" +
+                    $"IsInNestedArea: {npc.IsInNestedArea}\n" +
+                    $"TrackedInPermaList: {trackedInPermaList}\n" +
+                    "Result: no-op");
+            }
         }
     }
 

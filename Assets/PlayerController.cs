@@ -78,6 +78,13 @@ public class PlayerController : MonoBehaviour
     private float holdKeyTimer = 0f;
     private float holdKeyInterval = 0.3f; // Interval between movements when holding a key (in seconds)
     private KeyCode currentHeldKey;
+    private int lastCombatInputBlockedFrame = -1;
+    private int lastCombatInputBlockedActorId = int.MinValue;
+    private int lastNoMPFeedbackFrame = -1;
+    private int lastNoAPFeedbackFrame = -1;
+    private bool autoEndCombatTurnWhenNoAPMP = true;
+    private bool autoEndingCombatTurn = false;
+    private bool notifiedManualEndRequiredForNoResources = false;
     public bool IsShiftHeld
     {
         get
@@ -195,6 +202,25 @@ public class PlayerController : MonoBehaviour
 
         bool shiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
+        if (Input.GetKeyDown(KeyCode.Period))
+        {
+            ToggleAutoEndCombatTurn();
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            HandleManualEndTurnInput();
+            return;
+        }
+
+        if (!CanAcceptPlayerTurnInput("HandleKeyboardInput"))
+        {
+            isHoldingKey = false;
+            holdKeyTimer = 0f;
+            return;
+        }
+
         // Movement keys handling
         if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
         {
@@ -272,13 +298,19 @@ public class PlayerController : MonoBehaviour
 
     private void MoveAndUpdate(Vector2Int direction, Direction newDirection)
     {
+        if (!CanAcceptPlayerTurnInput("MoveAndUpdate"))
+        {
+            return;
+        }
+
         if (IsCellPassable(playerPosition + direction))
         {
             if (PlayerStats.Instance.RegisteredInTurnManager)
             {
-                if (PlayerStats.Instance.InCombat && PlayerStats.Instance.MovePoints < 1)
+                if (IsCombatTurnContext() && PlayerStats.Instance.MovePoints < 1)
                 {
                     Debug.Log("Cannot move, out of MovePoints.");
+                    ShowNotEnoughMPFeedback("move");
                     return;
                 }
 
@@ -300,6 +332,11 @@ public class PlayerController : MonoBehaviour
 
     private void Move(Vector2Int direction)
     {
+        if (!CanAcceptPlayerTurnInput("Move"))
+        {
+            return;
+        }
+
         previousPosition = playerPosition;
         Vector2Int newPosition = playerPosition + direction;
 
@@ -640,7 +677,7 @@ public class PlayerController : MonoBehaviour
 
 		CallTrace.Mark(this);
 
-		TurnOrchestrator.Instance.DeregisterAllCharacters();
+		TurnOrchestrator.Instance.EnterMainMap();
 		PlayerStats.Instance.RegisteredInTurnManager = false;
 		GameManager.Instance.ActiveTurnManager = false;
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
@@ -775,7 +812,7 @@ public class PlayerController : MonoBehaviour
 	private void HandleAction(float actionDuration)
 	{
 		endOfTurnManager.AddTurnProgress(actionDuration);
-		TurnOrchestrator.Instance.PlayerTurnCompleted();
+		TryCompletePlayerTurnFromPlayerController("HandleAction");
 	}
 
 	#endregion
@@ -1442,6 +1479,19 @@ public class PlayerController : MonoBehaviour
     public void DeductActionPoints(int amount)
     {
         PlayerStats.Instance.ActionPoints -= amount;
+        if (IsCombatTurnContext() && PlayerStats.Instance.CurrentPlayerCharacter != null)
+        {
+            PlayerStats.Instance.CurrentPlayerCharacter.ActionPoints = PlayerStats.Instance.ActionPoints;
+        }
+        LogCombatResourceState("[AP SPEND]", "PlayerController.DeductActionPoints",
+            $"Amount: {amount}\nPlayerStats.ActionPoints after spend: {PlayerStats.Instance.ActionPoints}");
+        RefreshCombatStatusUI();
+
+        if (IsCombatTurnContext())
+        {
+            PostPlayerActionTurnMaintenance("DeductActionPoints", "AP spend");
+            return;
+        }
 
         // Check if ActionPoints are depleted
         if (PlayerStats.Instance.ActionPoints <= 0)
@@ -1455,7 +1505,7 @@ public class PlayerController : MonoBehaviour
             else
             {
                 // If no pending action, complete the player's turn
-                turnOrchestrator.PlayerTurnCompleted();
+                TryCompletePlayerTurnFromPlayerController("DeductActionPoints");
             }
         }
     }
@@ -1463,19 +1513,49 @@ public class PlayerController : MonoBehaviour
     public void DeductMovePoints(int amount)
     {
         PlayerStats.Instance.MovePoints -= amount;
+        if (IsCombatTurnContext() && PlayerStats.Instance.CurrentPlayerCharacter != null)
+        {
+            PlayerStats.Instance.CurrentPlayerCharacter.MovePoints = PlayerStats.Instance.MovePoints;
+        }
+        LogCombatResourceState("[MP SPEND]", "PlayerController.DeductMovePoints",
+            $"Amount: {amount}\nPlayerStats.MovePoints after spend: {PlayerStats.Instance.MovePoints}");
+        RefreshCombatStatusUI();
 
         // Check if MovePoints are depleted
 		if (PlayerStats.Instance.MovePoints <= 0)
 		{
-			if (!PlayerStats.Instance.InCombat)
+			if (!IsCombatTurnContext())
 			{
-				turnOrchestrator.PlayerTurnCompleted();
+				TryCompletePlayerTurnFromPlayerController("DeductMovePoints");
 			}
+            else
+            {
+                ShowNotEnoughMPFeedback("move farther this turn");
+            }
 		}
+
+        if (IsCombatTurnContext())
+        {
+            PostPlayerActionTurnMaintenance("DeductMovePoints", "movement");
+        }
     }
 
     private void HandlePendingAction()
     {
+        if (IsCombatTurnContext())
+        {
+            // CODEXLOG003_ACTIONS_AAM: temporary combat pending-action diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[PENDING ACTION]", "Pending action ignored during combat",
+                $"PendingActionPointsCost: {PlayerStats.Instance.PendingActionPointsCost}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                $"CurrentPlayerCharacter.ActionPoints: {PlayerStats.Instance.CurrentPlayerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+                $"CurrentPlayerCharacter.InTurn: {PlayerStats.Instance.CurrentPlayerCharacter?.InTurn.ToString() ?? "NULL"}");
+
+            PlayerStats.Instance.PendingActionPointsCost = 0;
+            PlayerStats.Instance.HasPendingAction = false;
+            return;
+        }
+
         if (PlayerStats.Instance.PendingActionPointsCost <= PlayerStats.Instance.ActionPoints)
         {
             PlayerStats.Instance.ActionPoints -= PlayerStats.Instance.PendingActionPointsCost;
@@ -1489,7 +1569,7 @@ public class PlayerController : MonoBehaviour
 			}
 			else
 			{
-				turnOrchestrator.PlayerTurnCompleted();
+				TryCompletePlayerTurnFromPlayerController("HandlePendingAction completed");
 			}
         }
         else
@@ -1497,16 +1577,28 @@ public class PlayerController : MonoBehaviour
             // If the player still doesn't have enough AP to complete the pending action
             PlayerStats.Instance.PendingActionPointsCost -= PlayerStats.Instance.ActionPoints;
             PlayerStats.Instance.ActionPoints = 0;
-			turnOrchestrator.PlayerTurnCompleted();
+			TryCompletePlayerTurnFromPlayerController("HandlePendingAction deferred");
         }
     }
 
     private void ExecutePlayerAction(IInteraction interaction, IInteractable entity)
     {
+        if (!CanAcceptPlayerTurnInput("ExecutePlayerAction"))
+        {
+            return;
+        }
+
         int actionPointCost = interaction.ActionPointCost;
+        bool characterOwnedCombatAction = CombatActionUsesCharacterActionPoints(interaction);
 
         if (PlayerStats.Instance.ActionPoints >= actionPointCost)
         {
+            Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+            if (characterOwnedCombatAction && !PrepareCharacterActionPointsForCombatAction(interaction, playerCharacter, actionPointCost))
+            {
+                return;
+            }
+
             // Execute the interaction 
             PlayerStats.Instance.Attacking = true;
             if (interaction.Type == InteractionType.Combat)
@@ -1543,11 +1635,32 @@ public class PlayerController : MonoBehaviour
                     $"AreaHasHostiles: {area?.IsHostileArea.ToString() ?? "NULL"}");
                 TurnOrchestrator.Instance?.TryUpdateTurnContext();
             }
-            DeductActionPoints(actionPointCost); // Deduct AP and check if the turn should end
+            if (characterOwnedCombatAction)
+            {
+                SyncPlayerStatsActionPointsFromCharacter(playerCharacter, interaction.Name);
+                PostPlayerActionTurnMaintenance("ExecutePlayerAction character-owned combat action", $"AAM action: {interaction.Name}");
+            }
+            else
+            {
+                DeductActionPoints(actionPointCost); // Deduct AP and check if the turn should end
+            }
             PlayerStats.Instance.Attacking = false;
         }
         else
         {
+            if (IsCombatTurnContext())
+            {
+                // CODEXLOG003_ACTIONS_AAM: temporary combat AP/pending diagnostic.
+                ActionAAMDiagnosticsLogger.LogEvent("[AP CHECK]", "Combat action rejected without pending action",
+                    $"ActionName: {interaction.Name}\n" +
+                    $"ActionPointCost: {actionPointCost}\n" +
+                    $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                    $"CurrentPlayerCharacter.ActionPoints: {PlayerStats.Instance.CurrentPlayerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+                    $"CurrentPlayerCharacter.InTurn: {PlayerStats.Instance.CurrentPlayerCharacter?.InTurn.ToString() ?? "NULL"}");
+                ShowNotEnoughAPFeedback(interaction.Name);
+                return;
+            }
+
             // Store the remaining AP cost for the next turn
             PlayerStats.Instance.PendingActionPointsCost = actionPointCost - PlayerStats.Instance.ActionPoints;
             PlayerStats.Instance.HasPendingAction = true;
@@ -1605,8 +1718,385 @@ public class PlayerController : MonoBehaviour
         return $"{area.Name} (ID={area.NestedAreaID}, Level={area.NestedAreaLevel})";
     }
 
+    private bool IsCombatTurnContext()
+    {
+        return TurnOrchestrator.Instance != null &&
+               TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat;
+    }
+
+    private bool IsPlayerCombatTurnActive()
+    {
+        Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+        return playerCharacter != null && playerCharacter.InTurn;
+    }
+
+    private bool CanAcceptPlayerTurnInput(string source)
+    {
+        if (!IsCombatTurnContext())
+        {
+            return true;
+        }
+
+        if (IsPlayerCombatTurnActive())
+        {
+            lastCombatInputBlockedActorId = int.MinValue;
+            return true;
+        }
+
+        Character currentActor = GetCurrentCombatTurnActor();
+        int currentActorId = currentActor != null ? currentActor.IInteractableID : int.MinValue;
+
+        if (lastCombatInputBlockedActorId != currentActorId)
+        {
+            lastCombatInputBlockedFrame = Time.frameCount;
+            lastCombatInputBlockedActorId = currentActorId;
+            Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+            // CODEXLOG001_TURNLIFECYCLE: temporary combat player-input ownership diagnostic.
+            TurnDiagnosticsLogger.LogEvent("[PLAYER INPUT]", "Player input ignored because not player combat turn",
+                $"Source: {source}\n" +
+                $"CurrentContext: {TurnOrchestrator.Instance.CurrentContext}\n" +
+                $"CurrentActor: {FormatAAMCharacter(currentActor)}\n" +
+                $"Player: {FormatAAMCharacter(playerCharacter)}\n" +
+                $"Player.InTurn: {playerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
+                $"PlayerStats.InCombat: {PlayerStats.Instance.InCombat}");
+            MessageLogManager.Instance?.Log("combat_wait_turn", currentActor != null ? currentActor.Name : "Someone else");
+        }
+
+        return false;
+    }
+
+    private bool TryCompletePlayerTurnFromPlayerController(string source)
+    {
+        if (turnOrchestrator == null)
+        {
+            return false;
+        }
+
+        if (IsCombatTurnContext() && !IsPlayerCombatTurnActive())
+        {
+            Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+            // CODEXLOG001_TURNLIFECYCLE: temporary combat player-turn completion diagnostic.
+            TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", "PlayerController skipped PlayerTurnCompleted because combat player turn is not active",
+                $"Source: {source}\n" +
+                $"CurrentContext: {TurnOrchestrator.Instance.CurrentContext}\n" +
+                $"Player: {FormatAAMCharacter(playerCharacter)}\n" +
+                $"Player.InTurn: {playerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
+                $"PlayerStats.InCombat: {PlayerStats.Instance.InCombat}");
+            return false;
+        }
+
+        turnOrchestrator.PlayerTurnCompleted();
+        notifiedManualEndRequiredForNoResources = false;
+        return true;
+    }
+
+    private void HandleManualEndTurnInput()
+    {
+        if (!IsCombatTurnContext())
+        {
+            // CODEXLOG001_TURNLIFECYCLE: temporary manual end-turn diagnostic.
+            TurnDiagnosticsLogger.LogEvent("[MANUAL END TURN]", "Manual end turn ignored outside combat",
+                $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+                "Action: IgnoredOutsideCombat");
+            return;
+        }
+
+        Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+        bool isPlayerTurn = IsPlayerCombatTurnActive();
+        Character currentActor = GetCurrentCombatTurnActor();
+
+        // CODEXLOG001_TURNLIFECYCLE: temporary manual end-turn diagnostic.
+        TurnDiagnosticsLogger.LogEvent("[MANUAL END TURN]", "Manual end turn hotkey pressed",
+            $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+            $"IsPlayerTurn: {isPlayerTurn}\n" +
+            $"CurrentActor: {FormatAAMCharacter(currentActor)}\n" +
+            $"Player: {FormatAAMCharacter(playerCharacter)}\n" +
+            $"AP: {PlayerStats.Instance.ActionPoints}\n" +
+            $"MP: {PlayerStats.Instance.MovePoints}\n" +
+            $"Action: {(isPlayerTurn ? "EndPlayerTurn" : "IgnoredNotPlayerTurn")}",
+            playerCharacter);
+
+        if (!isPlayerTurn)
+        {
+            MessageLogManager.Instance?.Log("combat_wait_turn", currentActor != null ? currentActor.Name : "Someone else");
+            return;
+        }
+
+        MessageLogManager.Instance?.Log("combat_manual_end_turn");
+        TryCompletePlayerTurnFromPlayerController("ManualEndTurnHotkey");
+    }
+
+    private void ToggleAutoEndCombatTurn()
+    {
+        autoEndCombatTurnWhenNoAPMP = !autoEndCombatTurnWhenNoAPMP;
+        notifiedManualEndRequiredForNoResources = false;
+
+        // CODEXLOG001_TURNLIFECYCLE: temporary auto-end toggle diagnostic.
+        TurnDiagnosticsLogger.LogEvent("[AUTO END TOGGLE]", "PlayerController.ToggleAutoEndCombatTurn",
+            $"AutoEndCombatTurnWhenNoAPMP: {autoEndCombatTurnWhenNoAPMP}\n" +
+            $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+            $"IsPlayerTurn: {IsPlayerCombatTurnActive()}\n" +
+            $"AP: {PlayerStats.Instance.ActionPoints}\n" +
+            $"MP: {PlayerStats.Instance.MovePoints}",
+            PlayerStats.Instance.CurrentPlayerCharacter);
+
+        MessageLogManager.Instance?.Log(autoEndCombatTurnWhenNoAPMP ? "combat_auto_end_on" : "combat_auto_end_off");
+        PostPlayerActionTurnMaintenance("ToggleAutoEndCombatTurn", "auto-end toggle");
+    }
+
+    private void CompletePlayerTurnIfActionPointsDepleted(string source)
+    {
+        if (PlayerStats.Instance.ActionPoints <= 0)
+        {
+            if (IsCombatTurnContext())
+            {
+                ShowNotEnoughAPFeedback("continue acting");
+                PostPlayerActionTurnMaintenance(source, "legacy AP depletion check");
+                return;
+            }
+            TryCompletePlayerTurnFromPlayerController(source);
+        }
+    }
+
+    private void PostPlayerActionTurnMaintenance(string source, string pipelineSource)
+    {
+        if (!IsCombatTurnContext())
+        {
+            return;
+        }
+
+        Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+        int characterAPBeforeSync = playerCharacter != null ? playerCharacter.ActionPoints : -1;
+        int characterMPBeforeSync = playerCharacter != null ? playerCharacter.MovePoints : -1;
+
+        if (playerCharacter != null)
+        {
+            playerCharacter.ActionPoints = PlayerStats.Instance.ActionPoints;
+            playerCharacter.MovePoints = PlayerStats.Instance.MovePoints;
+        }
+
+        RefreshCombatStatusUI();
+        UpdateAdaptiveActionMenu();
+
+        bool playerTurnActive = IsPlayerCombatTurnActive();
+        bool noUsableAP = PlayerStats.Instance.ActionPoints <= 0;
+        bool noUsableMP = PlayerStats.Instance.MovePoints <= 0;
+        bool waitingForManualEnd = playerTurnActive &&
+                                   noUsableAP &&
+                                   noUsableMP &&
+                                   !autoEndCombatTurnWhenNoAPMP;
+        bool shouldAutoEnd = autoEndCombatTurnWhenNoAPMP &&
+                             playerTurnActive &&
+                             noUsableAP &&
+                             noUsableMP &&
+                             !autoEndingCombatTurn;
+
+        // CODEXLOG003_ACTIONS_AAM: temporary central player action pipeline diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[PLAYER ACTION PIPELINE]", "Post player action combat maintenance",
+            $"Source: {source}\n" +
+            $"PipelineSource: {pipelineSource}\n" +
+            $"PostActionSync: True\n" +
+            $"AutoEndChecked: True\n" +
+            $"PlayerTurnActive: {playerTurnActive}\n" +
+            $"PlayerStatsAP: {PlayerStats.Instance.ActionPoints}\n" +
+            $"CharacterAPBeforeSync: {characterAPBeforeSync}\n" +
+            $"CharacterAP: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"PlayerStatsMP: {PlayerStats.Instance.MovePoints}\n" +
+            $"CharacterMPBeforeSync: {characterMPBeforeSync}\n" +
+            $"CharacterMP: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"AutoEnd: {shouldAutoEnd}");
+
+        // CODEXLOG001_TURNLIFECYCLE: temporary combat auto-end diagnostic.
+        TurnDiagnosticsLogger.LogEvent("[AUTO END CHECK]", "PlayerController.PostPlayerActionTurnMaintenance",
+            $"Source: {source}\n" +
+            $"PipelineSource: {pipelineSource}\n" +
+            $"CurrentContext: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+            $"PlayerTurnActive: {playerTurnActive}\n" +
+            $"AP: {PlayerStats.Instance.ActionPoints}\n" +
+            $"MP: {PlayerStats.Instance.MovePoints}\n" +
+            $"AutoEndEnabled: {autoEndCombatTurnWhenNoAPMP}\n" +
+            $"AutoEndInProgress: {autoEndingCombatTurn}\n" +
+            $"Action: {(shouldAutoEnd ? "EndPlayerTurn" : waitingForManualEnd ? "WaitingForManualEndTurn" : "ContinuePlayerTurn")}",
+            playerCharacter);
+
+        if (waitingForManualEnd)
+        {
+            if (!notifiedManualEndRequiredForNoResources)
+            {
+                notifiedManualEndRequiredForNoResources = true;
+                MessageLogManager.Instance?.Log("combat_no_resources_manual_end");
+            }
+            return;
+        }
+
+        if (!noUsableAP || !noUsableMP)
+        {
+            notifiedManualEndRequiredForNoResources = false;
+        }
+
+        if (!shouldAutoEnd)
+        {
+            return;
+        }
+
+        autoEndingCombatTurn = true;
+        try
+        {
+            MessageLogManager.Instance?.Log("combat_auto_end_no_resources");
+            TryCompletePlayerTurnFromPlayerController($"AutoEndNoAPMP:{source}");
+        }
+        finally
+        {
+            autoEndingCombatTurn = false;
+        }
+    }
+
+    private bool CombatActionUsesCharacterActionPoints(IInteraction interaction)
+    {
+        if (interaction == null || interaction.Type != InteractionType.Combat)
+        {
+            return false;
+        }
+
+        return interaction.Name == "Punch" ||
+               interaction.Name == "Slash" ||
+               interaction.Name == "Stab" ||
+               interaction.Name == "Bash" ||
+               interaction.Name == "Rend";
+    }
+
+    private bool PrepareCharacterActionPointsForCombatAction(IInteraction interaction, Character playerCharacter, int actionPointCost)
+    {
+        if (playerCharacter == null)
+        {
+            // CODEXLOG003_ACTIONS_AAM: temporary combat AP ownership diagnostic.
+            ActionAAMDiagnosticsLogger.LogEvent("[AP CHECK]", "Combat action rejected because player character is null",
+                $"ActionName: {interaction?.Name ?? "NULL"}\n" +
+                $"ActionPointCost: {actionPointCost}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}");
+            return false;
+        }
+
+        int characterAPBefore = playerCharacter.ActionPoints;
+        if (playerCharacter.ActionPoints != PlayerStats.Instance.ActionPoints)
+        {
+            playerCharacter.ActionPoints = PlayerStats.Instance.ActionPoints;
+        }
+
+        bool canAfford = playerCharacter.ActionPoints >= actionPointCost;
+        // CODEXLOG003_ACTIONS_AAM: temporary combat AP ownership diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[AP CHECK]", "Combat action character AP prepared before execution",
+            $"ActionName: {interaction.Name}\n" +
+            $"ActionPointCost: {actionPointCost}\n" +
+            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+            $"Character.ActionPoints before sync: {characterAPBefore}\n" +
+            $"Character.ActionPoints after sync: {playerCharacter.ActionPoints}\n" +
+            $"CanAffordBeforeDamage: {canAfford}\n" +
+            $"AP owner for this action: Character.PerformAttack");
+
+        return canAfford;
+    }
+
+    private void SyncPlayerStatsActionPointsFromCharacter(Character playerCharacter, string actionName)
+    {
+        if (playerCharacter == null)
+        {
+            return;
+        }
+
+        int playerStatsAPBefore = PlayerStats.Instance.ActionPoints;
+        PlayerStats.Instance.ActionPoints = playerCharacter.ActionPoints;
+
+        // CODEXLOG003_ACTIONS_AAM: temporary combat AP ownership diagnostic.
+        ActionAAMDiagnosticsLogger.LogEvent("[AP SPEND]", "PlayerStats AP synced from character after combat action",
+            $"ActionName: {actionName}\n" +
+            $"PlayerStats.ActionPoints before sync: {playerStatsAPBefore}\n" +
+            $"PlayerStats.ActionPoints after sync: {PlayerStats.Instance.ActionPoints}\n" +
+            $"Character.ActionPoints: {playerCharacter.ActionPoints}\n" +
+            $"AP spend source: Character.PerformAttack");
+        RefreshCombatStatusUI();
+    }
+
+    private Character GetCurrentCombatTurnActor()
+    {
+        if (TurnOrchestrator.Instance == null ||
+            TurnOrchestrator.Instance.CurrentContext != TurnContext.Combat)
+        {
+            return null;
+        }
+
+        return TurnOrchestrator.Instance.DiagnosticGetCombatCharactersSnapshot()
+            .FirstOrDefault(character => character != null && character.InTurn);
+    }
+
+    private void ShowNotEnoughAPFeedback(string actionName)
+    {
+        if (lastNoAPFeedbackFrame == Time.frameCount)
+        {
+            return;
+        }
+
+        lastNoAPFeedbackFrame = Time.frameCount;
+        ActionAAMDiagnosticsLogger.LogEvent("[AP CHECK]", "Not enough AP feedback shown",
+            $"ActionName: {actionName}\n" +
+            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+            $"CurrentPlayerCharacter.ActionPoints: {PlayerStats.Instance.CurrentPlayerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}");
+        MessageLogManager.Instance?.Log("combat_no_ap", actionName);
+    }
+
+    private void ShowNotEnoughMPFeedback(string actionName)
+    {
+        if (lastNoMPFeedbackFrame == Time.frameCount)
+        {
+            return;
+        }
+
+        lastNoMPFeedbackFrame = Time.frameCount;
+        ActionAAMDiagnosticsLogger.LogEvent("[MP CHECK]", "Not enough MP feedback shown",
+            $"ActionName: {actionName}\n" +
+            $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
+            $"CurrentPlayerCharacter.MovePoints: {PlayerStats.Instance.CurrentPlayerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}");
+        MessageLogManager.Instance?.Log("combat_no_mp", actionName);
+    }
+
+    private void LogCombatResourceState(string category, string eventName, string details)
+    {
+        if (!IsCombatTurnContext())
+        {
+            return;
+        }
+
+        ActionAAMDiagnosticsLogger.LogEvent(category, eventName,
+            $"{details}\n" +
+            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+            $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
+            $"CurrentPlayerCharacter.ActionPoints: {PlayerStats.Instance.CurrentPlayerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"CurrentPlayerCharacter.MovePoints: {PlayerStats.Instance.CurrentPlayerCharacter?.MovePoints.ToString() ?? "NULL"}");
+    }
+
+    private void RefreshCombatStatusUI()
+    {
+        if (!IsCombatTurnContext())
+        {
+            return;
+        }
+
+        UIController.Instance?.UpdateTurnOrderUI();
+    }
+
     private void ExecuteEnvironmentalAction(IEnvironmentalAction action, Cell cell)
     {
+        if (!CanAcceptPlayerTurnInput("ExecuteEnvironmentalAction"))
+        {
+            return;
+        }
+
         int actionPointCost = action.ActionPointCost;
 
         if (PlayerStats.Instance.ActionPoints >= actionPointCost)

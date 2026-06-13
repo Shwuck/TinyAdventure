@@ -39,6 +39,12 @@ public abstract class BaseTurnManager : MonoBehaviour
             .ToList();
     }
 
+    // CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
+    public Character DiagnosticCurrentTurnActor =>
+        currentTurnIndex >= 0 && currentTurnIndex < sortedCharacterList.Count
+            ? sortedCharacterList[currentTurnIndex].Character
+            : null;
+
     #endregion
 
     #region Registration
@@ -259,6 +265,8 @@ public abstract class BaseTurnManager : MonoBehaviour
 
         GameDebugger.Instance.LogInfo(
             $"{GetType().Name}.SortCharacters: Count={sortedCharacterList.Count} Order={order}");
+
+        LogTurnOrderDiagnostic("[COMBAT TURN ORDER]", $"{GetType().Name}.SortCharacters completed", null);
     }
 
     /// <summary>
@@ -309,6 +317,8 @@ public abstract class BaseTurnManager : MonoBehaviour
             $"{GetType().Name}.ExecuteNextTurn: Starting turn for [{character.IInteractableID}] {character.Name} Delay={delay}");
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", $"{GetType().Name}.ExecuteNextTurn starting entity turn", $"Delay: {delay}", character);
+        LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ExecuteNextTurn starting entity turn",
+            $"Delay: {delay}");
 
         if (TurnOrchestrator.Instance != null)
         {
@@ -342,11 +352,13 @@ public abstract class BaseTurnManager : MonoBehaviour
         if (data.IsPlayer)
         {
             isPlayerTurn = true;
+            LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ExecuteTurnWithDelay entering player turn", null);
             OnPlayerTurnStart(character);
         }
         else
         {
             isPlayerTurn = false;
+            LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ExecuteTurnWithDelay entering NPC turn", null);
             OnNPCTurnExecute(character);
             EndTurnForCharacter(character);
         }
@@ -386,6 +398,7 @@ public abstract class BaseTurnManager : MonoBehaviour
         }
 
         isPlayerTurn = false;
+        LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.PlayerTurnCompleted", "Completing player turn before EndTurnForCharacter.");
         EndTurnForCharacter(player);
     }
 
@@ -408,6 +421,9 @@ public abstract class BaseTurnManager : MonoBehaviour
         GameDebugger.Instance.LogInfo(
             $"{GetType().Name}.EndTurnForCharacter: [{character.IInteractableID}] {character.Name} turn ended.");
 
+        LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.EndTurnForCharacter before advance",
+            $"PreviousActor: {FormatTurnActor(character)}\nAdvanceIndex: {advanceIndex}");
+
         character.InTurn = false;
         character.OnTurnEnd();
 
@@ -415,6 +431,9 @@ public abstract class BaseTurnManager : MonoBehaviour
         {
             currentTurnIndex++;
         }
+
+        LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.EndTurnForCharacter after advance",
+            $"PreviousActor: {FormatTurnActor(character)}\nAdvanceIndex: {advanceIndex}");
 
         ExecuteNextTurn();
     }
@@ -436,6 +455,102 @@ public abstract class BaseTurnManager : MonoBehaviour
         }
 
         OnCycleEnded();
+    }
+
+    #endregion
+
+    #region Turn Order Diagnostics
+
+    // CODEXLOG001_TURNLIFECYCLE: temporary combat turn-order diagnostic helper.
+    protected void LogTurnOrderDiagnostic(string category, string eventName, string extraDetails)
+    {
+        if (TurnOrchestrator.Instance == null ||
+            TurnOrchestrator.Instance.CurrentContext != TurnContext.Combat)
+        {
+            return;
+        }
+
+        CharacterTurnData currentData = currentTurnIndex >= 0 && currentTurnIndex < sortedCharacterList.Count
+            ? sortedCharacterList[currentTurnIndex]
+            : null;
+        CharacterTurnData nextData = GetNextTurnData();
+
+        string participantLines = sortedCharacterList.Count == 0
+            ? "NONE"
+            : string.Join("\n", sortedCharacterList.Select((data, index) =>
+            {
+                Character character = data.Character;
+                return $"{index + 1}. {FormatTurnActor(character)} Role={GetCombatParticipantRole(character, data.IsPlayer)} IsPlayer={data.IsPlayer} Speed={data.Speed} Inactive={character != null && !character.IsActive} MissingArea={character != null && character.CurrentNestedArea == null}";
+            }));
+
+        string details =
+            $"Manager: {GetType().Name}\n" +
+            $"CurrentTurnIndex: {currentTurnIndex}\n" +
+            $"ParticipantCount: {sortedCharacterList.Count}\n" +
+            $"IsPlayerTurnFlag: {isPlayerTurn}\n" +
+            $"CurrentActor: {FormatTurnActor(currentData?.Character)}\n" +
+            $"CurrentActorRole: {GetCombatParticipantRole(currentData?.Character, currentData?.IsPlayer ?? false)}\n" +
+            $"CurrentActorIsPlayer: {currentData?.IsPlayer.ToString() ?? "NULL"}\n" +
+            $"CurrentActorAP: {currentData?.Character?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"CurrentActorMP: {currentData?.Character?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"CurrentActorInTurn: {currentData?.Character?.InTurn.ToString() ?? "NULL"}\n" +
+            $"CurrentActorInCombat: {currentData?.Character?.InCombat.ToString() ?? "NULL"}\n" +
+            $"CurrentActorIsHostile: {currentData?.Character?.IsHostile.ToString() ?? "NULL"}\n" +
+            $"NextActor: {FormatTurnActor(nextData?.Character)}\n" +
+            $"NextActorRole: {GetCombatParticipantRole(nextData?.Character, nextData?.IsPlayer ?? false)}\n" +
+            $"NextActorIsPlayer: {nextData?.IsPlayer.ToString() ?? "NULL"}\n" +
+            $"Participants:\n{participantLines}";
+
+        if (!string.IsNullOrEmpty(extraDetails))
+        {
+            details += $"\n{extraDetails}";
+        }
+
+        TurnDiagnosticsLogger.LogEvent(category, eventName, details, currentData?.Character);
+    }
+
+    private CharacterTurnData GetNextTurnData()
+    {
+        int nextIndex = currentTurnIndex + 1;
+        while (nextIndex < sortedCharacterList.Count)
+        {
+            CharacterTurnData next = sortedCharacterList[nextIndex];
+            if (next?.Character != null)
+            {
+                return next;
+            }
+
+            nextIndex++;
+        }
+
+        return null;
+    }
+
+    private string FormatTurnActor(Character character)
+    {
+        if (character == null) return "NULL";
+        return $"{character.Name} [{character.IInteractableID}] ({character.GetType().Name})";
+    }
+
+    // CODEXLOG001_TURNLIFECYCLE: temporary combat participant role diagnostic helper.
+    public static string GetCombatParticipantRole(Character character, bool isPlayer = false)
+    {
+        if (character == null) return "Invalid/Null";
+        if (isPlayer || character == PlayerStats.Instance?.CurrentPlayerCharacter) return "Player";
+        if (!character.IsActive) return "Inactive/Removed";
+        if (character.CurrentNestedArea == null) return "MissingAreaContext";
+
+        string disposition = character.IsHostile || character.Stance == NPCStance.Hostile
+            ? "Hostile"
+            : "Neutral";
+
+        if (character is Monster) return $"{disposition} Monster";
+        if (character is Animal) return $"{disposition} Animal";
+        if (character is NPC) return character.IsHostile || character.Stance == NPCStance.Hostile
+            ? "Hostile NPC"
+            : "Neutral/Bystander NPC";
+
+        return $"{disposition} Character";
     }
 
     #endregion
