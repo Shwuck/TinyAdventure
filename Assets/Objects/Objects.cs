@@ -196,10 +196,42 @@ public abstract class BaseObject : IInteractable, IFlammable, IDestructible
 
     public IEnumerable<IInteraction> GetAvailableInteractions(PlayerInventory inventory)
     {
-        return baseInteractionList
+        List<IInteraction> availableInteractions = baseInteractionList
             .Concat(objectInteractionList)
             .Concat(subObjectInteractionList)
-            .Where(interaction => interaction.IsAvailable(this, inventory));
+            .Where(interaction => interaction.IsAvailable(this, inventory))
+            .ToList();
+
+        List<IInteraction> uniqueInteractions = availableInteractions
+            .GroupBy(GetInteractionDeduplicationKey)
+            .Select(group => group.First())
+            .ToList();
+
+        if (uniqueInteractions.Count != availableInteractions.Count)
+        {
+            string duplicateNames = string.Join(", ", availableInteractions
+                .GroupBy(interaction => interaction.Name)
+                .Where(group => group.Count() > 1)
+                .Select(group => $"{group.Key} x{group.Count()}"));
+
+            ActionAAMDiagnosticsLogger.LogEvent("[PROVIDER DEDUPE]", "Duplicate object interactions suppressed",
+                $"Provider: {Name} [{IInteractableID}] ({GetType().Name})\n" +
+                $"RawAvailableInteractions: {availableInteractions.Count}\n" +
+                $"UniqueAvailableInteractions: {uniqueInteractions.Count}\n" +
+                $"DuplicateActions: {duplicateNames}");
+        }
+
+        return uniqueInteractions;
+    }
+
+    private static string GetInteractionDeduplicationKey(IInteraction interaction)
+    {
+        if (interaction == null)
+        {
+            return "NULL";
+        }
+
+        return $"{interaction.GetType().FullName}|{interaction.Name}|{interaction.Type}|{interaction.ActionPointCost}";
     }
 
     public virtual void Destroy()

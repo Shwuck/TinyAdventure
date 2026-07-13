@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -16,6 +15,7 @@ public abstract class BaseTurnManager : MonoBehaviour
     protected int currentTurnIndex = 0;
     protected bool isPlayerTurn = false;
     protected bool isCycleRunning = false;
+    protected bool isAdvancingTurnSequence = false;
 
     #endregion
 
@@ -182,6 +182,7 @@ public abstract class BaseTurnManager : MonoBehaviour
         currentTurnIndex = 0;
         isPlayerTurn = false;
         isCycleRunning = false;
+        isAdvancingTurnSequence = false;
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[DEREGISTRATION]", $"{GetType().Name}.DeregisterAllCharacters after clear", "RegisteredCount: 0");
     }
@@ -195,52 +196,17 @@ public abstract class BaseTurnManager : MonoBehaviour
     /// </summary>
     public virtual void StartTurnCycle()
     {
-        if (isCycleRunning)
+        if (!CanExecuteForCurrentContext("StartTurnCycle"))
         {
-            GameDebugger.Instance.LogWarning($"{GetType().Name}.StartTurnCycle: Ignored because a cycle is already running.");
-            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-            TurnDiagnosticsLogger.LogWarning("Turn cycle start ignored because cycle is already running",
-                $"{GetType().Name}.StartTurnCycle ignored duplicate start request. RegisteredCount: {characterTurnDataDict.Count}");
             return;
         }
 
-        if (characterTurnDataDict.Count == 0)
+        if (!BeginCycleInternal($"{GetType().Name}.StartTurnCycle"))
         {
-            GameDebugger.Instance.LogInfo($"{GetType().Name}.StartTurnCycle: No characters registered.");
-            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-            TurnDiagnosticsLogger.LogWarning("Turn cycle requested with zero participants", $"{GetType().Name}.StartTurnCycle found no registered characters.");
             return;
         }
 
-        bool hasPlayer = characterTurnDataDict.Values.Any(d => d.IsPlayer);
-        if (!hasPlayer)
-        {
-            GameDebugger.Instance.LogWarning($"{GetType().Name}.StartTurnCycle: No player character registered.");
-            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-            TurnDiagnosticsLogger.LogWarning("Turn cycle has no registered player", $"{GetType().Name}.StartTurnCycle found no player character.");
-        }
-
-        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", $"{GetType().Name}.StartTurnCycle", $"RegisteredCount: {characterTurnDataDict.Count}");
-
-        isCycleRunning = true;
-        SortCharacters();
-
-        currentTurnIndex = 0;
-        isPlayerTurn = false;
-
-        // Hook into TurnOrchestrator audit, if present
-        if (TurnOrchestrator.Instance != null)
-        {
-            var orderedChars = sortedCharacterList
-                .Select(d => d.Character)
-                .Where(c => c != null)
-                .ToList();
-
-            TurnOrchestrator.Instance.AuditBeginCycle(orderedChars);
-        }
-
-        ExecuteNextTurn();
+        ContinueTurnSequence($"{GetType().Name}.StartTurnCycle");
     }
 
     /// <summary>
@@ -270,105 +236,15 @@ public abstract class BaseTurnManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Advances to the next valid character and begins their turn.
-    /// </summary>
-    protected virtual void ExecuteNextTurn()
-    {
-        // No characters at all
-        if (sortedCharacterList.Count == 0)
-        {
-            GameDebugger.Instance.LogInfo($"{GetType().Name}.ExecuteNextTurn: No entries in sortedCharacterList.");
-            EndCycle();
-            return;
-        }
-
-        // Cycle finished
-        if (currentTurnIndex >= sortedCharacterList.Count)
-        {
-            EndCycle();
-            return;
-        }
-
-        var data = sortedCharacterList[currentTurnIndex];
-        var character = data.Character;
-
-        if (character == null)
-        {
-            GameDebugger.Instance.LogWarning(
-                $"{GetType().Name}.ExecuteNextTurn: NULL Character at index {currentTurnIndex}. Skipping.");
-            currentTurnIndex++;
-            ExecuteNextTurn();
-            return;
-        }
-
-        if (ShouldSkipCharacter(character))
-        {
-            GameDebugger.Instance.LogInfo(
-                $"{GetType().Name}.ExecuteNextTurn: Skipping [{character.IInteractableID}] {character.Name}.");
-            currentTurnIndex++;
-            ExecuteNextTurn();
-            return;
-        }
-
-        character.InTurn = true;
-        float delay = GetTurnDelay(character);
-
-        GameDebugger.Instance.LogInfo(
-            $"{GetType().Name}.ExecuteNextTurn: Starting turn for [{character.IInteractableID}] {character.Name} Delay={delay}");
-        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-        TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", $"{GetType().Name}.ExecuteNextTurn starting entity turn", $"Delay: {delay}", character);
-        LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ExecuteNextTurn starting entity turn",
-            $"Delay: {delay}");
-
-        if (TurnOrchestrator.Instance != null)
-        {
-            TurnOrchestrator.Instance.AuditMarkTurn(character, "Start");
-        }
-
-        StartCoroutine(ExecuteTurnWithDelay(delay, data));
-    }
-
-    /// <summary>
-    /// Coroutine wrapper that handles optional delay, then executes player or NPC logic.
-    /// </summary>
-    private IEnumerator ExecuteTurnWithDelay(float delay, CharacterTurnData data)
-    {
-        if (delay > 0f)
-        {
-            yield return new WaitForSeconds(delay);
-        }
-
-        var character = data.Character;
-
-        if (character == null)
-        {
-            GameDebugger.Instance.LogWarning(
-                $"{GetType().Name}.ExecuteTurnWithDelay: Character became NULL. Skipping.");
-            currentTurnIndex++;
-            ExecuteNextTurn();
-            yield break;
-        }
-
-        if (data.IsPlayer)
-        {
-            isPlayerTurn = true;
-            LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ExecuteTurnWithDelay entering player turn", null);
-            OnPlayerTurnStart(character);
-        }
-        else
-        {
-            isPlayerTurn = false;
-            LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ExecuteTurnWithDelay entering NPC turn", null);
-            OnNPCTurnExecute(character);
-            EndTurnForCharacter(character);
-        }
-    }
-
-    /// <summary>
     /// Called by external systems when the player has finished their actions.
     /// </summary>
     public virtual void PlayerTurnCompleted()
     {
+        if (!CanExecuteForCurrentContext("PlayerTurnCompleted"))
+        {
+            return;
+        }
+
         if (!isPlayerTurn)
         {
             GameDebugger.Instance.LogWarning(
@@ -387,19 +263,31 @@ public abstract class BaseTurnManager : MonoBehaviour
         var data = sortedCharacterList[currentTurnIndex];
         var player = data.Character;
 
+        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", $"{GetType().Name}.PlayerTurnCompleted",
+            $"CurrentTurnIndex: {currentTurnIndex}\n" +
+            $"SortedCharacterCount: {sortedCharacterList.Count}\n" +
+            $"IsPlayerTurn: {isPlayerTurn}\n" +
+            $"Player: {player?.Name ?? "NULL"}\n" +
+            $"Player.IsActive: {player?.IsActive.ToString() ?? "NULL"}\n" +
+            $"Player.IsAlive: {player?.IsAlive.ToString() ?? "NULL"}\n" +
+            $"Player.InTurn: {player?.InTurn.ToString() ?? "NULL"}\n" +
+            $"Player.InCombat: {player?.InCombat.ToString() ?? "NULL"}",
+            player);
+
         if (player == null)
         {
             GameDebugger.Instance.LogError(
                 $"{GetType().Name}.PlayerTurnCompleted: Player Character is NULL at index {currentTurnIndex}.");
             isPlayerTurn = false;
             currentTurnIndex++;
-            ExecuteNextTurn();
+            ContinueTurnSequence($"{GetType().Name}.PlayerTurnCompleted null player");
             return;
         }
 
         isPlayerTurn = false;
         LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.PlayerTurnCompleted", "Completing player turn before EndTurnForCharacter.");
         EndTurnForCharacter(player);
+        ContinueTurnSequence($"{GetType().Name}.PlayerTurnCompleted");
     }
 
     /// <summary>
@@ -407,6 +295,11 @@ public abstract class BaseTurnManager : MonoBehaviour
     /// </summary>
     protected virtual void EndTurnForCharacter(Character character, bool advanceIndex = true)
     {
+        if (!CanExecuteForCurrentContext("EndTurnForCharacter"))
+        {
+            return;
+        }
+
         if (character == null)
         {
             GameDebugger.Instance.LogError($"{GetType().Name}.EndTurnForCharacter: NULL character.");
@@ -434,8 +327,6 @@ public abstract class BaseTurnManager : MonoBehaviour
 
         LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.EndTurnForCharacter after advance",
             $"PreviousActor: {FormatTurnActor(character)}\nAdvanceIndex: {advanceIndex}");
-
-        ExecuteNextTurn();
     }
 
     /// <summary>
@@ -443,6 +334,14 @@ public abstract class BaseTurnManager : MonoBehaviour
     /// </summary>
     protected virtual void EndCycle()
     {
+        if (!CanExecuteForCurrentContext("EndCycle"))
+        {
+            isCycleRunning = false;
+            isPlayerTurn = false;
+            isAdvancingTurnSequence = false;
+            return;
+        }
+
         GameDebugger.Instance.LogInfo($"{GetType().Name}.EndCycle: Turn cycle complete.");
         isCycleRunning = false;
         isPlayerTurn = false;
@@ -679,6 +578,203 @@ public abstract class BaseTurnManager : MonoBehaviour
     /// </summary>
     protected abstract bool ShouldSkipCharacter(Character character);
 
+    protected void ContinueTurnSequence(string source)
+    {
+        if (!CanExecuteForCurrentContext("ContinueTurnSequence"))
+        {
+            isCycleRunning = false;
+            isPlayerTurn = false;
+            return;
+        }
+
+        if (isAdvancingTurnSequence)
+        {
+            TurnDiagnosticsLogger.LogWarning("Turn sequence advance ignored because advancement is already in progress",
+                $"{GetType().Name}.ContinueTurnSequence ignored.\nSource={source}\nCurrentTurnIndex={currentTurnIndex}\nRegisteredCount={characterTurnDataDict.Count}");
+            return;
+        }
+
+        isAdvancingTurnSequence = true;
+
+        try
+        {
+            while (CanExecuteForCurrentContext("ContinueTurnSequence.Loop"))
+            {
+                if (!isCycleRunning)
+                {
+                    if (!BeginCycleInternal($"{GetType().Name}.ContinueTurnSequence begin from {source}"))
+                    {
+                        return;
+                    }
+                }
+
+                if (sortedCharacterList.Count == 0)
+                {
+                    GameDebugger.Instance.LogInfo($"{GetType().Name}.ContinueTurnSequence: No entries in sortedCharacterList.");
+                    EndCycle();
+                    if (!ShouldAutoStartNextCycle())
+                    {
+                        return;
+                    }
+
+                    continue;
+                }
+
+                if (currentTurnIndex >= sortedCharacterList.Count)
+                {
+                    EndCycle();
+                    if (!ShouldAutoStartNextCycle())
+                    {
+                        return;
+                    }
+
+                    continue;
+                }
+
+                CharacterTurnData data = sortedCharacterList[currentTurnIndex];
+                Character character = data?.Character;
+
+                if (character == null)
+                {
+                    GameDebugger.Instance.LogWarning(
+                        $"{GetType().Name}.ContinueTurnSequence: NULL Character at index {currentTurnIndex}. Skipping.");
+                    currentTurnIndex++;
+                    continue;
+                }
+
+                if (ShouldSkipCharacter(character))
+                {
+                    GameDebugger.Instance.LogInfo(
+                        $"{GetType().Name}.ContinueTurnSequence: Skipping [{character.IInteractableID}] {character.Name}.");
+                    currentTurnIndex++;
+                    continue;
+                }
+
+                character.InTurn = true;
+                float delay = GetTurnDelay(character);
+
+                GameDebugger.Instance.LogInfo(
+                    $"{GetType().Name}.ContinueTurnSequence: Starting turn for [{character.IInteractableID}] {character.Name} Delay={delay}");
+                TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", $"{GetType().Name}.ContinueTurnSequence starting entity turn", $"Delay: {delay}", character);
+                LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ContinueTurnSequence starting entity turn",
+                    $"Delay: {delay}");
+
+                if (TurnOrchestrator.Instance != null)
+                {
+                    TurnOrchestrator.Instance.AuditMarkTurn(character, "Start");
+                }
+
+                if (data.IsPlayer)
+                {
+                    isPlayerTurn = true;
+                    LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ContinueTurnSequence entering player turn", null);
+                    OnPlayerTurnStart(character);
+                    if (isPlayerTurn)
+                    {
+                        return;
+                    }
+
+                    continue;
+                }
+
+                isPlayerTurn = false;
+                LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ContinueTurnSequence entering NPC turn", null);
+                OnNPCTurnExecute(character);
+                EndTurnForCharacter(character);
+            }
+        }
+        finally
+        {
+            isAdvancingTurnSequence = false;
+        }
+    }
+
+    private bool BeginCycleInternal(string source)
+    {
+        if (!CanExecuteForCurrentContext("BeginCycleInternal"))
+        {
+            return false;
+        }
+
+        if (isCycleRunning)
+        {
+            GameDebugger.Instance.LogWarning($"{GetType().Name}.BeginCycleInternal: Ignored because a cycle is already running.");
+            TurnDiagnosticsLogger.LogWarning("Turn cycle begin ignored because cycle is already running",
+                $"{GetType().Name}.BeginCycleInternal ignored.\nSource={source}\nRegisteredCount: {characterTurnDataDict.Count}");
+            return false;
+        }
+
+        if (characterTurnDataDict.Count == 0)
+        {
+            GameDebugger.Instance.LogInfo($"{GetType().Name}.BeginCycleInternal: No characters registered.");
+            TurnDiagnosticsLogger.LogWarning("Turn cycle begin requested with zero participants",
+                $"{GetType().Name}.BeginCycleInternal found no registered characters.\nSource={source}");
+            return false;
+        }
+
+        bool hasPlayer = characterTurnDataDict.Values.Any(d => d.IsPlayer);
+        if (!hasPlayer)
+        {
+            GameDebugger.Instance.LogWarning($"{GetType().Name}.BeginCycleInternal: No player character registered.");
+            TurnDiagnosticsLogger.LogWarning("Turn cycle begin has no registered player",
+                $"{GetType().Name}.BeginCycleInternal found no player character.\nSource={source}");
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", $"{GetType().Name}.BeginCycleInternal",
+            $"RegisteredCount: {characterTurnDataDict.Count}\nSource: {source}");
+
+        isCycleRunning = true;
+        SortCharacters();
+        currentTurnIndex = 0;
+        isPlayerTurn = false;
+
+        if (TurnOrchestrator.Instance != null)
+        {
+            List<Character> orderedChars = sortedCharacterList
+                .Select(d => d.Character)
+                .Where(c => c != null)
+                .ToList();
+
+            TurnOrchestrator.Instance.AuditBeginCycle(orderedChars);
+        }
+
+        return true;
+    }
+
+    protected virtual bool ShouldAutoStartNextCycle()
+    {
+        return false;
+    }
+
+    private bool CanExecuteForCurrentContext(string action)
+    {
+        if (TurnOrchestrator.Instance == null)
+        {
+            return true;
+        }
+
+        TurnContext currentContext = TurnOrchestrator.Instance.CurrentContext;
+        bool allowed =
+            (this is ExplorationTurnManager && currentContext == TurnContext.Exploration) ||
+            (this is CombatTurnManager && currentContext == TurnContext.Combat);
+
+        // CODEXLOG001_TURNLIFECYCLE: temporary turn manager ownership diagnostic.
+        TurnDiagnosticsLogger.LogEvent("[TURN MANAGER OWNERSHIP]", $"{GetType().Name}.{action}",
+            $"CurrentContext: {currentContext}\n" +
+            $"ExecutingManager: {GetType().Name}\n" +
+            $"Action: {(allowed ? "Allowed" : "BlockedOwnershipViolation")}\n" +
+            $"RegisteredCount: {characterTurnDataDict.Count}\n" +
+            $"IsCycleRunning: {isCycleRunning}\n" +
+            $"IsPlayerTurn: {isPlayerTurn}");
+
+        if (!allowed)
+        {
+            GameDebugger.Instance.LogWarning($"{GetType().Name}.{action}: blocked because current context is {currentContext}.");
+        }
+
+        return allowed;
+    }
+
     /// <summary>
     /// Implement context-specific delay before a character's turn runs.
     /// </summary>
@@ -696,7 +792,7 @@ public abstract class BaseTurnManager : MonoBehaviour
 
     /// <summary>
     /// Called when a full cycle completes (end of round).
-    /// Subclasses decide whether to immediately restart, reset state, etc.
+    /// Subclasses handle context cleanup only. Cycle continuation is owned by BaseTurnManager.
     /// </summary>
     protected abstract void OnCycleEnded();
 

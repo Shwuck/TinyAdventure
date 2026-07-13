@@ -247,6 +247,7 @@ public class DialoguePanelUI : MonoBehaviour
     {
         dialoguePanel.SetActive(false);
         PlayerStats.Instance.KeyboardPanel = KeyboardPanel.Default;
+        PlayerController.Instance?.ClearInteractingWithTarget("DialoguePanelUI.CloseDialoguePanel");
         UIController.Instance.DeactivateGreyOutPanel();
         Debug.Log($"DialoguePanelUI: Closed dialogue panel for {currentNPC.Name}");
     }

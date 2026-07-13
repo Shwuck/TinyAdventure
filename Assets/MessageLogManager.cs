@@ -117,13 +117,19 @@ public class MessageLogManager : MonoBehaviour
                     "<color=grey>No AP or MP remaining. Press End Turn.</color>",
 
                 "combat_manual_end_turn" =>
-                    "<color=grey>Turn ended.</color>",
+                    "<color=grey>You end your turn.</color>",
+
+                "exploration_manual_end_turn" =>
+                    "<color=grey>You wait.</color>",
 
                 "combat_auto_end_on" =>
                     "<color=grey>Auto-End Turn: On.</color>",
 
                 "combat_auto_end_off" =>
                     "<color=grey>Auto-End Turn: Off.</color>",
+
+                "combat_exit_blocked" =>
+                    "<color=grey>You cannot leave while combat is active.</color>",
 
                 "item" when args.Length >= 1 =>
                     $"<color=yellow>You picked up {args[0]}.</color>",
@@ -179,8 +185,10 @@ public class MessageLogManager : MonoBehaviour
             "combat_auto_end_no_resources" => MessageType.Combat,
             "combat_no_resources_manual_end" => MessageType.Combat,
             "combat_manual_end_turn" => MessageType.Combat,
+            "exploration_manual_end_turn" => MessageType.Exploration,
             "combat_auto_end_on" => MessageType.Combat,
             "combat_auto_end_off" => MessageType.Combat,
+            "combat_exit_blocked" => MessageType.Combat,
             "combat_status" => MessageType.StatusEffect,
             "combat_armor_block" => MessageType.Defensive,
             "item" => MessageType.Item,
@@ -210,8 +218,10 @@ public class MessageLogManager : MonoBehaviour
             "combat_auto_end_no_resources" => false,
             "combat_no_resources_manual_end" => false,
             "combat_manual_end_turn" => false,
+            "exploration_manual_end_turn" => false,
             "combat_auto_end_on" => false,
             "combat_auto_end_off" => false,
+            "combat_exit_blocked" => false,
             "combat_status" => false,
             "combat_armor_block" => false,
             _ => true  // Only stack non-combat, repeatable messages

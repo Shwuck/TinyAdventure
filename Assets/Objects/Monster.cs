@@ -36,7 +36,10 @@ public class Monster : Character
         Luck = data.Luck;
         Awareness = data.Awareness;
         Speed = data.Speed;
+        IsAlive = true;
+        IsActive = true;
         IsHostile = true;
+        ActionPoints = MaxActionPoints;
         CanLeaveArea = false;
 
         foreach (var resistance in data.DamageResistances)
@@ -48,6 +51,7 @@ public class Monster : Character
         }
 
         Anatomy = AnatomyGenerator.Instance.GenerateAnatomy(data.BodyType);
+        InitializeStamina("Monster.Constructor");
 
         // Register the monster in the turn manager
         stateMachine = new StateMachine(this);
@@ -94,12 +98,18 @@ public class Monster : Character
         if (ActionPoints < 3) // Example: Abilities cost 3 AP
         {
             GameDebugger.Instance.LogWarning($"{Name} does not have enough Action Points to use an ability.");
+            CombatActionResolutionDiagnosticsLogger.LogWarning("Monster.PerformAbility rejected due to insufficient AP",
+                $"Target={target?.Name ?? "NULL"}\nAPBefore={ActionPoints}\nRequiredAP=3",
+                this, target);
             return;
         }
 
         if (Abilities == null || Abilities.Count == 0)
         {
             GameDebugger.Instance.LogWarning($"{Name} has no abilities, cannot perform ability attack!");
+            CombatActionResolutionDiagnosticsLogger.LogWarning("Monster.PerformAbility rejected because monster has no abilities",
+                $"Target={target?.Name ?? "NULL"}",
+                this, target);
             return;
         }
 
@@ -108,6 +118,9 @@ public class Monster : Character
         if (!IsTargetInRange(target, chosenAbility.Range))
         {
             GameDebugger.Instance.LogWarning($"{Name} tried to use {chosenAbility.Name}, but {target.Name} is out of range.");
+            CombatActionResolutionDiagnosticsLogger.LogWarning("Monster.PerformAbility rejected because target is out of range",
+                $"Ability={chosenAbility.Name}\nTarget={target?.Name ?? "NULL"}\nRange={chosenAbility.Range}",
+                this, target);
             return;
         }
 
@@ -120,8 +133,16 @@ public class Monster : Character
         GameDebugger.Instance.LogInfo($"{Name} uses {chosenAbility.Name} on {target.Name}!");
 
         target.TakeDamage(damageByType, this);
+        CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK RESOLVED]", "Monster.PerformAbility resolved",
+            $"ActionName={chosenAbility.Name}\n" +
+            $"RequestedDamageType={chosenAbility.Type}\n" +
+            $"FinalOutgoingDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(damageByType)}\n" +
+            $"Resolver=Monster.PerformAbility\n" +
+            $"APBefore={ActionPoints}\n" +
+            $"APSpendSource=Monster.PerformAbility",
+            this, target);
 
-        SpendActionPoints(3); // Spend AP after using ability
+        SpendActionPoints(3, "Monster.PerformAbility"); // Spend AP after using ability
     }
 
     #endregion
@@ -129,6 +150,12 @@ public class Monster : Character
     #region AI Behavior
     public void UpdateMonsterAI()
     {
+        if (!InTurn)
+        {
+            GameDebugger.Instance.LogWarning($"Monster.UpdateMonsterAI ignored for {Name} because the monster is not currently in turn.");
+            return;
+        }
+
         stateMachine.Update(); // Let the state machine decide what to do
     }
 
@@ -146,7 +173,7 @@ public class Monster : Character
         if (player != null && CanSeeTarget(player)) return player;
 
         // Otherwise, target the closest NPC
-        return TurnOrchestrator.Instance.GetAllRegisteredCharacters()
+        return TurnOrchestrator.Instance.GetLivingActiveAreaCharacters(CurrentNestedArea)
             .Where(c => c is NPC && CanSeeTarget(c)) // Ensure they are visible
             .OrderBy(c => Vector2.Distance(this.Position, c.Position))
             .FirstOrDefault();

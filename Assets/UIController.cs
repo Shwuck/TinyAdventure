@@ -324,6 +324,7 @@ public class UIController : MonoBehaviour
         }
 
         PlayerStats.Instance.KeyboardPanel = KeyboardPanel.Default;
+        PlayerController.Instance?.ClearInteractingWithTarget("UIController.CloseAllPanels");
     }
 
     // Function to close all panels except for the specified one
@@ -394,6 +395,7 @@ public class UIController : MonoBehaviour
         {
             dialoguePanel.SetActive(false);
             PlayerStats.Instance.KeyboardPanel = KeyboardPanel.Default;
+            PlayerController.Instance?.ClearInteractingWithTarget("UIController.CloseDialoguePanel");
         }
         else
         {

@@ -1,12 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Collections;
 using UnityEngine;
 
 public class ExplorationTurnManager : BaseTurnManager
 {
-    private bool restartScheduled;
-
     #region Lifecycle
 
     public void Suspend() => enabled = false;
@@ -120,10 +117,10 @@ public class ExplorationTurnManager : BaseTurnManager
 
     protected override void OnCycleEnded()
     {
-        GameDebugger.Instance.LogInfo("[ExplorationTurnManager] Exploration cycle ended. Scheduling restart.");
+        GameDebugger.Instance.LogInfo("[ExplorationTurnManager] Exploration cycle ended.");
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", "ExplorationTurnManager.OnCycleEnded",
-            $"RegisteredCount: {characterTurnDataDict.Count}\nRestartScheduled: {restartScheduled}");
+            $"RegisteredCount: {characterTurnDataDict.Count}");
 
         if (!HasValidRegisteredPlayer())
         {
@@ -133,48 +130,6 @@ public class ExplorationTurnManager : BaseTurnManager
                 $"RegisteredCount: {characterTurnDataDict.Count}");
             return;
         }
-
-        if (restartScheduled)
-        {
-            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-            TurnDiagnosticsLogger.LogWarning("Exploration cycle restart ignored because one is already scheduled",
-                $"RegisteredCount: {characterTurnDataDict.Count}");
-            return;
-        }
-
-        restartScheduled = true;
-        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", "ExplorationTurnManager restart scheduled",
-            $"RegisteredCount: {characterTurnDataDict.Count}");
-        StartCoroutine(RestartCycleNextFrame());
-    }
-
-    private IEnumerator RestartCycleNextFrame()
-    {
-        yield return null;
-
-        restartScheduled = false;
-
-        if (!enabled)
-        {
-            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-            TurnDiagnosticsLogger.LogWarning("Exploration cycle restart cancelled because manager is disabled",
-                $"RegisteredCount: {characterTurnDataDict.Count}");
-            yield break;
-        }
-
-        if (!HasValidRegisteredPlayer())
-        {
-            // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-            TurnDiagnosticsLogger.LogWarning("Exploration cycle restart cancelled because no valid player was registered",
-                $"RegisteredCount: {characterTurnDataDict.Count}");
-            yield break;
-        }
-
-        // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-        TurnDiagnosticsLogger.LogEvent("[TURN CYCLE]", "ExplorationTurnManager restart executed",
-            $"RegisteredCount: {characterTurnDataDict.Count}");
-        StartTurnCycle();
     }
 
     private bool HasValidRegisteredPlayer()
@@ -184,6 +139,14 @@ public class ExplorationTurnManager : BaseTurnManager
             data.IsPlayer &&
             data.Character != null &&
             !ShouldSkipCharacter(data.Character));
+    }
+
+    protected override bool ShouldAutoStartNextCycle()
+    {
+        return enabled &&
+               TurnOrchestrator.Instance != null &&
+               TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration &&
+               HasValidRegisteredPlayer();
     }
 
     #endregion

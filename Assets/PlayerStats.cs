@@ -146,6 +146,8 @@ public class PlayerStats : MonoBehaviour
         MaxHealth = 100;
         Health = MaxHealth;
         AttackPower = 50;
+        MaxStamina = 0;
+        Stamina = 0;
     }
     #endregion
 
@@ -484,6 +486,7 @@ public class PlayerStats : MonoBehaviour
             MaxSatiety = 100;
             Satiety = 100;
             MovePoints = selectedCharacter.MovePoints;
+            SyncStaminaFromCurrentPlayerCharacter();
             Debug.Log($"Selected PlayerCharacter: {selectedCharacter.FirstName} with ID: {selectedCharacter.PlayerCharacterID}");
 
             // Switch to the selected character's inventory
@@ -521,8 +524,22 @@ public class PlayerStats : MonoBehaviour
         if (CurrentPlayerCharacter != null)
         {
             PlayerInventory.Instance.SwitchCharacterInventory(CurrentPlayerCharacter);
+            SyncStaminaFromCurrentPlayerCharacter();
             Debug.Log($"Validated player character: {CurrentPlayerCharacter.FullName}");
         }
+    }
+
+    public void SyncStaminaFromCurrentPlayerCharacter()
+    {
+        if (CurrentPlayerCharacter == null)
+        {
+            MaxStamina = 0;
+            Stamina = 0;
+            return;
+        }
+
+        MaxStamina = CurrentPlayerCharacter.MaxStamina;
+        Stamina = CurrentPlayerCharacter.CurrentStamina;
     }
 
     #endregion
@@ -637,6 +654,9 @@ public class PlayerStats : MonoBehaviour
 
     public int GetDefence()
     {
+        CombatActionResolutionDiagnosticsLogger.LogEvent("[WRAPPER]", "PlayerStats.GetDefence delegated to CurrentPlayerCharacter.GetDefence",
+            $"CurrentPlayerCharacter={CurrentPlayerCharacter?.Name ?? "NULL"}",
+            CurrentPlayerCharacter);
         return PlayerStats.Instance.CurrentPlayerCharacter.GetDefence();
     }
 
@@ -684,6 +704,15 @@ public class PlayerStats : MonoBehaviour
 
         float resistance = GetResistance(damageType);
         int finalDamage = Mathf.RoundToInt(damage * (1 - resistance / 100f));
+        CombatActionResolutionDiagnosticsLogger.LogEvent("[WRAPPER]", "PlayerStats.ApplyDamage direct health mutation path",
+            $"IncomingDamage={damage}\n" +
+            $"DamageType={damageType}\n" +
+            $"ResistanceUsed={resistance}\n" +
+            $"FinalDamage={finalDamage}\n" +
+            $"UsesCharacterTakeDamage={false}\n" +
+            $"UsesBodyParts={false}\n" +
+            $"AuthorityNote=This is not the main live combat damage path",
+            null, CurrentPlayerCharacter);
 
         CurrentPlayerCharacter.ModifyHealth(-finalDamage); // Ensure it properly modifies health
     }

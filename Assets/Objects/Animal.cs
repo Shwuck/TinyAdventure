@@ -29,6 +29,7 @@ public class Animal : Character
     #region Constructor
     public Animal()
     {
+        IsAlive = true;
         IsActive = true;
         IsHostile = false;
         Status = NPCStatus.Idling;

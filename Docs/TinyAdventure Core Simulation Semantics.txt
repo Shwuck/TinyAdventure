@@ -1,0 +1,687 @@
+# TinyAdventure Core Simulation Semantics
+
+Status: Living design document
+Purpose: Define the core meanings behind TinyAdventure’s simulation, turn, action, combat, movement, and entity-state systems.
+
+This document is not an implementation plan. It is a semantic source of truth.
+
+When future code is written, reviewed, or refactored, it should preserve these meanings unless this document is deliberately updated.
+
+---
+
+## 1. Core Design Principle
+
+TinyAdventure is a turn-based simulation RPG.
+
+The world does not run in real time. The world waits for the player to perform a time-costing action, then the world advances.
+
+TinyAdventure should feel like a living world, not a frozen menu system and not a real-time action game.
+
+The player acts.
+The world responds.
+Characters act according to their state, awareness, role, relationships, location, body, equipment, and current goals.
+
+Combat is not a separate frozen minigame. Combat is an event/context inside the area simulation.
+
+---
+
+## 2. Source of Truth Layers
+
+### CurrentAreaRoster
+
+`CurrentAreaRoster` means:
+
+> The authoritative runtime list of character instances present in the currently loaded area or nested area.
+
+It answers:
+
+> “Who exists in this loaded game space?”
+
+It should contain references to the actual `Character` instances.
+
+It should not be cleared during normal exploration/combat mode switches.
+
+It may be rebuilt during explicit full area load, area unload, scene transition, or major area reevaluation.
+
+Dead characters may remain in `CurrentAreaRoster` if their corpse/body should still exist in the area.
+
+### Participant Lists
+
+Participant lists are filtered reference views of `CurrentAreaRoster`.
+
+They must not clone, duplicate, or recreate character objects.
+
+A participant list answers:
+
+> “Who is currently eligible for this specific mode/context?”
+
+Examples:
+
+* `ExplorationParticipants`
+* `CombatParticipants`
+* future `AreaTurnParticipants`
+* future `CombatAwareCharacters`
+* future `CombatEngagedCharacters`
+
+State changes happen on the `Character` object itself, not on a copied list entry.
+
+---
+
+## 3. Entity Existence Semantics
+
+### Exists
+
+A character or object exists if it still has a meaningful presence in the game world or save state.
+
+A dead body can still exist.
+
+A destroyed or removed entity does not exist in the active world anymore.
+
+### Present
+
+A character is present if they are currently loaded into the active area/nested area.
+
+Presence does not mean alive.
+Presence does not mean active.
+Presence does not mean turn-eligible.
+
+A corpse can be present.
+
+### Alive
+
+Alive means:
+
+> This character is biologically/literally alive and capable of being treated as a living being.
+
+Alive does not automatically mean:
+
+* currently able to act
+* currently registered for turns
+* currently hostile
+* currently visible
+* currently targetable by every action
+
+### Dead
+
+Dead means:
+
+> This character is no longer alive.
+
+Dead does not mean removed from the area.
+
+A dead character may still be:
+
+* visible
+* inspectable
+* lootable
+* relevant to relationships
+* relevant to crime/witness systems
+* relevant to area descriptions
+* relevant to quests or memories
+
+A dead character should generally not:
+
+* receive turns
+* move normally
+* attack
+* converse normally
+* be treated as a living combatant
+
+### Destroyed / Removed
+
+Destroyed or removed means:
+
+> This entity should no longer exist in the active area or game world.
+
+This is different from dead.
+
+Removing an entity from the area roster should be explicit and intentional.
+
+---
+
+## 4. Active Semantics
+
+`Active` should not be used as a vague catch-all.
+
+Active should not secretly mean all of the following:
+
+* alive
+* present
+* visible
+* turn-eligible
+* in the current area
+* registered with a manager
+* valid combat target
+
+If `IsActive` remains in the codebase, its meaning should be narrowed or wrapped by clearer semantic helper methods.
+
+Prefer clear questions:
+
+* `CanTakeTurn()`
+* `CanJoinExploration()`
+* `CanJoinCombat()`
+* `CanBeAttackedBy(actor)`
+* `CanBeTalkedToBy(actor)`
+* `CanBeLootedBy(actor)`
+* `IsPresentInLoadedArea`
+* `IsDestroyed`
+
+Code should ask the question it really means.
+
+---
+
+## 5. Turn-Based World Model
+
+TinyAdventure is always turn-based, but not every player input is a turn.
+
+The world advances only when the player performs a time-costing action.
+
+Free/informational actions should not advance time.
+
+### Free Actions
+
+Free actions cost no time and should not cause NPCs to move or take turns.
+
+Examples may include:
+
+* inspect NPC
+* inspect item
+* look at surroundings
+* examine body parts
+* read status
+* open inventory
+* switch UI tabs
+* review known information
+
+Free actions may be performed repeatedly unless a specific design rule says otherwise.
+
+### Time-Costing Actions
+
+Time-costing actions advance the simulation.
+
+Examples may include:
+
+* movement
+* attacking
+* waiting
+* opening a heavy/stuck/locked door
+* picking a lock
+* using an item
+* searching carefully
+* starting meaningful dialogue, depending on design
+* looting, depending on design
+
+When the player performs a time-costing exploration action, the world should advance.
+
+---
+
+## 6. Exploration Semantics
+
+Exploration is the loose, smooth turn mode.
+
+In exploration, the player does not manage a visible tactical turn budget.
+
+The player may perform free actions freely.
+
+When the player performs a time-costing action, that action completes the player’s exploration turn and the world advances.
+
+Exploration should feel smooth:
+
+> Player moves.
+> NPCs act.
+> Player moves.
+> NPCs act.
+
+The player should not be forced to move a few steps and then manually press End Turn every time.
+
+### Exploration Movement
+
+Exploration movement is a time-costing action.
+
+Successful player movement in exploration should advance the world.
+
+Keyboard movement, UI movement buttons, and any future movement input must all route through the same authoritative movement logic.
+
+No input path should bypass movement cost, movement validation, messages, diagnostics, or turn advancement.
+
+---
+
+## 7. Combat Semantics
+
+Combat is a tactical context within the simulation.
+
+Combat exists to make player resources explicit and bounded.
+
+In combat, the player receives a limited movement/action budget.
+
+Combat asks:
+
+> How far can you move?
+> What actions can you afford?
+> Do you want to end your turn?
+
+Combat should be more deliberate and methodical than exploration.
+
+### Combat Player Turn
+
+A combat player turn may include:
+
+* free actions
+* movement using movement budget
+* AP-costing actions
+* possibly bonus/special actions later
+* manual End Turn
+* automatic turn end when no meaningful budget remains, if appropriate
+
+Combat movement should not automatically end the player’s turn unless the combat rules say the turn is over.
+
+### Wait / End Turn
+
+The existing Wait control should ideally be context-sensitive:
+
+* Exploration: `Wait`
+* Combat: `End Turn`
+
+Both should route through the same authoritative player-turn-completion path.
+
+---
+
+## 8. Combat Does Not Freeze the World
+
+Combat should not automatically freeze every uninvolved character in the area.
+
+The area simulation should continue.
+
+Characters directly involved in combat use combat behaviour.
+
+Characters aware of combat may react.
+
+Characters unaware of combat continue their normal behaviour.
+
+A fight behind a wall should not magically alert or freeze every NPC in the area.
+
+### Awareness
+
+A character may become aware of combat through:
+
+* line of sight
+* hearing/noise
+* proximity
+* being attacked
+* seeing an ally attacked
+* being called for help
+* relationship/faction triggers
+* scripted or systemic perception events
+
+Awareness should be explicit.
+
+Characters should not become combat participants merely because combat exists somewhere in the area.
+
+---
+
+## 9. Combat Engagement Semantics
+
+### CombatEngaged
+
+A character is combat-engaged if they are directly involved in a fight.
+
+Examples:
+
+* attacker
+* defender
+* hostile pursuer
+* ally actively intervening
+* guard choosing to engage
+
+Combat-engaged characters use combat behaviour.
+
+### CombatAware
+
+A character is combat-aware if they know combat is happening but are not necessarily engaged.
+
+They may:
+
+* flee
+* watch
+* hide
+* call for help
+* investigate
+* join combat
+* ignore it
+* continue cautiously
+
+Reaction should eventually depend on personality, role, faction, courage, relationship, species, job, and context.
+
+### Unaware
+
+A character is unaware of combat if they have no reason to know it is happening.
+
+Unaware characters should generally continue exploration/idle behaviour.
+
+---
+
+## 10. Speed, Time, and Turn Frequency
+
+Speed should eventually affect how often a character gets to act.
+
+TinyAdventure should not be locked forever into strict alternating turns such as:
+
+> player, enemy, player, enemy
+
+A faster character may act more often than a slower character.
+
+A slowed character may act less often.
+
+A hasted character may act more often.
+
+This should eventually support situations like:
+
+> A guard drinks stew laced with a slow potion.
+> His patrol cadence slows.
+> The player has more time to pick a lock.
+> Combat starts while the slow effect remains active.
+> The player acts more often until the effect wears off.
+
+### Speed Is Not the Same as Movement
+
+Speed should be separated from movement.
+
+Speed may mean:
+
+> How often does this character become ready to act?
+
+Movement means:
+
+> How far can this character move when they act?
+
+Action Points mean:
+
+> How much can this character do during a tactical combat turn?
+
+These concepts may influence each other, but they are not identical.
+
+---
+
+## 11. Movement Semantics
+
+Movement is physical relocation through the world.
+
+Movement may be affected by:
+
+* legs/body parts
+* injuries
+* encumbrance
+* terrain
+* speed
+* buffs/debuffs
+* race/species
+* equipment
+* status effects
+
+A character with one functioning leg may have a reduced movement budget.
+
+A fast character may have a higher movement budget.
+
+A heavy or injured character may have a lower movement budget.
+
+Movement should eventually be derived from character state through reusable methods, not hardcoded per action.
+
+Possible future helpers:
+
+* `GetMovementBudget()`
+* `GetMobility()`
+* `GetMoveCostForTerrain(...)`
+* `CanMoveTo(...)`
+
+---
+
+## 12. Action Semantics
+
+An action is an intentional thing a character does.
+
+Every action should declare or resolve its cost semantics.
+
+Possible action cost categories:
+
+* `Free`
+* `Movement`
+* `ActionPoints`
+* `FullTurn`
+* `TimeCost`
+* `Contextual`
+
+The action itself should say whether it consumes time, movement, AP, or a full turn.
+
+The input/UI layer should not decide this independently.
+
+### Examples
+
+Inspect:
+
+> Free. Does not advance time.
+
+Move in exploration:
+
+> Movement/time-costing. Advances world after success.
+
+Move in combat:
+
+> Costs movement budget. Does not necessarily end turn.
+
+Attack:
+
+> Costs AP/time. In combat, spends AP. In exploration, likely triggers combat context and advances time.
+
+Wait:
+
+> Full turn/time-costing. Advances world.
+
+Talk:
+
+> Contextual. Some dialogue may be free; meaningful conversation may consume time.
+
+Loot:
+
+> Contextual. Inspecting a body may be free; taking items may cost time.
+
+---
+
+## 13. Derived Character Values
+
+Character values should be calculated in one authoritative way.
+
+Systems should not manually recalculate Strength, Speed, Defence, Movement, or Resistance in multiple places.
+
+Combat, movement, dialogue, crafting, perception, stealth, and AI should all ask reusable derived-value methods.
+
+Existing or future examples:
+
+* `GetStatValue("Strength")`
+* `GetDerivedStat(...)`
+* `GetResistance(...)`
+* `GetDefence(...)`
+* `GetMovementBudget()`
+* `GetSpeed()`
+* `GetActionBudget()`
+* `GetEvasion()`
+* `GetArmourForBodyPart(...)`
+
+Derived values may include:
+
+* base stats
+* equipment
+* buffs
+* debuffs
+* traits
+* race/species
+* class/background/job
+* anatomy/body-part state
+* injuries
+* fatigue
+* hunger
+* morale
+* terrain/context modifiers
+
+The resolver/manager should ask for values. It should not duplicate the calculation logic.
+
+---
+
+## 14. Anatomy Semantics
+
+Anatomy is part of the simulation, not just flavour.
+
+Body parts may affect:
+
+* movement
+* evasion
+* attack ability
+* carrying
+* equipment slots
+* armour coverage
+* targeting
+* wounds
+* death
+* perception
+* speech
+* manipulation
+* special species behaviour
+
+A missing or damaged leg should affect movement.
+
+A damaged arm may affect attacks or item use.
+
+A helmet should protect the head, not the entire body, unless intentionally abstracted.
+
+Anatomy should feed derived values through reusable methods rather than isolated hardcoded checks.
+
+---
+
+## 15. Combat Resolution Semantics
+
+Combat should be resolved through a shared combat resolver.
+
+The resolver should orchestrate, not own every calculation.
+
+Combat should generally flow like:
+
+1. Build attack context.
+2. Validate attacker and defender.
+3. Resolve accuracy/evasion.
+4. Resolve weapon/action damage.
+5. Preserve multiple damage types.
+6. Resolve stat scaling.
+7. Resolve body part.
+8. Resolve armour coverage.
+9. Resolve resistances/weaknesses.
+10. Apply damage.
+11. Apply wounds/status/on-hit effects.
+12. Spend AP/time.
+13. Update death/combat/awareness state.
+14. Emit diagnostics and player-facing messages.
+
+The resolver should use character, item, anatomy, status, and turn systems as sources of truth.
+
+---
+
+## 16. UI/Input Semantics
+
+Different inputs that mean the same action must route through the same gameplay authority.
+
+Keyboard movement and UI movement buttons must not have different gameplay consequences.
+
+The UI should request actions. It should not independently implement game rules.
+
+The AAM should display available actions, but the action system should own whether an action is free, time-costing, AP-costing, or invalid.
+
+---
+
+## 17. Diagnostics Semantics
+
+Runtime diagnostics are part of the project’s reliability strategy.
+
+CODEXLOG-style identifiers should be used as runtime diagnostic namespaces, not as general markdown review-file names.
+
+Diagnostics should explain:
+
+* why an actor acted
+* why an actor skipped
+* why a character was included/excluded from a participant list
+* why combat started
+* why combat ended
+* why exploration resumed
+* why an action advanced time or did not
+* what input path triggered an action
+* what state changed
+
+Logs should be readable enough for debugging and not so noisy that they obscure the issue.
+
+---
+
+## 18. Design Direction Summary
+
+TinyAdventure should move toward:
+
+* one area simulation
+* one authoritative area roster
+* filtered participant/context lists
+* clear entity semantics
+* free vs time-costing actions
+* exploration as smooth time-costing action flow
+* combat as tactical player-budget mode
+* combat as context, not world freeze
+* speed/readiness affecting turn frequency over time
+* movement budget derived from body/state
+* AP governing tactical actions
+* awareness determining reactions
+* reusable derived-value methods
+* shared resolvers/managers instead of duplicated rules
+
+The project should avoid:
+
+* vague `IsActive` checks
+* treating death as removal
+* treating combat as a global freeze
+* treating roster membership as turn eligibility
+* duplicating movement or turn-completion paths
+* hardcoding stat calculations in multiple places
+* adding features before the core simulation loop is reliable
+
+---
+
+## 18A. Stamina Semantics Direction
+
+Stamina represents physical effort capacity.
+
+Stamina is distinct from:
+
+* health
+* speed
+* time
+* readiness
+* Action Points
+* Movement Points
+
+Stamina may eventually become the primary effort resource for movement and other physical actions.
+
+Time/readiness may eventually determine when a character acts.
+
+AP and MP remain the current live tactical/resource systems until a deliberate migration replaces or wraps them.
+
+Stamina should derive from character stats and should eventually be influenced by body condition, equipment, traits, statuses, encumbrance, terrain, fatigue, hunger, and similar simulation context.
+
+---
+
+## 19. Current Implementation Note
+
+Some of these concepts may already exist partially in code.
+
+Some are not implemented yet.
+
+This document defines the intended direction. It should guide audits, refactors, and future feature work.
+
+When implementation differs from this document, either:
+
+1. update the implementation to match the intended semantics, or
+2. deliberately update this document because the design has changed.
+
+Do not let the project drift silently.

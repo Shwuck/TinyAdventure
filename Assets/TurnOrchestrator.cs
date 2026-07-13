@@ -15,7 +15,8 @@ public class TurnOrchestrator : MonoBehaviour
 
     public TurnContext CurrentContext { get; private set; } = TurnContext.MainMap;
 
-    private readonly List<Character> allCharacters = new List<Character>();
+    // Persistent roster for the currently loaded area/nested area.
+    private readonly List<Character> currentAreaRoster = new List<Character>();
 
     [SerializeField] private CombatTurnManager combatManager;
     [SerializeField] private ExplorationTurnManager explorationTurnManager;
@@ -126,7 +127,7 @@ public class TurnOrchestrator : MonoBehaviour
 			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = false;
 			PlayerStats.Instance.CurrentPlayerCharacter.InTurn = false;
 		}
-		foreach (var character in allCharacters)
+		foreach (var character in currentAreaRoster)
 		{
 			if (character == null) continue;
 			character.InCombat = false;
@@ -134,7 +135,7 @@ public class TurnOrchestrator : MonoBehaviour
 		}
 		explorationTurnManager.ClearCharacters();
 		combatManager.DeregisterAllCharacters();
-		allCharacters.Clear();
+		currentAreaRoster.Clear();
 		Trace("EnterMainMap: cleared turn managers and registry");
 		GameDebugger.Instance.LogInfo("Entered Main Map. Turn logic disabled.");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
@@ -190,7 +191,7 @@ public class TurnOrchestrator : MonoBehaviour
 		explorationTurnManager.Resume();
 		explorationTurnManager.ClearCharacters();
 		combatManager.DeregisterAllCharacters();
-		allCharacters.Clear();
+		currentAreaRoster.Clear();
 		Trace("EnterExplorationArea: managers cleared; registering player and occupants");
 
 		RegisterCharacter(playerCharacter);
@@ -276,7 +277,7 @@ public class TurnOrchestrator : MonoBehaviour
 			$"Wrong-area occupants skipped: {wrongAreaOccupantsSkipped}\n" +
 			$"Inactive occupants skipped: {inactiveOccupantsSkipped}\n" +
 			$"Dead-but-registered occupants: {deadButRegistered}\n" +
-			$"allCharacters.Count: {allCharacters.Count}\n" +
+			$"CurrentAreaRoster.Count: {currentAreaRoster.Count}\n" +
 			$"Exploration.Count: {DiagnosticExplorationRegisteredCount}\n" +
 			$"Combat.Count: {DiagnosticCombatRegisteredCount}");
 
@@ -298,7 +299,7 @@ public class TurnOrchestrator : MonoBehaviour
 			$"Final context: {CurrentContext}\n" +
 			$"HasHostiles: {hasHostiles}\n" +
 			$"Player registered in active manager: {DiagnosticIsCharacterRegisteredInActiveManager(playerCharacter)}\n" +
-			$"allCharacters.Count: {allCharacters.Count}\n" +
+			$"CurrentAreaRoster.Count: {currentAreaRoster.Count}\n" +
 			$"Exploration.Count: {DiagnosticExplorationRegisteredCount}\n" +
 			$"Combat.Count: {DiagnosticCombatRegisteredCount}");
 		// CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
@@ -322,14 +323,14 @@ public class TurnOrchestrator : MonoBehaviour
 		}
 
 		bool added = false;
-		if (!allCharacters.Contains(character))
+		if (!currentAreaRoster.Contains(character))
 		{
-			allCharacters.Add(character);
+			currentAreaRoster.Add(character);
 			added = true;
 		}
-		Trace($"RegisterCharacter: {(added ? "added" : "already present")} total={allCharacters.Count}");
+		Trace($"RegisterCharacter: {(added ? "added" : "already present")} total={currentAreaRoster.Count}");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-		TurnDiagnosticsLogger.LogRegistration("TurnOrchestrator.allCharacters", character, character == PlayerStats.Instance?.CurrentPlayerCharacter);
+		TurnDiagnosticsLogger.LogRegistration("TurnOrchestrator.CurrentAreaRoster", character, character == PlayerStats.Instance?.CurrentPlayerCharacter);
 
 		bool isPlayer = character == PlayerStats.Instance?.CurrentPlayerCharacter;
 
@@ -357,10 +358,6 @@ public class TurnOrchestrator : MonoBehaviour
 			return;
 		}
 
-		allCharacters.Remove(character);
-		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-		TurnDiagnosticsLogger.LogDeregistration("TurnOrchestrator.allCharacters", character);
-
 		switch (CurrentContext)
 		{
 			case TurnContext.Exploration:
@@ -374,8 +371,52 @@ public class TurnOrchestrator : MonoBehaviour
 		}
 	}
 
+    // Compatibility helper: this now means the persistent current-area roster, not active turn participants.
+    public List<Character> GetAllRegisteredCharacters() => GetCurrentAreaRoster();
 
-    public List<Character> GetAllRegisteredCharacters() => allCharacters;
+    public List<Character> GetCurrentAreaRoster()
+    {
+        return currentAreaRoster
+            .Where(character => character != null)
+            .Distinct()
+            .ToList();
+    }
+
+    public List<Character> GetExplorationParticipants()
+    {
+        return explorationTurnManager != null
+            ? explorationTurnManager.GetAllRegisteredCharacters()
+            : new List<Character>();
+    }
+
+    public List<Character> GetCombatParticipants()
+    {
+        return combatManager != null
+            ? combatManager.GetAllRegisteredCharacters()
+            : new List<Character>();
+    }
+
+    public List<Character> GetActiveTurnParticipants()
+    {
+        return CurrentContext switch
+        {
+            TurnContext.Exploration => GetExplorationParticipants(),
+            TurnContext.Combat => GetCombatParticipants(),
+            _ => new List<Character>()
+        };
+    }
+
+    public List<Character> GetLivingActiveAreaCharacters(INestedArea area = null)
+    {
+        INestedArea targetArea = area ?? PlayerStats.Instance?.CurrentNestedArea;
+
+        return GetCurrentAreaRoster()
+            .Where(character => character.IsAlive &&
+                                character.IsActive &&
+                                character.IsInNestedArea &&
+                                (targetArea == null || character.CurrentNestedArea == targetArea))
+            .ToList();
+    }
 
     #endregion
 
@@ -385,10 +426,51 @@ public class TurnOrchestrator : MonoBehaviour
 	{
 		Trace("TryUpdateTurnContext: begin");
 		var area = PlayerStats.Instance.CurrentPlayerCharacter?.CurrentNestedArea;
-		bool hasHostiles = area?.IsHostileArea ?? false;
+		area?.UpdateHostileAreaStatus();
+		List<Character> localCharacters = area != null
+			? area.GetAllCharactersInArea().Where(character => character != null).ToList()
+			: currentAreaRoster.Where(character => character != null).ToList();
+		List<RelationshipHostility> relationshipHostilities = RelationshipManager.ScanLocalActiveHostilities(localCharacters, area);
+		PruneStaleCombatFlags(localCharacters, relationshipHostilities);
+		RelationshipManager.ApplyLocalHostilitiesToActorState(relationshipHostilities);
+		List<Character> activeHostiles = localCharacters
+			.Where(character => character.IsActive && (character.IsHostile || character.Stance == NPCStance.Hostile))
+			.ToList();
+		int activeHostileCount = activeHostiles.Count;
+		int activeRelationshipHostilityCount = relationshipHostilities.Count;
+		int neutralParticipantCount = localCharacters.Count(character => character.IsActive) - activeHostileCount;
+		bool hasHostiles = activeHostileCount > 0 || activeRelationshipHostilityCount > 0;
+		bool playerInvolved = activeHostiles.Any(character =>
+			character == PlayerStats.Instance.CurrentPlayerCharacter ||
+			character.Target == PlayerStats.Instance.CurrentPlayerCharacter ||
+			PlayerStats.Instance.CurrentPlayerCharacter?.Target == character) ||
+			relationshipHostilities.Any(hostility =>
+				hostility.Source == PlayerStats.Instance.CurrentPlayerCharacter ||
+				hostility.Target == PlayerStats.Instance.CurrentPlayerCharacter);
 		Trace($"TryUpdateTurnContext: hasHostiles={hasHostiles}");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-		TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "TurnOrchestrator.TryUpdateTurnContext begin", $"Area: {area?.Name} ({area?.NestedAreaID})\nHasHostiles: {hasHostiles}");
+		TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "TurnOrchestrator.TryUpdateTurnContext begin",
+			$"Area: {area?.Name} ({area?.NestedAreaID})\n" +
+			$"HasHostiles: {hasHostiles}\n" +
+			$"ActiveHostileCount: {activeHostileCount}\n" +
+			$"ActiveRelationshipHostilities: {activeRelationshipHostilityCount}");
+		// CODEXLOG001_TURNLIFECYCLE: temporary combat trigger diagnostic.
+		TurnDiagnosticsLogger.LogEvent("[COMBAT TRIGGER CHECK]", "TurnOrchestrator.TryUpdateTurnContext",
+			$"TriggerSource: {GetCombatTriggerSource(hasHostiles, playerInvolved, activeRelationshipHostilityCount)}\n" +
+			$"PlayerInvolved: {playerInvolved}\n" +
+			$"ActiveHostileCount: {activeHostileCount}\n" +
+			$"ActiveRelationshipHostilities: {activeRelationshipHostilityCount}\n" +
+			$"Hostiles: {(activeHostiles.Count > 0 ? string.Join(", ", activeHostiles.Select(character => $"{character.Name} [{character.IInteractableID}]")) : "NONE")}\n" +
+			$"RelationshipHostilities: {(relationshipHostilities.Count > 0 ? string.Join(", ", relationshipHostilities.Select(RelationshipManager.FormatHostility)) : "NONE")}\n" +
+			$"ShouldStartCombat: {CurrentContext == TurnContext.Exploration && hasHostiles}");
+		// CODEXLOG001_TURNLIFECYCLE: temporary combat end diagnostic.
+		TurnDiagnosticsLogger.LogEvent("[COMBAT END CHECK]", "TurnOrchestrator.TryUpdateTurnContext",
+			$"ActiveHostileCount: {activeHostileCount}\n" +
+			$"ActiveRelationshipHostilities: {activeRelationshipHostilityCount}\n" +
+			$"ActiveHostilityPairs: {(relationshipHostilities.Count > 0 ? string.Join(", ", relationshipHostilities.Select(RelationshipManager.FormatHostility)) : "NONE")}\n" +
+			$"NeutralParticipantCount: {neutralParticipantCount}\n" +
+			$"InactiveOrRemovedCount: {localCharacters.Count(character => !character.IsActive)}\n" +
+			$"ShouldReturnToExploration: {CurrentContext == TurnContext.Combat && !hasHostiles}");
 
 		if (CurrentContext == TurnContext.Exploration && hasHostiles)
 		{
@@ -405,7 +487,86 @@ public class TurnOrchestrator : MonoBehaviour
 			Trace("TryUpdateTurnContext: no change");
 		}
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-		TurnDiagnosticsLogger.LogTurnSummary("TurnOrchestrator.TryUpdateTurnContext completed", $"HasHostiles: {hasHostiles}");
+		TurnDiagnosticsLogger.LogTurnSummary("TurnOrchestrator.TryUpdateTurnContext completed",
+			$"HasHostiles: {hasHostiles}\nActiveHostileCount: {activeHostileCount}\nActiveRelationshipHostilities: {activeRelationshipHostilityCount}");
+	}
+
+	private string GetCombatTriggerSource(bool hasHostiles, bool playerInvolved, int activeRelationshipHostilityCount)
+	{
+		if (!hasHostiles) return "None";
+		if (activeRelationshipHostilityCount > 0) return playerInvolved ? "RelationshipHostilityPlayerInvolved" : "RelationshipHostility";
+		return playerInvolved ? "PlayerActionOrPlayerHostility" : "AreaHostility";
+	}
+
+	private bool ShouldRegisterCharacterForCombat(Character character, Character playerCharacter, List<RelationshipHostility> relationshipHostilities)
+	{
+		if (character == null || !character.IsActive || !character.IsAlive)
+		{
+			return false;
+		}
+
+		if (character == playerCharacter)
+		{
+			return true;
+		}
+
+		if (character.IsHostile || character.Stance == NPCStance.Hostile)
+		{
+			return true;
+		}
+
+		if (character.Target == playerCharacter || playerCharacter?.Target == character)
+		{
+			return true;
+		}
+
+		return relationshipHostilities != null &&
+			   relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character);
+	}
+
+	private void PruneStaleCombatFlags(List<Character> localCharacters, List<RelationshipHostility> relationshipHostilities)
+	{
+		HashSet<int> relationshipCombatantIds = relationshipHostilities != null
+			? relationshipHostilities
+				.SelectMany(hostility => new[] { hostility.Source?.IInteractableID ?? int.MinValue, hostility.Target?.IInteractableID ?? int.MinValue })
+				.Where(id => id != int.MinValue)
+				.ToHashSet()
+			: new HashSet<int>();
+
+		foreach (Character character in localCharacters.Where(candidate => candidate != null && candidate.IsActive && candidate.IsAlive))
+		{
+			if (!(character.IsHostile || character.Stance == NPCStance.Hostile))
+			{
+				continue;
+			}
+
+			if (character.IsValidCombatTarget(character.Target))
+			{
+				continue;
+			}
+
+			if (relationshipCombatantIds.Contains(character.IInteractableID))
+			{
+				continue;
+			}
+
+			character.ClearCombatTarget("TurnOrchestrator.TryUpdateTurnContext pruned stale hostile target.");
+			character.IsHostile = false;
+			character.InCombat = false;
+			if (character.Stance == NPCStance.Hostile)
+			{
+				character.Stance = NPCStance.Default;
+				character.stateMachine?.HandleStanceChange(character.Stance);
+			}
+
+			CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "TurnOrchestrator.TryUpdateTurnContext pruned stale hostile state",
+				$"Actor={character.Name} [{character.IInteractableID}]\n" +
+				$"RelationshipCombatant={relationshipCombatantIds.Contains(character.IInteractableID)}\n" +
+				$"IsHostileAfter={character.IsHostile}\n" +
+				$"StanceAfter={character.Stance}\n" +
+				$"InCombatAfter={character.InCombat}",
+				character);
+		}
 	}
 
 	private void SwitchToCombatMode()
@@ -427,14 +588,14 @@ public class TurnOrchestrator : MonoBehaviour
 		INestedArea activeArea = PlayerStats.Instance.CurrentNestedArea;
 		List<Character> localCombatParticipants = activeArea != null
 			? activeArea.GetAllCharactersInArea()
-			: allCharacters.Where(character => character != null).ToList();
+			: currentAreaRoster.Where(character => character != null).ToList();
+		List<RelationshipHostility> localRelationshipHostilities = RelationshipManager.ScanLocalActiveHostilities(localCombatParticipants, activeArea);
 		Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
 		if (playerCharacter != null && !localCombatParticipants.Contains(playerCharacter))
 		{
 			localCombatParticipants.Insert(0, playerCharacter);
 		}
 
-		allCharacters.Clear();
 		HashSet<int> registeredIds = new HashSet<int>();
 		int inactiveSkipped = 0;
 		int wrongAreaSkipped = 0;
@@ -458,6 +619,12 @@ public class TurnOrchestrator : MonoBehaviour
 				continue;
 			}
 
+			if (!character.IsAlive)
+			{
+				inactiveSkipped++;
+				continue;
+			}
+
 			if (activeArea != null && character.CurrentNestedArea == null)
 			{
 				character.CurrentNestedArea = activeArea;
@@ -471,9 +638,18 @@ public class TurnOrchestrator : MonoBehaviour
 				continue;
 			}
 
+			if (!ShouldRegisterCharacterForCombat(character, playerCharacter, localRelationshipHostilities))
+			{
+				wrongAreaSkipped++;
+				continue;
+			}
+
 			bool isPlayer = character == PlayerStats.Instance.CurrentPlayerCharacter;
 			character.InCombat = true;
-			allCharacters.Add(character);
+			if (!currentAreaRoster.Contains(character))
+			{
+				currentAreaRoster.Add(character);
+			}
 			Trace($"SwitchToCombatMode: register {character.Name} isPlayer={isPlayer}");
 			combatManager.RegisterCharacter(character, isPlayer);
 			participantLines.Add($"{character.Name} [{character.IInteractableID}] Type={character.GetType().Name} Role={BaseTurnManager.GetCombatParticipantRole(character, isPlayer)} IsActive={character.IsActive} IsAlive={character.IsAlive} IsHostile={character.IsHostile} Stance={character.Stance} Area={character.CurrentNestedArea?.Name ?? "NULL"}");
@@ -499,8 +675,23 @@ public class TurnOrchestrator : MonoBehaviour
 			$"Duplicate skipped: {duplicateSkipped}\n" +
 			$"Area state repaired: {areaStateRepaired}\n" +
 			$"Participants:\n{(participantLines.Count > 0 ? string.Join("\n", participantLines) : "NONE")}");
+		TurnDiagnosticsLogger.LogEvent("[SIMULATION CONTEXT]", "TurnOrchestrator.SwitchToCombatMode participant split",
+			$"CurrentAreaRosterCount: {currentAreaRoster.Count}\n" +
+			$"CombatParticipantCount: {participantLines.Count}\n" +
+			$"NonCombatantExcludedCount: {Mathf.Max(0, currentAreaRoster.Count - participantLines.Count)}\n" +
+			$"ActiveTurnManager: CombatTurnManager\n" +
+			"SemanticNote: Uninvolved area characters remain in CurrentAreaRoster but do not receive turns in the current combat-manager implementation.");
 
 		Trace("SwitchToCombatMode→CombatTurnManager.StartTurnCycle");
+		CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "TurnOrchestrator.SwitchToCombatMode",
+			$"Area={activeArea?.Name ?? "NULL"} ({activeArea?.NestedAreaID.ToString() ?? "NULL"})\n" +
+			$"ParticipantCount={participantLines.Count}\n" +
+			$"InactiveSkipped={inactiveSkipped}\n" +
+			$"WrongAreaSkipped={wrongAreaSkipped}\n" +
+			$"DuplicateSkipped={duplicateSkipped}\n" +
+			$"AreaStateRepaired={areaStateRepaired}\n" +
+			$"Participants={(participantLines.Count > 0 ? string.Join(" | ", participantLines) : "NONE")}",
+			PlayerStats.Instance.CurrentPlayerCharacter);
 		combatManager.StartTurnCycle();
 		GameDebugger.Instance.LogInfo("Switched to Combat mode.");
 		MessageLogManager.Instance?.Log("combat_start", PlayerStats.Instance.CurrentNestedArea?.Name ?? "Hostility");
@@ -521,7 +712,7 @@ public class TurnOrchestrator : MonoBehaviour
 		{
 			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = false;
 		}
-		foreach (var character in allCharacters)
+		foreach (var character in currentAreaRoster)
 		{
 			if (character == null) continue;
 			character.InCombat = false;
@@ -530,16 +721,44 @@ public class TurnOrchestrator : MonoBehaviour
 		combatManager.DeregisterAllCharacters();
 		explorationTurnManager.ClearCharacters();
 
-		foreach (var character in allCharacters)
+		int explorationRestored = 0;
+		int explorationSkippedInactiveOrDead = 0;
+		foreach (var character in currentAreaRoster)
 		{
+			if (character == null)
+			{
+				continue;
+			}
+
+			if (!character.IsActive || !character.IsAlive)
+			{
+				explorationSkippedInactiveOrDead++;
+				continue;
+			}
+
 			if (character.IsInNestedArea && character.CurrentNestedArea == PlayerStats.Instance.CurrentNestedArea)
 			{
 				Trace($"SwitchToExplorationMode: register {character.Name}");
 				explorationTurnManager.RegisterCharacter(character);
+				explorationRestored++;
 			}
 		}
 
 		Trace("SwitchToExplorationMode→ExplorationTurnManager.Resume");
+		CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "TurnOrchestrator.SwitchToExplorationMode",
+			$"RegisteredExplorationCount={DiagnosticExplorationRegisteredCount}\n" +
+			$"CombatRegisteredCount={DiagnosticCombatRegisteredCount}\n" +
+			$"PlayerInCombat={PlayerStats.Instance.InCombat}\n" +
+			$"ExplorationRestored={explorationRestored}\n" +
+			$"ExplorationSkippedInactiveOrDead={explorationSkippedInactiveOrDead}",
+			PlayerStats.Instance.CurrentPlayerCharacter);
+		TurnDiagnosticsLogger.LogEvent("[SIMULATION CONTEXT]", "TurnOrchestrator.SwitchToExplorationMode participant rebuild",
+			$"CurrentAreaRosterCount: {currentAreaRoster.Count}\n" +
+			$"ExplorationParticipantCount: {DiagnosticExplorationRegisteredCount}\n" +
+			$"CombatParticipantCount: {DiagnosticCombatRegisteredCount}\n" +
+			$"ExplorationRestored: {explorationRestored}\n" +
+			$"ExplorationSkippedInactiveOrDead: {explorationSkippedInactiveOrDead}\n" +
+			"SemanticNote: Exploration participants are rebuilt from the persistent CurrentAreaRoster.");
 		explorationTurnManager.Resume();
 		GameDebugger.Instance.LogInfo("Switched to Exploration mode.");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
@@ -556,15 +775,15 @@ public class TurnOrchestrator : MonoBehaviour
         var activeArea = PlayerStats.Instance.CurrentNestedArea;
         if (activeArea == null) return;
 
-        allCharacters.Clear();
-        allCharacters.AddRange(activeArea.GetAllCharactersInArea());
-        GameDebugger.Instance.LogInfo($"Reevaluated characters in scene. Total: {allCharacters.Count}");
+        currentAreaRoster.Clear();
+        currentAreaRoster.AddRange(activeArea.GetAllCharactersInArea());
+        GameDebugger.Instance.LogInfo($"Reevaluated characters in scene. Total: {currentAreaRoster.Count}");
 
         switch (CurrentContext)
         {
             case TurnContext.Exploration:
                 explorationTurnManager.ClearCharacters();
-                foreach (var character in allCharacters)
+                foreach (var character in currentAreaRoster)
                 {
                     explorationTurnManager.RegisterCharacter(character);
                 }
@@ -572,7 +791,7 @@ public class TurnOrchestrator : MonoBehaviour
 
             case TurnContext.Combat:
                 combatManager.DeregisterAllCharacters();
-                foreach (var character in allCharacters)
+                foreach (var character in currentAreaRoster)
                 {
                     combatManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
                 }
@@ -593,7 +812,7 @@ public class TurnOrchestrator : MonoBehaviour
 		public bool DiagnosticExplorationTurnManagerAssigned => explorationTurnManager != null;
 
 		// CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
-		public int DiagnosticAllCharactersCount => allCharacters.Count;
+		public int DiagnosticAllCharactersCount => currentAreaRoster.Count;
 
 		// CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
 		public int DiagnosticExplorationRegisteredCount => explorationTurnManager != null ? explorationTurnManager.DiagnosticRegisteredCount : -1;
@@ -604,7 +823,7 @@ public class TurnOrchestrator : MonoBehaviour
 		// CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
 		public List<Character> DiagnosticGetAllCharactersSnapshot()
 		{
-			return allCharacters.Where(character => character != null).ToList();
+			return currentAreaRoster.Where(character => character != null).ToList();
 		}
 
 		// CODEXLOG001_TURNLIFECYCLE: temporary read-only turn lifecycle diagnostic accessor.
@@ -679,7 +898,7 @@ public class TurnOrchestrator : MonoBehaviour
 				return explorationTurnManager.IsCharacterRegistered(c);
 
 			// In MainMap or any fallback state, at least respect the global list
-			return allCharacters.Contains(c);
+			return currentAreaRoster.Contains(c);
 		}
 
 		public void StartTurnCycle() {
@@ -691,16 +910,28 @@ public class TurnOrchestrator : MonoBehaviour
 
 		public void DeregisterAllCharacters()
 		{
+			// Scene-reset helper only. Mode switches rebuild participants from the currentAreaRoster.
 			if (CurrentContext == TurnContext.Combat)
 				combatManager.DeregisterAllCharacters();
 			else if (CurrentContext == TurnContext.Exploration)
 				explorationTurnManager.DeregisterAllCharacters();
 
-			allCharacters.Clear();
+			currentAreaRoster.Clear();
 			Trace("DeregisterAllCharacters: global list cleared");
 		}
 
 		public void PlayerTurnCompleted() {
+			TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", "TurnOrchestrator.PlayerTurnCompleted",
+				$"CurrentContext: {CurrentContext}\n" +
+				$"CurrentAreaRoster.Count: {currentAreaRoster.Count}\n" +
+				$"Exploration.Count: {DiagnosticExplorationRegisteredCount}\n" +
+				$"Combat.Count: {DiagnosticCombatRegisteredCount}\n" +
+				$"Player: {PlayerStats.Instance?.CurrentPlayerCharacter?.Name ?? "NULL"}\n" +
+				$"Player.InTurn: {PlayerStats.Instance?.CurrentPlayerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+				$"PlayerStats.ActionPoints: {PlayerStats.Instance?.ActionPoints.ToString() ?? "NULL"}\n" +
+				$"PlayerStats.MovePoints: {PlayerStats.Instance?.MovePoints.ToString() ?? "NULL"}",
+				PlayerStats.Instance?.CurrentPlayerCharacter);
+
 			if (CurrentContext == TurnContext.Combat)
 				combatManager.PlayerTurnCompleted();
 			else if (CurrentContext == TurnContext.Exploration)

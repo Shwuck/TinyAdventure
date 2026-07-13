@@ -85,6 +85,8 @@ public class PlayerController : MonoBehaviour
     private bool autoEndCombatTurnWhenNoAPMP = true;
     private bool autoEndingCombatTurn = false;
     private bool notifiedManualEndRequiredForNoResources = false;
+    private bool? lastEndTurnActionVisible;
+    private string lastEndTurnActionVisibilityReason = string.Empty;
     public bool IsShiftHeld
     {
         get
@@ -177,10 +179,10 @@ public class PlayerController : MonoBehaviour
     #region Button Setup
     private void SetupButtonListeners()
     {
-        northButton?.onClick.AddListener(() => Move(Vector2Int.up));
-        southButton?.onClick.AddListener(() => Move(Vector2Int.down));
-        westButton?.onClick.AddListener(() => Move(Vector2Int.left));
-        eastButton?.onClick.AddListener(() => Move(Vector2Int.right));
+        northButton?.onClick.AddListener(() => RequestPlayerMove(Vector2Int.up, Direction.North, "UIButton:North"));
+        southButton?.onClick.AddListener(() => RequestPlayerMove(Vector2Int.down, Direction.South, "UIButton:South"));
+        westButton?.onClick.AddListener(() => RequestPlayerMove(Vector2Int.left, Direction.West, "UIButton:West"));
+        eastButton?.onClick.AddListener(() => RequestPlayerMove(Vector2Int.right, Direction.East, "UIButton:East"));
     }
     #endregion
 
@@ -264,7 +266,7 @@ public class PlayerController : MonoBehaviour
         {
             if (!isHoldingKey || currentHeldKey != key)
             {
-                MoveAndUpdate(direction, newDirection);
+                RequestPlayerMove(direction, newDirection, $"Keyboard:{key}");
                 isHoldingKey = true;
                 currentHeldKey = key;
                 holdKeyTimer = holdKeyInterval; // Start the timer for holding the key
@@ -274,7 +276,7 @@ public class PlayerController : MonoBehaviour
                 holdKeyTimer -= Time.deltaTime;
                 if (holdKeyTimer <= 0f)
                 {
-                    MoveAndUpdate(direction, newDirection);
+                    RequestPlayerMove(direction, newDirection, $"KeyboardHold:{key}");
                     holdKeyTimer = holdKeyInterval; // Reset the timer for the next movement
                 }
             }
@@ -296,45 +298,130 @@ public class PlayerController : MonoBehaviour
 
     #region Movement
 
-    private void MoveAndUpdate(Vector2Int direction, Direction newDirection)
+    private void RequestPlayerMove(Vector2Int direction, Direction newDirection, string inputSource)
     {
-        if (!CanAcceptPlayerTurnInput("MoveAndUpdate"))
+        if (!CanAcceptPlayerTurnInput("RequestPlayerMove"))
         {
             return;
         }
 
-        if (IsCellPassable(playerPosition + direction))
+        bool turnManagedContext = PlayerStats.Instance.RegisteredInTurnManager;
+        bool combatContext = IsCombatTurnContext();
+        Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+        ActionCostProfile movementCostProfile = ActionCostProfileResolver.BuildForMovement(combatContext);
+        int apBefore = PlayerStats.Instance.ActionPoints;
+        int mpBefore = PlayerStats.Instance.MovePoints;
+        Vector2Int positionBefore = playerPosition;
+        string activeTurnManager = TurnOrchestrator.Instance?.CurrentContext switch
         {
-            if (PlayerStats.Instance.RegisteredInTurnManager)
-            {
-                if (IsCombatTurnContext() && PlayerStats.Instance.MovePoints < 1)
-                {
-                    Debug.Log("Cannot move, out of MovePoints.");
-                    ShowNotEnoughMPFeedback("move");
-                    return;
-                }
+            TurnContext.Combat => "CombatTurnManager",
+            TurnContext.Exploration => "ExplorationTurnManager",
+            _ => "None"
+        };
 
-                Move(direction);
-                currentDirection = newDirection;
-                DeductMovePoints(1);
-            }
-            else
-            {
-                Move(direction);
-                currentDirection = newDirection;
-            }
-
-            UpdateAllPlayerStats();
-            UpdateAdaptiveActionMenu();
-            UIController.Instance.UpdateMapsAfterAction();
+        if (turnManagedContext && combatContext && PlayerStats.Instance.MovePoints < 1)
+        {
+            GameDebugger.Instance.LogInfo("PlayerController.RequestPlayerMove rejected due to zero combat MovePoints.");
+            TurnDiagnosticsLogger.LogEvent("[PLAYER MOVEMENT]", "PlayerController.RequestPlayerMove",
+                $"InputSource: {inputSource}\n" +
+                $"Mode: Combat\n" +
+                $"MovementRequestMethod: PlayerController.RequestPlayerMove\n" +
+                $"MovementSuccess: False\n" +
+                $"BlockedReason: NoMovePoints\n" +
+                $"Direction: {newDirection}\n" +
+                $"PositionBefore: {positionBefore}\n" +
+                $"PositionAfter: {playerPosition}\n" +
+                $"MovementCost: 1\n" +
+                $"CostCategory: MovementBudget\n" +
+                $"APBefore: {apBefore}\n" +
+                $"APAfter: {PlayerStats.Instance.ActionPoints}\n" +
+                $"MPBefore: {mpBefore}\n" +
+                $"MPAfter: {PlayerStats.Instance.MovePoints}\n" +
+                $"ExplorationTurnCompletionRequested: False\n" +
+                $"CombatTurnRemainsOpen: {IsPlayerCombatTurnActive()}\n" +
+                $"ActiveTurnManager: {activeTurnManager}",
+                playerCharacter);
+            ActionCostProfileResolver.LogPredictedCost("PlayerController.RequestPlayerMove blocked", "PlayerMove", movementCostProfile, playerCharacter);
+            ShowNotEnoughMPFeedback("move");
+            return;
         }
+
+        bool moved = Move(direction);
+        if (!moved)
+        {
+            TurnDiagnosticsLogger.LogEvent("[PLAYER MOVEMENT]", "PlayerController.RequestPlayerMove",
+                $"InputSource: {inputSource}\n" +
+                $"Mode: {(combatContext ? "Combat" : IsExplorationTurnContext() ? "Exploration" : "Other")}\n" +
+                $"MovementRequestMethod: PlayerController.RequestPlayerMove\n" +
+                $"MovementSuccess: False\n" +
+                $"BlockedReason: ValidationFailed\n" +
+                $"Direction: {newDirection}\n" +
+                $"PositionBefore: {positionBefore}\n" +
+                $"PositionAfter: {playerPosition}\n" +
+                $"MovementCost: 1\n" +
+                $"CostCategory: {(combatContext ? "MovementBudget" : "TimeCostingMovement")}\n" +
+                $"APBefore: {apBefore}\n" +
+                $"APAfter: {PlayerStats.Instance.ActionPoints}\n" +
+                $"MPBefore: {mpBefore}\n" +
+                $"MPAfter: {PlayerStats.Instance.MovePoints}\n" +
+                $"ExplorationTurnCompletionRequested: False\n" +
+                $"CombatTurnRemainsOpen: {IsPlayerCombatTurnActive()}\n" +
+                $"ActiveTurnManager: {activeTurnManager}",
+                playerCharacter);
+            return;
+        }
+
+        currentDirection = newDirection;
+        UpdateAllPlayerStats();
+        UpdateDescription();
+        UpdateAdaptiveActionMenu();
+        UIController.Instance.UpdateMapsAfterAction();
+
+        bool explorationTurnCompletionRequested = false;
+        bool worldTimeAdvanced = false;
+        if (turnManagedContext)
+        {
+            DeductMovePoints(1);
+
+            if (!combatContext && IsExplorationTurnContext())
+            {
+                explorationTurnCompletionRequested = CompleteExplorationTurnForTimeCostingAction($"PlayerMove:{inputSource}", 1f);
+                worldTimeAdvanced = explorationTurnCompletionRequested;
+            }
+        }
+        else
+        {
+            AddTurnProgress(1f);
+            worldTimeAdvanced = true;
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[PLAYER MOVEMENT]", "PlayerController.RequestPlayerMove",
+            $"InputSource: {inputSource}\n" +
+            $"Mode: {(combatContext ? "Combat" : IsExplorationTurnContext() ? "Exploration" : "Other")}\n" +
+            $"MovementRequestMethod: PlayerController.RequestPlayerMove\n" +
+            $"MovementSuccess: True\n" +
+            $"Direction: {newDirection}\n" +
+            $"PositionBefore: {positionBefore}\n" +
+            $"PositionAfter: {playerPosition}\n" +
+            $"MovementCost: 1\n" +
+            $"CostCategory: {(combatContext ? "MovementBudget" : "TimeCostingMovement")}\n" +
+            $"APBefore: {apBefore}\n" +
+            $"APAfter: {PlayerStats.Instance.ActionPoints}\n" +
+            $"MPBefore: {mpBefore}\n" +
+            $"MPAfter: {PlayerStats.Instance.MovePoints}\n" +
+            $"WorldTimeAdvanced: {worldTimeAdvanced}\n" +
+            $"ExplorationTurnCompletionRequested: {explorationTurnCompletionRequested}\n" +
+            $"CombatTurnRemainsOpen: {combatContext && IsPlayerCombatTurnActive()}\n" +
+            $"ActiveTurnManager: {activeTurnManager}",
+            playerCharacter);
+        ActionCostProfileResolver.LogPredictedCost("PlayerController.RequestPlayerMove executed", "PlayerMove", movementCostProfile, playerCharacter);
     }
 
-    private void Move(Vector2Int direction)
+    private bool Move(Vector2Int direction)
     {
         if (!CanAcceptPlayerTurnInput("Move"))
         {
-            return;
+            return false;
         }
 
         previousPosition = playerPosition;
@@ -345,7 +432,7 @@ public class PlayerController : MonoBehaviour
 
         if (isInNestedArea)
         {
-            if (currentNestedArea == null) return;
+            if (currentNestedArea == null) return false;
 
             if (currentNestedArea.IsValidPosition(newPosition) && IsCellPassable(newPosition))
             {
@@ -353,6 +440,10 @@ public class PlayerController : MonoBehaviour
                 currentCell.LastVisited = TimeManager.Instance.currentDay;
                 UpdatePlayerPosition(newPosition, true);
                 currentCellID = currentNestedArea.GetCellAtPosition(newPosition).CellID;
+            }
+            else
+            {
+                return false;
             }
         }
         else
@@ -366,12 +457,14 @@ public class PlayerController : MonoBehaviour
                 currentCellID = mapGenerator.GetCell(newPosition).CellID;
                 currentRegion = mapGenerator.GetCell(newPosition).RegionNumber;
             }
+            else
+            {
+                return false;
+            }
         }
 
 
         UpdateAllPlayerStats();
-        // Add turn progress after successfully moving the player, regardless of the map type.
-        AddTurnProgress(1f);
 
         AudioController.Instance.PlayMovementSound();
 
@@ -381,6 +474,7 @@ public class PlayerController : MonoBehaviour
 
         UpdateDescription();
         UpdateAdaptiveActionMenu();
+        return true;
     }
 
 
@@ -584,6 +678,17 @@ public class PlayerController : MonoBehaviour
 	{
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[AREA ENTRY]", "PlayerController.EnterNestedAreaWithinNestedArea begin", $"CellID: {cellWithNestedArea?.CellID}\nHasNestedArea: {cellWithNestedArea?.hasNestedArea}");
+		if (TurnOrchestrator.Instance != null && TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat)
+		{
+			// CODEXLOG001_TURNLIFECYCLE: temporary combat exit block diagnostic.
+			TurnDiagnosticsLogger.LogEvent("[COMBAT EXIT BLOCKED]", "PlayerController.EnterNestedAreaWithinNestedArea blocked during combat",
+				$"Reason: Cannot enter another nested area during combat\n" +
+				$"TargetCellID: {cellWithNestedArea?.CellID.ToString() ?? "NULL"}\n" +
+				$"CurrentNestedArea: {currentNestedArea?.Name ?? "NULL"} ({currentNestedArea?.NestedAreaID.ToString() ?? "NULL"})",
+				PlayerStats.Instance.CurrentPlayerCharacter);
+			MessageLogManager.Instance?.Log("combat_exit_blocked");
+			return;
+		}
 		if (cellWithNestedArea == null || !cellWithNestedArea.hasNestedArea || cellWithNestedArea.NestedArea == null)
 		{
 			TurnDiagnosticsLogger.LogWarning("PlayerController.EnterNestedAreaWithinNestedArea invalid target",
@@ -639,7 +744,7 @@ public class PlayerController : MonoBehaviour
 			$"PreviousNestedAreaID: {previousNestedAreaID}\n" +
 			$"NewNestedArea: {currentNestedArea?.Name} ({currentNestedArea?.NestedAreaID})\n" +
 			$"Previous Exploration.Count: {previousExplorationCount}\n" +
-			$"Previous allCharacters.Count: {previousAllCharactersCount}", playerCharacter);
+			$"Previous CurrentAreaRoster.Count: {previousAllCharactersCount}", playerCharacter);
 		orchestrator.EnterExplorationArea(currentNestedArea, playerCharacter);
 		orchestrator.ValidateCharacterNestedAreas();
 		orchestrator.LogAllRegisteredCharacters();
@@ -649,7 +754,7 @@ public class PlayerController : MonoBehaviour
 			$"Previous active participants cleared by EnterExplorationArea: True\n" +
 			$"Player registered in active manager: {orchestrator.DiagnosticIsCharacterRegisteredInActiveManager(playerCharacter)}\n" +
 			$"Exploration.Count: {orchestrator.DiagnosticExplorationRegisteredCount}\n" +
-			$"allCharacters.Count: {orchestrator.DiagnosticAllCharactersCount}");
+			$"CurrentAreaRoster.Count: {orchestrator.DiagnosticAllCharactersCount}");
 		// CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
 		NestedMapDebugger.LogSnapshot(currentNestedArea, "SNAPSHOT_ENTER_NESTED_FROM_NESTED PlayerController.EnterNestedAreaWithinNestedArea completed");
 	}
@@ -661,6 +766,19 @@ public class PlayerController : MonoBehaviour
 		if (!isInNestedArea || currentNestedArea == null)
 		{
 			Debug.Log("Not currently in a nested area, cannot exit.");
+			return;
+		}
+		if (TurnOrchestrator.Instance != null && TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat)
+		{
+			// CODEXLOG001_TURNLIFECYCLE: temporary combat exit block diagnostic.
+			TurnDiagnosticsLogger.LogEvent("[COMBAT EXIT BLOCKED]", "PlayerController.ExitNestedArea blocked during combat",
+				$"Reason: Cannot exit nested area during combat\n" +
+				$"NestedArea: {currentNestedArea?.Name ?? "NULL"} ({currentNestedArea?.NestedAreaID.ToString() ?? "NULL"})\n" +
+				$"Player: {FormatAAMCharacter(PlayerStats.Instance.CurrentPlayerCharacter)}\n" +
+				$"AP: {PlayerStats.Instance.ActionPoints}\n" +
+				$"MP: {PlayerStats.Instance.MovePoints}",
+				PlayerStats.Instance.CurrentPlayerCharacter);
+			MessageLogManager.Instance?.Log("combat_exit_blocked");
 			return;
 		}
 		// CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
@@ -730,6 +848,17 @@ public class PlayerController : MonoBehaviour
 		if (!isInNestedArea || currentNestedArea == null)
 		{
 			Debug.LogWarning("Player is not currently in a nested area.");
+			return;
+		}
+		if (TurnOrchestrator.Instance != null && TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat)
+		{
+			// CODEXLOG001_TURNLIFECYCLE: temporary combat exit block diagnostic.
+			TurnDiagnosticsLogger.LogEvent("[COMBAT EXIT BLOCKED]", "PlayerController.LeaveNestedAreaToParent blocked during combat",
+				$"Reason: Cannot leave nested area to parent during combat\n" +
+				$"CurrentNestedArea: {currentNestedArea?.Name ?? "NULL"} ({currentNestedArea?.NestedAreaID.ToString() ?? "NULL"})\n" +
+				$"Player: {FormatAAMCharacter(PlayerStats.Instance.CurrentPlayerCharacter)}",
+				PlayerStats.Instance.CurrentPlayerCharacter);
+			MessageLogManager.Instance?.Log("combat_exit_blocked");
 			return;
 		}
 
@@ -809,10 +938,36 @@ public class PlayerController : MonoBehaviour
 		endOfTurnManager.AddTurnProgress(progress);
 	}
 
-	private void HandleAction(float actionDuration)
+	private bool CompleteExplorationTurnForTimeCostingAction(string source, float actionDuration)
 	{
+        if (!IsExplorationTurnContext())
+        {
+            return false;
+        }
+
+        if (!TryGetEndTurnAvailability(out bool canCompleteTurn, out string reason) || !canCompleteTurn)
+        {
+            TurnDiagnosticsLogger.LogWarning("PlayerController.CompleteExplorationTurnForTimeCostingAction rejected",
+                $"Source: {source}\n" +
+                $"Reason: {reason}\n" +
+                $"CurrentContext: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}",
+                PlayerStats.Instance.CurrentPlayerCharacter);
+            return false;
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[ACTION COST]", "PlayerController.CompleteExplorationTurnForTimeCostingAction",
+            $"Source: {source}\n" +
+            $"CostCategory: TimeCost\n" +
+            $"ActionDuration: {actionDuration}\n" +
+            $"CurrentContext: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+            $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}",
+            PlayerStats.Instance.CurrentPlayerCharacter);
+
 		endOfTurnManager.AddTurnProgress(actionDuration);
-		TryCompletePlayerTurnFromPlayerController("HandleAction");
+		return TryCompletePlayerTurnFromPlayerController(source);
 	}
 
 	#endregion
@@ -1197,6 +1352,8 @@ public class PlayerController : MonoBehaviour
     #region Adaptive Action Menu
     public void UpdateAdaptiveActionMenu()
     {
+        EndOfTurnManager.Instance?.RefreshWaitButtonPresentation();
+
         // If we're not in a nested area, no actions should be generated
         if (!isInNestedArea)
         {
@@ -1236,6 +1393,8 @@ public class PlayerController : MonoBehaviour
             HandleInteractableObjectsInFacingCell(facingCell);
             AddEnvironmentalActions(facingCell);
         }
+
+        AddTurnControlActions();
 		
 		CallTrace.Mark(this);
     }
@@ -1304,10 +1463,8 @@ public class PlayerController : MonoBehaviour
                     continue;
                 }
 
-                // Generate the button name
-                string buttonName = interaction.ActionPointCost > 0
-                    ? $"{interaction.Name} ({interaction.ActionPointCost} AP) {interactable.Name}"
-                    : $"{interaction.Name} {interactable.Name}";
+                ActionCostProfile costProfile = ActionCostProfileResolver.BuildForInteraction(interaction, IsCombatTurnContext());
+                string buttonName = ActionCostProfileResolver.BuildActionButtonLabel(interaction.Name, interactable.Name, costProfile);
 
                 // Check if this interaction has already been added
                 if (!addedInteractions.Contains(buttonName))
@@ -1321,12 +1478,12 @@ public class PlayerController : MonoBehaviour
                         $"ButtonLabel: {buttonName}\n" +
                         $"ActionName: {interaction.Name}\n" +
                         $"ActionPointCost: {interaction.ActionPointCost}\n" +
+                        $"ResolvedCostLabel: {costProfile.CostLabel}\n" +
                         $"InteractionType: {interaction.Type}\n" +
                         $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
                         $"Provider: {FormatAAMProvider(interactable)}\n" +
                         $"SourceCollection: {sourceCollection}");
                     CreateActionButton(buttonName, interaction.ActionPointCost, () => ExecutePlayerAction(interaction, interactable));
-                    PlayerStats.Instance.InteractingWithID = interactable.IInteractableID;
                 }
             }
         }
@@ -1340,10 +1497,18 @@ public class PlayerController : MonoBehaviour
         var availableEnvironmentalActions = actionManager.GetAvailableEnvironmentalActions(facingCell, playerInventory);
         foreach (var action in availableEnvironmentalActions)
         {
-            // Generate the button name
-            string buttonName = action.ActionPointCost > 0
-                ? $"{action.Name} ({action.ActionPointCost} AP)"
-                : $"{action.Name}";
+            if (!IsInteractionTypeVisibleInCurrentPanel(action.Type))
+            {
+                ActionAAMDiagnosticsLogger.LogEvent("[ACTION HIDDEN]", "Environmental action hidden by AAM tab filter",
+                    $"ActionName: {action.Name}\n" +
+                    $"InteractionType: {action.Type}\n" +
+                    $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
+                    $"TargetCell: {facingCell?.Coordinates.ToString() ?? "NULL"}");
+                continue;
+            }
+
+            ActionCostProfile costProfile = ActionCostProfileResolver.BuildForEnvironmentalAction(action, IsCombatTurnContext());
+            string buttonName = ActionCostProfileResolver.BuildActionButtonLabel(action.Name, string.Empty, costProfile);
 
             // Check if this action has already been added
             if (!addedActions.Contains(buttonName))
@@ -1357,12 +1522,18 @@ public class PlayerController : MonoBehaviour
                     $"ButtonLabel: {buttonName}\n" +
                     $"ActionName: {action.Name}\n" +
                     $"ActionPointCost: {action.ActionPointCost}\n" +
+                    $"ResolvedCostLabel: {costProfile.CostLabel}\n" +
                     $"InteractionType: {action.Type}\n" +
                     $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}\n" +
                     $"TargetCell: {facingCell?.Coordinates.ToString() ?? "NULL"}");
                 CreateActionButton(buttonName, action.ActionPointCost, () => ExecuteEnvironmentalAction(action, facingCell));
             }
         }
+    }
+
+    private void AddTurnControlActions()
+    {
+        LogEndTurnActionVisibility(false, "WaitButtonOwnsTurnControl");
     }
 
 
@@ -1429,7 +1600,10 @@ public class PlayerController : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        PlayerStats.Instance.InteractingWithID = 0;
+        if (!ShouldPreserveInteractionTargetOnCurrentPanel())
+        {
+            ClearInteractingWithTarget("ClearAdaptiveActionMenu");
+        }
     }
 
     private IEnumerable<IInteraction> FilterInteractionsByPanel(IEnumerable<IInteraction> interactions)
@@ -1439,19 +1613,61 @@ public class PlayerController : MonoBehaviour
 
     private bool IsInteractionVisibleInCurrentPanel(IInteraction interaction)
     {
+        return interaction != null && IsInteractionTypeVisibleInCurrentPanel(interaction.Type);
+    }
+
+    private bool IsInteractionTypeVisibleInCurrentPanel(InteractionType interactionType)
+    {
         var panelType = PlayerStats.Instance.AdaptiveActionMenuPanel;
 
         switch (panelType)
         {
             case AdapativeActionMenu.Combat:
-                return interaction.Type == InteractionType.Combat;
+                return interactionType == InteractionType.Combat;
             case AdapativeActionMenu.Special:
-                return interaction.Type == InteractionType.Special;
+                return interactionType == InteractionType.Special;
             default:
                 // For all other panels, return everything except Combat and Special
-                return interaction.Type != InteractionType.Combat &&
-                       interaction.Type != InteractionType.Special;
+                return interactionType != InteractionType.Combat &&
+                       interactionType != InteractionType.Special;
         }
+    }
+
+    private void SetInteractingWithTargetFromSelection(IInteraction interaction, IInteractable entity)
+    {
+        if (!(entity is Character character))
+        {
+            return;
+        }
+
+        PlayerStats.Instance.InteractingWithID = character.IInteractableID;
+
+        ActionAAMDiagnosticsLogger.LogEvent("[INTERACTION TARGET]", "Interaction target set from selected AAM action",
+            $"ActionName: {interaction?.Name ?? "NULL"}\n" +
+            $"Target: {FormatAAMCharacter(character)}\n" +
+            $"KeyboardPanel: {PlayerStats.Instance.KeyboardPanel}\n" +
+            $"CurrentTab: {PlayerStats.Instance.AdaptiveActionMenuPanel}");
+    }
+
+    private bool ShouldPreserveInteractionTargetOnCurrentPanel()
+    {
+        return PlayerStats.Instance.KeyboardPanel == KeyboardPanel.Dialogue ||
+               PlayerStats.Instance.KeyboardPanel == KeyboardPanel.Trade;
+    }
+
+    public void ClearInteractingWithTarget(string source)
+    {
+        if (PlayerStats.Instance.InteractingWithID == 0)
+        {
+            return;
+        }
+
+        ActionAAMDiagnosticsLogger.LogEvent("[INTERACTION TARGET]", "Interaction target cleared",
+            $"Source: {source}\n" +
+            $"PreviousTargetID: {PlayerStats.Instance.InteractingWithID}\n" +
+            $"KeyboardPanel: {PlayerStats.Instance.KeyboardPanel}");
+
+        PlayerStats.Instance.InteractingWithID = 0;
     }
 
     // CODEXLOG003_ACTIONS_AAM: temporary AAM provider diagnostic helper.
@@ -1521,21 +1737,12 @@ public class PlayerController : MonoBehaviour
             $"Amount: {amount}\nPlayerStats.MovePoints after spend: {PlayerStats.Instance.MovePoints}");
         RefreshCombatStatusUI();
 
-        // Check if MovePoints are depleted
-		if (PlayerStats.Instance.MovePoints <= 0)
-		{
-			if (!IsCombatTurnContext())
-			{
-				TryCompletePlayerTurnFromPlayerController("DeductMovePoints");
-			}
-            else
+        if (IsCombatTurnContext())
+        {
+            if (PlayerStats.Instance.MovePoints <= 0)
             {
                 ShowNotEnoughMPFeedback("move farther this turn");
             }
-		}
-
-        if (IsCombatTurnContext())
-        {
             PostPlayerActionTurnMaintenance("DeductMovePoints", "movement");
         }
     }
@@ -1590,17 +1797,41 @@ public class PlayerController : MonoBehaviour
 
         int actionPointCost = interaction.ActionPointCost;
         bool characterOwnedCombatAction = CombatActionUsesCharacterActionPoints(interaction);
+        ActionCostProfile actionCostProfile = ActionCostProfileResolver.BuildForInteraction(interaction, IsCombatTurnContext());
 
         if (PlayerStats.Instance.ActionPoints >= actionPointCost)
         {
             Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+            if (interaction.Type == InteractionType.Combat &&
+                (playerCharacter == null || !playerCharacter.IsCombatActorAvailable()))
+            {
+                GameDebugger.Instance.LogWarning("PlayerController.ExecutePlayerAction rejected combat action because player character is unavailable.");
+                CombatActionResolutionDiagnosticsLogger.LogWarning("PlayerController.ExecutePlayerAction rejected combat action because player attacker is unavailable",
+                    $"ActionName={interaction?.Name ?? "NULL"}\n" +
+                    $"Target={(entity as Character)?.Name ?? entity?.Name ?? "NULL"}\n" +
+                    $"PlayerIsAlive={playerCharacter?.IsAlive.ToString() ?? "NULL"}\n" +
+                    $"PlayerIsActive={playerCharacter?.IsActive.ToString() ?? "NULL"}\n" +
+                    $"PlayerInCombat={playerCharacter?.InCombat.ToString() ?? "NULL"}\n" +
+                    $"PlayerInTurn={playerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+                    $"PlayerStatsInCombat={PlayerStats.Instance.InCombat}\n" +
+                    $"PlayerStatsActionPoints={PlayerStats.Instance.ActionPoints}",
+                    playerCharacter, entity as Character);
+                return;
+            }
+
             if (characterOwnedCombatAction && !PrepareCharacterActionPointsForCombatAction(interaction, playerCharacter, actionPointCost))
             {
                 return;
             }
 
+            if (interaction.Type != InteractionType.Combat || !characterOwnedCombatAction)
+            {
+                ActionCostProfileResolver.LogPredictedCost("PlayerController.ExecutePlayerAction", interaction.Name, actionCostProfile, playerCharacter);
+            }
+
             // Execute the interaction 
             PlayerStats.Instance.Attacking = true;
+            SetInteractingWithTargetFromSelection(interaction, entity);
             if (interaction.Type == InteractionType.Combat)
             {
                 Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
@@ -1615,6 +1846,14 @@ public class PlayerController : MonoBehaviour
                     $"TargetNestedArea: {FormatAAMArea(target?.CurrentNestedArea)}\n" +
                     $"TargetIsActive: {target?.IsActive.ToString() ?? "NULL"}\n" +
                     $"TargetIsAlive: {target?.IsAlive.ToString() ?? "NULL"}");
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK ENTRY]", "PlayerController.ExecutePlayerAction combat action requested",
+                    $"ActionName={interaction.Name}\n" +
+                    $"ActionPointCost={actionPointCost}\n" +
+                    $"CharacterOwnedCombatAction={characterOwnedCombatAction}\n" +
+                    $"APSource={(characterOwnedCombatAction ? "Character.PerformAttack" : "PlayerController.DeductActionPoints")}\n" +
+                    $"TargetIsActive={target?.IsActive.ToString() ?? "NULL"}\n" +
+                    $"TargetIsAlive={target?.IsAlive.ToString() ?? "NULL"}",
+                    attacker, target);
             }
             interaction.ExecuteInteraction(entity, PlayerInventory.Instance);
             if (interaction.Type == InteractionType.Combat)
@@ -1724,10 +1963,27 @@ public class PlayerController : MonoBehaviour
                TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat;
     }
 
+    private bool IsExplorationTurnContext()
+    {
+        return TurnOrchestrator.Instance != null &&
+               TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration;
+    }
+
     private bool IsPlayerCombatTurnActive()
     {
         Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
         return playerCharacter != null && playerCharacter.InTurn;
+    }
+
+    private TurnOrchestrator ResolveTurnOrchestrator()
+    {
+        if (TurnOrchestrator.Instance != null && turnOrchestrator != TurnOrchestrator.Instance)
+        {
+            turnOrchestrator = TurnOrchestrator.Instance;
+            GameDebugger.Instance.LogInfo("PlayerController.ResolveTurnOrchestrator refreshed cached TurnOrchestrator reference from singleton.");
+        }
+
+        return turnOrchestrator;
     }
 
     private bool CanAcceptPlayerTurnInput(string source)
@@ -1767,10 +2023,97 @@ public class PlayerController : MonoBehaviour
         return false;
     }
 
+    private bool TryGetEndTurnAvailability(out bool canEndTurn, out string reason)
+    {
+        canEndTurn = false;
+        reason = "Unavailable";
+        TurnOrchestrator orchestrator = ResolveTurnOrchestrator();
+
+        if (!isInNestedArea)
+        {
+            reason = "NotInNestedArea";
+            return false;
+        }
+
+        if (orchestrator == null)
+        {
+            reason = "MissingTurnOrchestrator";
+            return false;
+        }
+
+        if (!GameManager.Instance.ActiveTurnManager || !PlayerStats.Instance.RegisteredInTurnManager)
+        {
+            reason = "TurnManagerInactive";
+            return false;
+        }
+
+        if (IsCombatTurnContext())
+        {
+            canEndTurn = IsPlayerCombatTurnActive();
+            reason = canEndTurn ? "CombatPlayerTurnActive" : "CombatNotPlayerTurn";
+            return canEndTurn;
+        }
+
+        if (IsExplorationTurnContext())
+        {
+            canEndTurn = true;
+            reason = "ExplorationTurnActive";
+            return true;
+        }
+
+        reason = $"UnsupportedContext:{orchestrator.CurrentContext}";
+        return false;
+    }
+
+    public void GetWaitOrEndTurnPresentation(out string label, out bool canUse, out string reason)
+    {
+        label = IsCombatTurnContext() ? "End Turn" : "Wait";
+
+        if (!isInNestedArea)
+        {
+            canUse = true;
+            reason = "MainMapWait";
+            return;
+        }
+
+        canUse = TryGetEndTurnAvailability(out _, out reason);
+    }
+
+    private void LogEndTurnActionVisibility(bool isVisible, string reason)
+    {
+        if (lastEndTurnActionVisible == isVisible &&
+            string.Equals(lastEndTurnActionVisibilityReason, reason, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastEndTurnActionVisible = isVisible;
+        lastEndTurnActionVisibilityReason = reason ?? string.Empty;
+
+        string context = TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL";
+        string managerName = context switch
+        {
+            "Combat" => "CombatTurnManager",
+            "Exploration" => "ExplorationTurnManager",
+            _ => "None"
+        };
+
+        GameDebugger.Instance.LogInfo(
+            $"PlayerController.EndTurnAction {(isVisible ? "shown" : "hidden")}. Context={context} Reason={reason} AP={PlayerStats.Instance.ActionPoints} MP={PlayerStats.Instance.MovePoints} ActiveTurnManager={managerName}");
+    }
+
     private bool TryCompletePlayerTurnFromPlayerController(string source)
     {
-        if (turnOrchestrator == null)
+        TurnOrchestrator orchestrator = ResolveTurnOrchestrator();
+
+        if (orchestrator == null)
         {
+            TurnDiagnosticsLogger.LogWarning("PlayerController could not complete player turn because TurnOrchestrator was missing",
+                $"Source: {source}\n" +
+                $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
+                $"PlayerInTurn: {PlayerStats.Instance.CurrentPlayerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}");
             return false;
         }
 
@@ -1789,45 +2132,80 @@ public class PlayerController : MonoBehaviour
             return false;
         }
 
-        turnOrchestrator.PlayerTurnCompleted();
+        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", "PlayerController.TryCompletePlayerTurnFromPlayerController",
+            $"Source: {source}\n" +
+            $"CurrentContext: {orchestrator.CurrentContext}\n" +
+            $"Player: {FormatAAMCharacter(PlayerStats.Instance.CurrentPlayerCharacter)}\n" +
+            $"Player.InTurn: {PlayerStats.Instance.CurrentPlayerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+            $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
+            $"RegisteredInTurnManager: {PlayerStats.Instance.RegisteredInTurnManager}");
+        GameDebugger.Instance.LogInfo(
+            $"PlayerController.PlayerTurnCompleted requested. Source={source} Context={orchestrator.CurrentContext} AP={PlayerStats.Instance.ActionPoints} MP={PlayerStats.Instance.MovePoints}");
+        orchestrator.PlayerTurnCompleted();
         notifiedManualEndRequiredForNoResources = false;
         return true;
     }
 
+    public bool EndPlayerTurn(string source, bool playerFacingMessage = true)
+    {
+        if (!TryGetEndTurnAvailability(out _, out string reason))
+        {
+            GameDebugger.Instance.LogWarning(
+                $"PlayerController.EndPlayerTurn rejected. Source={source} Reason={reason} Context={TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"} AP={PlayerStats.Instance.ActionPoints} MP={PlayerStats.Instance.MovePoints}");
+
+            if (IsCombatTurnContext())
+            {
+                Character currentActor = GetCurrentCombatTurnActor();
+                MessageLogManager.Instance?.Log("combat_wait_turn", currentActor != null ? currentActor.Name : "Someone else");
+            }
+
+            return false;
+        }
+
+        string currentContext = TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL";
+        string activeTurnManager = IsCombatTurnContext() ? "CombatTurnManager" : "ExplorationTurnManager";
+        bool wasCombatContext = IsCombatTurnContext();
+
+        GameDebugger.Instance.LogInfo(
+            $"PlayerController.EndPlayerTurn clicked. Source={source} Context={currentContext} AP={PlayerStats.Instance.ActionPoints} MP={PlayerStats.Instance.MovePoints} ActiveTurnManager={activeTurnManager}");
+
+        bool completed = TryCompletePlayerTurnFromPlayerController(source);
+        if (!completed)
+        {
+            return false;
+        }
+
+        if (playerFacingMessage)
+        {
+            MessageLogManager.Instance?.Log(wasCombatContext ? "combat_manual_end_turn" : "exploration_manual_end_turn");
+        }
+
+        return true;
+    }
+
+    public bool HandleWaitOrEndTurn(string source, bool playerFacingMessage = true)
+    {
+        ActionCostProfile waitOrEndTurnProfile = ActionCostProfileResolver.BuildForWaitOrEndTurn(IsCombatTurnContext());
+        ActionCostProfileResolver.LogPredictedCost("PlayerController.HandleWaitOrEndTurn", waitOrEndTurnProfile.CostLabel, waitOrEndTurnProfile, PlayerStats.Instance.CurrentPlayerCharacter);
+
+        if (IsExplorationTurnContext())
+        {
+            bool completed = CompleteExplorationTurnForTimeCostingAction(source, 1f);
+            if (completed && playerFacingMessage)
+            {
+                MessageLogManager.Instance?.Log("exploration_manual_end_turn");
+            }
+
+            return completed;
+        }
+
+        return EndPlayerTurn(source, playerFacingMessage);
+    }
+
     private void HandleManualEndTurnInput()
     {
-        if (!IsCombatTurnContext())
-        {
-            // CODEXLOG001_TURNLIFECYCLE: temporary manual end-turn diagnostic.
-            TurnDiagnosticsLogger.LogEvent("[MANUAL END TURN]", "Manual end turn ignored outside combat",
-                $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
-                "Action: IgnoredOutsideCombat");
-            return;
-        }
-
-        Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
-        bool isPlayerTurn = IsPlayerCombatTurnActive();
-        Character currentActor = GetCurrentCombatTurnActor();
-
-        // CODEXLOG001_TURNLIFECYCLE: temporary manual end-turn diagnostic.
-        TurnDiagnosticsLogger.LogEvent("[MANUAL END TURN]", "Manual end turn hotkey pressed",
-            $"Context: {TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}\n" +
-            $"IsPlayerTurn: {isPlayerTurn}\n" +
-            $"CurrentActor: {FormatAAMCharacter(currentActor)}\n" +
-            $"Player: {FormatAAMCharacter(playerCharacter)}\n" +
-            $"AP: {PlayerStats.Instance.ActionPoints}\n" +
-            $"MP: {PlayerStats.Instance.MovePoints}\n" +
-            $"Action: {(isPlayerTurn ? "EndPlayerTurn" : "IgnoredNotPlayerTurn")}",
-            playerCharacter);
-
-        if (!isPlayerTurn)
-        {
-            MessageLogManager.Instance?.Log("combat_wait_turn", currentActor != null ? currentActor.Name : "Someone else");
-            return;
-        }
-
-        MessageLogManager.Instance?.Log("combat_manual_end_turn");
-        TryCompletePlayerTurnFromPlayerController("ManualEndTurnHotkey");
+        HandleWaitOrEndTurn("ManualWaitOrEndTurnHotkey", true);
     }
 
     private void ToggleAutoEndCombatTurn()
@@ -1981,6 +2359,17 @@ public class PlayerController : MonoBehaviour
             return false;
         }
 
+        if (!playerCharacter.IsCombatActorAvailable())
+        {
+            ActionAAMDiagnosticsLogger.LogEvent("[AP CHECK]", "Combat action rejected because player character is inactive or dead",
+                $"ActionName: {interaction?.Name ?? "NULL"}\n" +
+                $"ActionPointCost: {actionPointCost}\n" +
+                $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
+                $"PlayerCharacter.IsAlive: {playerCharacter.IsAlive}\n" +
+                $"PlayerCharacter.IsActive: {playerCharacter.IsActive}");
+            return false;
+        }
+
         int characterAPBefore = playerCharacter.ActionPoints;
         if (playerCharacter.ActionPoints != PlayerStats.Instance.ActionPoints)
         {
@@ -2098,6 +2487,8 @@ public class PlayerController : MonoBehaviour
         }
 
         int actionPointCost = action.ActionPointCost;
+        ActionCostProfile actionCostProfile = ActionCostProfileResolver.BuildForEnvironmentalAction(action, IsCombatTurnContext());
+        ActionCostProfileResolver.LogPredictedCost("PlayerController.ExecuteEnvironmentalAction", action.Name, actionCostProfile, PlayerStats.Instance.CurrentPlayerCharacter);
 
         if (PlayerStats.Instance.ActionPoints >= actionPointCost)
         {

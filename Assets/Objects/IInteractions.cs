@@ -598,6 +598,7 @@ public class ShakeInteraction : IInteraction
     }
 }
 
+// Legacy/unwired: current live chest/container affordances use OpenContainerInteraction from object providers.
 public class OpenChestInteraction : IInteraction
 {
     public InteractionType Type => InteractionType.Environmental;
@@ -623,6 +624,7 @@ public class OpenChestInteraction : IInteraction
     }
 }
 
+// Legacy/unwired: corpse providers do not currently expose this action in the live AAM.
 public class TakeEar : IInteraction
 {
     public InteractionType Type => InteractionType.Tool;
@@ -1546,6 +1548,7 @@ public class PlantSeedsAction : IEnvironmentalAction
 }
 
 
+// Legacy/unwired: live plant/fungi providers currently expose GatherInteraction instead of HarvestInteraction.
 public class HarvestInteraction : IInteraction
 {
     public InteractionType Type => InteractionType.Environmental;
@@ -1714,6 +1717,9 @@ public abstract class BaseCombatInteraction : IInteraction
             if (playerCharacter == null || playerCharacter.EquippedItems == null)
             {
                 Debug.LogWarning("BaseCombatInteraction: Player character or EquippedItems dictionary is null.");
+                CombatActionResolutionDiagnosticsLogger.LogWarning("BaseCombatInteraction.ExecuteInteraction aborted due to missing player character or equipment",
+                    $"ActionName={Name}\nTarget={character?.Name ?? "NULL"}",
+                    playerCharacter, character);
                 return;
             }
 
@@ -1746,11 +1752,22 @@ public abstract class BaseCombatInteraction : IInteraction
 
                 character.TakeDamage(damageByType, playerCharacter);
                 playerCharacter.ApplyOnHitEffects(character);
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK RESOLVED]", "BaseCombatInteraction.ExecuteInteraction resolved",
+                    $"ActionName={Name}\n" +
+                    $"AccuracyValue={finalAccuracy}\n" +
+                    $"HitRoll={accuracyRoll}\n" +
+                    $"HitResult=Hit\n" +
+                    $"FinalOutgoingDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(damageByType)}\n" +
+                    $"Resolver=BaseCombatInteraction",
+                    playerCharacter, character);
             }
             else
             {
                 Debug.Log($"{Name} Attack missed.");
                 MessageLogManager.Instance.Log("combat_result", PlayerStats.Instance.PlayerCharacterName, character.Name, 0, false);
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK RESOLVED]", "BaseCombatInteraction.ExecuteInteraction missed",
+                    $"ActionName={Name}\nAccuracyValue={finalAccuracy}\nHitRoll={accuracyRoll}\nHitResult=Miss\nResolver=BaseCombatInteraction",
+                    playerCharacter, character);
             }
 
             EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
@@ -1999,6 +2016,8 @@ public class MagicInteraction : IInteraction
             if (playerCharacter == null)
             {
                 Debug.LogWarning("MagicInteraction: Player character is null.");
+                CombatActionResolutionDiagnosticsLogger.LogWarning("MagicInteraction.ExecuteInteraction aborted because player character is null",
+                    $"ActionName={Name}\nTarget={npc?.Name ?? "NULL"}");
                 return;
             }
 
@@ -2019,11 +2038,31 @@ public class MagicInteraction : IInteraction
 
                 npc.TakeDamage(magicDamage, playerCharacter);
                 playerCharacter.ApplyOnHitEffects(npc);
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK RESOLVED]", "MagicInteraction.ExecuteInteraction resolved hit",
+                    $"ActionName={Name}\n" +
+                    $"RequestedDamageType=Magic\n" +
+                    $"AccuracyValue={finalAccuracy}\n" +
+                    $"HitRoll={accuracyRoll}\n" +
+                    $"HitResult=Hit\n" +
+                    $"OriginalWeaponDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(magicDamage)}\n" +
+                    $"FinalOutgoingDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(magicDamage)}\n" +
+                    $"Resolver=MagicInteraction.DirectTakeDamage\n" +
+                    $"APSource=PlayerController.DeductActionPoints + EndOfTurnManager.AddTurnProgress",
+                    playerCharacter, npc);
             }
             else
             {
                 Debug.Log($"{Name} Attack missed.");
                 MessageLogManager.Instance.Log("combat_result", PlayerStats.Instance.PlayerCharacterName, npc.Name, 0, false);
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK RESOLVED]", "MagicInteraction.ExecuteInteraction resolved miss",
+                    $"ActionName={Name}\n" +
+                    $"RequestedDamageType=Magic\n" +
+                    $"AccuracyValue={finalAccuracy}\n" +
+                    $"HitRoll={accuracyRoll}\n" +
+                    $"HitResult=Miss\n" +
+                    $"Resolver=MagicInteraction.DirectTakeDamage\n" +
+                    $"APSource=PlayerController.DeductActionPoints + EndOfTurnManager.AddTurnProgress",
+                    playerCharacter, npc);
             }
         }
         EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
@@ -2145,7 +2184,7 @@ public abstract class BaseConstructableInteraction : IEnvironmentalAction
 
 public class PlaceWoodenWallInteraction : BaseConstructableInteraction
 {
-    public override InteractionType Type => InteractionType.Environmental;
+    public override InteractionType Type => InteractionType.Special;
     public override string Name => "Place Wooden Wall";
     public override int ActionPointCost => 1;
     public override string ObjectString => "WoodenWall";
@@ -2153,7 +2192,7 @@ public class PlaceWoodenWallInteraction : BaseConstructableInteraction
 
 public class PlaceWoodenDoorInteraction : BaseConstructableInteraction
 {
-    public override InteractionType Type => InteractionType.Environmental;
+    public override InteractionType Type => InteractionType.Special;
     public override string Name => "Place Wooden Door";
     public override int ActionPointCost => 1;
     public override string ObjectString => "WoodenDoor";
@@ -2161,7 +2200,7 @@ public class PlaceWoodenDoorInteraction : BaseConstructableInteraction
 
 public class PlaceAnvilInteraction : BaseConstructableInteraction
 {
-    public override InteractionType Type => InteractionType.Environmental;
+    public override InteractionType Type => InteractionType.Special;
     public override string Name => "Place Anvil";
     public override int ActionPointCost => 2; // Maybe placing an Anvil is a heavier action
     public override string ObjectString => "Anvil";
@@ -2169,7 +2208,7 @@ public class PlaceAnvilInteraction : BaseConstructableInteraction
 
 public class PlaceBedInteraction : BaseConstructableInteraction
 {
-    public override InteractionType Type => InteractionType.Environmental;
+    public override InteractionType Type => InteractionType.Special;
     public override string Name => "Place Bed";
     public override int ActionPointCost => 1;
     public override string ObjectString => "Bed";
@@ -2177,7 +2216,7 @@ public class PlaceBedInteraction : BaseConstructableInteraction
 
 public class PlaceStoneWallInteraction : BaseConstructableInteraction
 {
-    public override InteractionType Type => InteractionType.Environmental;
+    public override InteractionType Type => InteractionType.Special;
     public override string Name => "Place Stone Wall";
     public override int ActionPointCost => 1;
     public override string ObjectString => "StoneWall";

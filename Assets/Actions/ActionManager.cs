@@ -12,7 +12,7 @@ public class ActionManager : MonoBehaviour
     // List of environmental actions
     private List<IEnvironmentalAction> environmentalActions = new List<IEnvironmentalAction>();
 
-    // List of special actions
+    // Legacy/unwired path: the current AAM uses environmentalActions directly and this list is not populated.
     private List<IInteraction> specialActions = new List<IInteraction>();
 
     void Start()
@@ -43,7 +43,7 @@ public class ActionManager : MonoBehaviour
     public IEnumerable<IInteraction> GetAvailableSpecialActions(PlayerInventory inventory)
     {
         return specialActions.Where(action => action.IsAvailable(null, inventory));
-        // Note: If Special actions need to check a cell or other context, adjust IsAvailable accordingly
+        // Note: retained for legacy/special-action experiments; current AAM does not populate this path.
     }
 }
 

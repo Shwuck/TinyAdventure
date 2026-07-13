@@ -536,6 +536,7 @@ public static class AnimalFactory
 
         // Cap the Animal's Health
         animal.CapMaxHealthBasedOnSize();
+        animal.InitializeStamina("AnimalFactory.CreateAnimal");
 
         // Inject dependencies and set default states
         InjectDependencies(animal);

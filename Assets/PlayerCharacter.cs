@@ -28,7 +28,6 @@ public class PlayerCharacter : Character
 
     // Derived Stats
     public int MaxSatiety { get; set; }
-    public int MaxStamina { get; set; }
 
     public PlayerCharacter() : base()
     {
@@ -76,7 +75,6 @@ public class PlayerCharacterFactory
 
         // Example values for derived stats
         int maxSatiety = 100 + constitution * 2;
-        int maxStamina = 100 + dexterity * 2;
         int maxHealth = constitution * 2;
         int maxActionPoints = dexterity * 2;
         int maxMovePoints = 2;
@@ -120,7 +118,6 @@ public class PlayerCharacterFactory
             MaxMovePoints = maxMovePoints,
             MovePoints = maxMovePoints,
             MaxSatiety = maxSatiety,
-            MaxStamina = maxStamina,
             BirthdayDay = birthdayDay,
             BirthdaySeason = birthdaySeason,
             BirthdayYear = birthdayYear,
@@ -135,6 +132,7 @@ public class PlayerCharacterFactory
 
 
         AssignBackgroundSpecificLoadout(newCharacter);
+        newCharacter.InitializeStamina("PlayerCharacterFactory.CreatePlayerCharacter");
         Debug.Log($"Checking {newCharacter.FullName}'s inventory after loadout:");
         foreach (var container in newCharacter.Inventory.GetInventoryContainers())
         {

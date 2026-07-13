@@ -43,6 +43,7 @@ public class NPC : Character
     #region Constructor
     public NPC()
     {
+        IsAlive = true;
         IsActive = true;
         IsHostile = false;
         Health = 100;

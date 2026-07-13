@@ -108,6 +108,7 @@ public class NPCGenerator : MonoBehaviour
         AssignRandomBirthday(npc);
         AssignRoleSpecificProperties(npc, village);
         ApplyStatModifiers(npc);
+        npc.InitializeStamina("NPCGenerator.GenerateNPC");
 
         // Perform Integrity Check
         if (!ValidateNPCIntegrity(npc))
@@ -158,6 +159,7 @@ public class NPCGenerator : MonoBehaviour
         AssignRandomBirthday(npc);
         AssignRoleSpecificProperties(npc);
         ApplyStatModifiers(npc);
+        npc.InitializeStamina("NPCGenerator.GenerateStandaloneNPC");
 
         // Perform Integrity Check
         if (!ValidateNPCIntegrity(npc))
@@ -244,6 +246,7 @@ public class NPCGenerator : MonoBehaviour
         AssignRandomBirthday(npc);
         AssignRoleSpecificProperties(npc);
         ApplyStatModifiers(npc);
+        npc.InitializeStamina("NPCGenerator.GenerateCampNPC");
 
         // Perform Integrity Check
         if (!ValidateNPCIntegrity(npc))

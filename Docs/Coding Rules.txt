@@ -1,0 +1,53 @@
+Ensure all outcomes have detailed debugging — always use GameDebugger.Instance.LogInfo(), LogWarning(), or LogError() instead of standard Unity debug logs, so debug output stays consistent and searchable.
+
+Ensure player-facing events use `MessageLogManager` where appropriate. Combat results, exploration updates, item interactions, rewards, failures, and important state changes should be visible to the player when relevant.
+
+Ensure `PermaLists` is used when storing or exposing persistent public lists. Avoid unmanaged public mutable lists when the data needs to survive, be reused, or remain consistent across systems.
+
+Ensure scripts have high readability and maintainability.
+
+Ensure code isn't repeated Unnecessarily.
+
+Never use emoji or risky non-standard symbols in code, identifiers, save-related strings, serialized data, or generated files unless the save system has been confirmed to support them safely.
+
+Always use `UnityEngine.Random` for normal Unity gameplay randomisation. Fully qualify it as `UnityEngine.Random` where there is any chance of confusion with `System.Random`.
+
+Use `#region` and `#endregion` to improve script navigation. Regions should make code easier to scan, not hide messy or oversized scripts.
+
+Prioritise clarity over cleverness. Code should be easy to understand later, even if that means writing something slightly longer.
+
+Do not repeat code unnecessarily. If the same logic appears in multiple places, move it into a shared method, class, component, or utility.
+
+Do not duplicate knowledge. Important rules, values, calculations, and conditions should exist in one authoritative place.
+
+Use honest, descriptive names. Variables, methods, classes, and files should clearly describe what they are or what they do.
+
+Keep scripts readable and maintainable. Prefer clear structure, sensible spacing, small methods, and predictable organisation over dense blocks of logic.
+
+Keep methods focused. A method should do one clear job, and its name should describe that job accurately.
+
+Keep related logic together. Code that changes together should usually live together, rather than being scattered across unrelated scripts.
+
+Separate intent from implementation. High-level code should read like a clear description of what is happening, while lower-level methods handle the details.
+
+Make invalid states difficult to create. Protect important data behind methods or properties rather than letting any script freely change it.
+
+Fail loudly during development. Do not silently ignore unexpected states; log useful warnings or errors so problems can be found quickly.
+
+Use boring solutions when possible. Simple, familiar, reliable code is usually better than clever or unusual code that is harder to maintain.
+
+Write code for change. Assume requirements will evolve, and structure code so future changes are local, obvious, and low-risk.
+
+Modularity is key. Keep code modular and ready to extend. Build systems from focused, reusable parts so new features can be added, replaced, or expanded without rewriting unrelated code.
+
+Comment the reason, not the obvious. Comments should explain intent, warnings, trade-offs, or unusual decisions, not repeat what the code already says.
+
+Keep dependencies controlled. Core gameplay logic should not be tightly coupled to UI, audio, input, or scene-specific objects unless necessary.
+
+Avoid magic numbers and unexplained literals. Important values should be named constants, configuration values, or clearly explained fields and should be exposed in the editor for quick changes during testing.
+
+Validate inputs and assumptions. Check for null references, empty lists, invalid values, missing components, and impossible states before they cause hidden bugs.
+
+Prefer explicitness where ambiguity is risky. If a call, value, or condition could be misunderstood, make it more obvious even if it takes more code.
+
+Leave code better than you found it. Small improvements to naming, structure, logging, or duplication compound over time.

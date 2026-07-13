@@ -26,6 +26,21 @@ public class CombatTurnManager : BaseTurnManager
 
     #region Overrides
 
+    public override void StartTurnCycle()
+    {
+        PruneInvalidCombatants("CombatTurnManager.StartTurnCycle");
+
+        if (!HasRestartableCombatParticipants())
+        {
+            CombatActionResolutionDiagnosticsLogger.LogWarning("CombatTurnManager.StartTurnCycle aborted because no valid combat participants remain",
+                $"RegisteredCount={DiagnosticRegisteredCount}\nCurrentContext={TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}");
+            TurnOrchestrator.Instance?.TryUpdateTurnContext();
+            return;
+        }
+
+        base.StartTurnCycle();
+    }
+
     protected override bool ShouldSkipCharacter(Character character)
     {
         if (character == null) return true;
@@ -36,9 +51,21 @@ public class CombatTurnManager : BaseTurnManager
             return true;
         }
 
+        if (!character.IsAlive)
+        {
+            GameDebugger.Instance.LogInfo($"[CombatTurnManager] Skipping {character.Name} as they are dead.");
+            return true;
+        }
+
         if (!character.IsActive)
         {
             GameDebugger.Instance.LogInfo($"[CombatTurnManager] Skipping {character.Name} as they are not active.");
+            return true;
+        }
+
+        if (!character.InCombat)
+        {
+            GameDebugger.Instance.LogInfo($"[CombatTurnManager] Skipping {character.Name} as they are no longer in combat.");
             return true;
         }
 
@@ -67,10 +94,14 @@ public class CombatTurnManager : BaseTurnManager
 
     protected override float GetTurnDelay(Character character)
     {
-        var area = PlayerStats.Instance.CurrentPlayerCharacter?.CurrentNestedArea;
-        bool hasHostiles = area?.IsHostileArea ?? false;   // mirrors old hostile-delay logic
-
-        return hasHostiles ? 3f : 0f;
+        // CODEXLOG001_TURNLIFECYCLE: temporary combat pacing diagnostic.
+        TurnDiagnosticsLogger.LogEvent("[COMBAT PACING]", "CombatTurnManager.GetTurnDelay",
+            $"TurnDelay: 0\n" +
+            "Reason: InstantCombatDecisions\n" +
+            $"Actor: {character?.Name ?? "NULL"} [{character?.IInteractableID.ToString() ?? "NULL"}]\n" +
+            $"Role: {BaseTurnManager.GetCombatParticipantRole(character)}",
+            character);
+        return 0f;
     }
 
     protected override void OnPlayerTurnStart(Character playerCharacter)
@@ -82,6 +113,7 @@ public class CombatTurnManager : BaseTurnManager
         if (!GameManager.Instance.ActiveTurnManager)
         {
             GameDebugger.Instance.LogInfo("[CombatTurnManager] ActiveTurnManager is false. Auto-completing player turn.");
+            isPlayerTurn = false;
             base.EndTurnForCharacter(playerCharacter);
             return;
         }
@@ -118,6 +150,17 @@ public class CombatTurnManager : BaseTurnManager
             $"PlayerCharacter.ActionPoints before sync: {characterAPBeforeReset}\n" +
             $"PlayerCharacter.ActionPoints after sync: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
             $"PlayerStats.MovePoints after reset: {PlayerStats.Instance.MovePoints}");
+        CombatActionResolutionDiagnosticsLogger.LogEvent("[AP RESET]", "CombatTurnManager.OnPlayerTurnStart synced player combat resources",
+            $"PlayerStatsAPBeforeReset={playerStatsAPBeforeReset}\n" +
+            $"PlayerStatsAPAfterReset={PlayerStats.Instance.ActionPoints}\n" +
+            $"CharacterAPBeforeReset={characterAPBeforeReset}\n" +
+            $"CharacterAPAfterReset={playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
+            $"PlayerStatsMPBeforeReset={playerStatsMPBeforeReset}\n" +
+            $"PlayerStatsMPAfterReset={PlayerStats.Instance.MovePoints}\n" +
+            $"CharacterMPBeforeReset={characterMPBeforeReset}\n" +
+            $"CharacterMPAfterReset={playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"ResetSource=CombatTurnManager.OnPlayerTurnStart",
+            playerCharacter);
         LogTurnOrderDiagnostic("[COMBAT TURN ORDER]", "CombatTurnManager.OnPlayerTurnStart resources reset",
             $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
             $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
@@ -135,6 +178,45 @@ public class CombatTurnManager : BaseTurnManager
 
     protected override void OnNPCTurnExecute(Character npc)
     {
+        if (npc == null)
+        {
+            CombatActionResolutionDiagnosticsLogger.LogWarning("CombatTurnManager.OnNPCTurnExecute skipped null combatant",
+                $"CurrentContext={TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}");
+            return;
+        }
+
+        if (!npc.IsCombatActorAvailable() || !npc.InCombat)
+        {
+            CombatActionResolutionDiagnosticsLogger.LogWarning("CombatTurnManager.OnNPCTurnExecute skipped invalid combatant",
+                $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
+                $"IsAlive={npc.IsAlive}\n" +
+                $"IsActive={npc.IsActive}\n" +
+                $"InCombat={npc.InCombat}",
+                npc);
+            DeregisterCharacter(npc);
+            TurnOrchestrator.Instance?.TryUpdateTurnContext();
+            return;
+        }
+
+        if ((npc.IsHostile || npc.Stance == NPCStance.Hostile) &&
+            !npc.TryRefreshCombatTarget("CombatTurnManager.OnNPCTurnExecute hostile actor validation", out Character replacementTarget))
+        {
+            npc.IsHostile = false;
+            npc.InCombat = false;
+            npc.Stance = NPCStance.Default;
+            npc.stateMachine?.HandleStanceChange(npc.Stance);
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "CombatTurnManager.OnNPCTurnExecute removed hostile combatant with no valid target",
+                $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
+                $"ReplacementTarget={replacementTarget?.Name ?? "NULL"}\n" +
+                $"IsHostileAfter={npc.IsHostile}\n" +
+                $"StanceAfter={npc.Stance}\n" +
+                $"InCombatAfter={npc.InCombat}",
+                npc);
+            DeregisterCharacter(npc);
+            TurnOrchestrator.Instance?.TryUpdateTurnContext();
+            return;
+        }
+
         UIController.Instance.UpdateTurnOrderUI();
 
         GameDebugger.Instance.LogInfo($"[CombatTurnManager] Executing NPC turn for {npc.Name}.");
@@ -212,6 +294,17 @@ public class CombatTurnManager : BaseTurnManager
             $"MP after reset: {mpAfterReset}\n" +
             $"MP after: {npc?.MovePoints.ToString() ?? "NULL"}",
             npc);
+
+        if (!npc.IsCombatActorAvailable() || !npc.InCombat)
+        {
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "CombatTurnManager.OnNPCTurnExecute deregistered actor after turn",
+                $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
+                $"IsAlive={npc.IsAlive}\n" +
+                $"IsActive={npc.IsActive}\n" +
+                $"InCombat={npc.InCombat}",
+                npc);
+            DeregisterCharacter(npc);
+        }
     }
 
     protected override void OnCycleEnded()
@@ -224,17 +317,19 @@ public class CombatTurnManager : BaseTurnManager
             return;
         }
 
-        bool hasPlayer = characterTurnDataDict.Values.Any(d => d.IsPlayer);
-        if (characterTurnDataDict.Count > 0 && hasPlayer)
+        TurnOrchestrator.Instance?.TryUpdateTurnContext();
+        PruneInvalidCombatants("CombatTurnManager.OnCycleEnded");
+        if (TurnOrchestrator.Instance == null || TurnOrchestrator.Instance.CurrentContext != TurnContext.Combat)
         {
-            // CODEXLOG001_TURNLIFECYCLE: temporary combat turn-cycle restart diagnostic.
-            TurnDiagnosticsLogger.LogEvent("[COMBAT TURN ADVANCE]", "CombatTurnManager.OnCycleEnded restarting combat cycle",
-                $"RegisteredCount: {characterTurnDataDict.Count}\nHasPlayer: {hasPlayer}");
-            StartTurnCycle();
+            GameDebugger.Instance.LogInfo("[CombatTurnManager] Not restarting cycle: combat context ended.");
+            return;
         }
-        else
+
+        if (!HasRestartableCombatParticipants())
         {
-            GameDebugger.Instance.LogInfo("[CombatTurnManager] Not restarting cycle: missing characters or player.");
+            CombatActionResolutionDiagnosticsLogger.LogWarning("CombatTurnManager.OnCycleEnded aborted cycle restart because no valid actors remain",
+                $"RegisteredCount={DiagnosticRegisteredCount}\nCurrentContext={TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "NULL"}");
+            TurnOrchestrator.Instance?.TryUpdateTurnContext();
         }
     }
 
@@ -270,6 +365,62 @@ public class CombatTurnManager : BaseTurnManager
     }
 
     #region Validation / Utilities
+
+    private void PruneInvalidCombatants(string source)
+    {
+        List<Character> invalidCombatants = DiagnosticGetRegisteredCharactersSnapshot()
+            .Where(character => character == null || !character.IsAlive || !character.IsActive || !character.InCombat)
+            .ToList();
+
+        foreach (Character combatant in invalidCombatants)
+        {
+            if (combatant == null)
+            {
+                continue;
+            }
+
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "CombatTurnManager.PruneInvalidCombatants removed invalid combatant",
+                $"Source={source}\n" +
+                $"Actor={combatant.Name} [{combatant.IInteractableID}]\n" +
+                $"IsAlive={combatant.IsAlive}\n" +
+                $"IsActive={combatant.IsActive}\n" +
+                $"InCombat={combatant.InCombat}",
+                combatant);
+            DeregisterCharacter(combatant);
+        }
+    }
+
+    private bool HasRestartableCombatParticipants()
+    {
+        Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+        bool hasPlayer = DiagnosticGetRegisteredCharactersSnapshot()
+            .Any(character => character != null && character == playerCharacter && character.IsAlive && character.IsActive && character.InCombat);
+        bool hasOtherCombatant = DiagnosticGetRegisteredCharactersSnapshot()
+            .Any(character => character != null &&
+                              character != playerCharacter &&
+                              character.IsAlive &&
+                              character.IsActive &&
+                              character.InCombat &&
+                              (character.IsHostile || character.Stance == NPCStance.Hostile || playerCharacter?.Target == character || character.Target == playerCharacter));
+
+        return hasPlayer && hasOtherCombatant;
+    }
+
+    protected override bool ShouldAutoStartNextCycle()
+    {
+        if (!GameManager.Instance.ActiveTurnManager)
+        {
+            return false;
+        }
+
+        if (TurnOrchestrator.Instance == null || TurnOrchestrator.Instance.CurrentContext != TurnContext.Combat)
+        {
+            return false;
+        }
+
+        PruneInvalidCombatants("CombatTurnManager.ShouldAutoStartNextCycle");
+        return HasRestartableCombatParticipants();
+    }
 
     public override void ValidateCharacterNestedAreas()
     {
