@@ -17,7 +17,10 @@ public class GameDebugger : MonoBehaviour
                 {
                     GameObject debuggerObject = new GameObject("GameDebugger");
                     _instance = debuggerObject.AddComponent<GameDebugger>();
-                    DontDestroyOnLoad(debuggerObject);
+                    if (Application.isPlaying)
+                    {
+                        DontDestroyOnLoad(debuggerObject);
+                    }
                 }
             }
             return _instance;
@@ -30,7 +33,10 @@ public class GameDebugger : MonoBehaviour
         if (_instance == null)
         {
             _instance = this;
-            DontDestroyOnLoad(gameObject);
+            if (Application.isPlaying)
+            {
+                DontDestroyOnLoad(gameObject);
+            }
         }
         else if (_instance != this)
         {

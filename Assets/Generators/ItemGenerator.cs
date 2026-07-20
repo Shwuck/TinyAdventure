@@ -410,9 +410,9 @@ public class ItemGenerator : MonoBehaviour
         {
             List<string> possibleDebuffs = new List<string> { "Strength", "Dexterity", "Constitution", "Speed", "Luck", "Wisdom", "Intelligence" };
 
-            if (item.Modifiers.ContainsKey(item.PrimaryStat))
+            if (!string.IsNullOrWhiteSpace(item.PrimaryStat) && item.Modifiers.ContainsKey(item.PrimaryStat))
                 possibleDebuffs.Remove(item.PrimaryStat);
-            if (item.Modifiers.ContainsKey(item.SecondaryStat))
+            if (!string.IsNullOrWhiteSpace(item.SecondaryStat) && item.Modifiers.ContainsKey(item.SecondaryStat))
                 possibleDebuffs.Remove(item.SecondaryStat);
 
             if (possibleDebuffs.Count == 0)

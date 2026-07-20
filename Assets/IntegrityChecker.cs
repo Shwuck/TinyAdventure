@@ -38,7 +38,7 @@ public class IntegrityChecker : MonoBehaviour
     public List<Race> Races => PermaLists.Instance.Races;
     public List<NPCRoleData> RoleData => PermaLists.Instance.RoleData;
 
-    public void CheckDataIntegrity()
+    public void CheckDataIntegrity(bool triggerGameStart = true)
     {
         CheckItemTypesIntegrity();
         CheckLoadoutIntegrity();
@@ -48,8 +48,11 @@ public class IntegrityChecker : MonoBehaviour
         DialogueChecker();
         SetDefaultBodyTypes();
 
-        // After all integrity checks, set the game as good to start
-        SetGameAsGoodToStart();
+        // In headless audit mode we want the validation without the UI/game-start side effects.
+        if (triggerGameStart)
+        {
+            SetGameAsGoodToStart();
+        }
     }
 
     private void SetGameAsGoodToStart()

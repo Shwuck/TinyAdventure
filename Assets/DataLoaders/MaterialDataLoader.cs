@@ -15,7 +15,7 @@ public class MaterialDataLoader : MonoBehaviour, IDataLoader
         LoadMaterialCreationDataFromJson();
     }
 
-    public async void LoadMaterialCreationDataFromJson()
+    public void LoadMaterialCreationDataFromJson()
     {
         string filePath = Path.Combine(Application.streamingAssetsPath, "MaterialCreationData.json");
 
@@ -23,7 +23,7 @@ public class MaterialDataLoader : MonoBehaviour, IDataLoader
         {
             try
             {
-                string json = await File.ReadAllTextAsync(filePath);
+                string json = File.ReadAllText(filePath);
                 List<ObjectMaterial> materials = JsonConvert.DeserializeObject<List<ObjectMaterial>>(json);
 
                 if (materials != null)

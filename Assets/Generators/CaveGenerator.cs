@@ -125,6 +125,8 @@ public class CaveGenerator : MonoBehaviour
         };
 
         PermaLists.Instance.CaveCreationDataList.Add(caveData);
+        startCell.HasCave = true;
+        startCell.CaveID = caveID;
 
         foreach (Cell cell in caveCells)
         {

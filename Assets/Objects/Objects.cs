@@ -1271,7 +1271,7 @@ public class SmallRock : Rock
         // Small chance for a gem, because small rocks are often at shallow levels
         if (UnityEngine.Random.value < GetGemChance(Level))
         {
-            var gem = ItemGenerator.Instance.GenerateItem("Gem");
+            var gem = ItemGenerator.Instance.GenerateRandomItem(ItemType.Gemstone);
             if (gem != null)
             {
                 AddItem(gem, 1); // Add one gem if found
@@ -1315,7 +1315,7 @@ public class LargeRock : Rock
         // Higher chance for gems due to being a large rock at a deeper level
         if (UnityEngine.Random.value < GetGemChance(Level))
         {
-            var gem = ItemGenerator.Instance.GenerateItem("Gem");
+            var gem = ItemGenerator.Instance.GenerateRandomItem(ItemType.Gemstone);
             if (gem != null)
             {
                 AddItem(gem, 1); // Add one gem if found

@@ -17,6 +17,16 @@ public class ActionManager : MonoBehaviour
 
     void Start()
     {
+        InitializeEnvironmentalActions();
+    }
+
+    public void InitializeEnvironmentalActions()
+    {
+        if (environmentalActions.Count > 0)
+        {
+            return;
+        }
+
         // Initialize environmental actions
         environmentalActions.Add(new DigAction());
         environmentalActions.Add(new TillSoilAction());
@@ -32,7 +42,6 @@ public class ActionManager : MonoBehaviour
         environmentalActions.Add(new PlaceWoodenDoorInteraction());
         environmentalActions.Add(new PlaceAnvilInteraction());
         environmentalActions.Add(new PlaceBedInteraction());
-
     }
 
     public IEnumerable<IEnvironmentalAction> GetAvailableEnvironmentalActions(Cell cell, PlayerInventory inventory)
