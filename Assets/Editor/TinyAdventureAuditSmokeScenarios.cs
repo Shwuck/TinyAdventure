@@ -226,6 +226,14 @@ public static partial class TinyAdventureBatchAudit
                 run.GeneratedStateFailures.Add(finalSyncWarning);
                 result.Failed = true;
             }
+
+            string transitionWarning = ValidateNestedAreaRoundTripState(playerController, playerStats, playerCharacter, area);
+            if (!string.IsNullOrEmpty(transitionWarning))
+            {
+                result.StateConsistencyWarnings.Add(transitionWarning);
+                run.GeneratedStateFailures.Add(transitionWarning);
+                result.Failed = true;
+            }
         }
         catch (Exception ex)
         {
@@ -769,6 +777,55 @@ public static partial class TinyAdventureBatchAudit
         if (before.PlayerPosition != after.PlayerPosition)
         {
             return "Player position changed during a supposedly safe interaction.";
+        }
+
+        return string.Empty;
+    }
+
+    private static string ValidateNestedAreaRoundTripState(
+        PlayerController playerController,
+        PlayerStats playerStats,
+        Character playerCharacter,
+        INestedArea originalArea)
+    {
+        if (playerController == null || playerStats == null || playerCharacter == null || originalArea == null)
+        {
+            return "Nested-area round-trip validation could not complete because one or more references were null.";
+        }
+
+        object exitResult = InvokeMethod(playerController, "ExitNestedArea");
+        _ = exitResult;
+
+        if (playerStats.CurrentNestedArea != null || playerCharacter.CurrentNestedArea != null)
+        {
+            return $"Nested-area exit did not clear the active area mirrors. PlayerStats={FormatArea(playerStats.CurrentNestedArea)}, PlayerCharacter={FormatArea(playerCharacter.CurrentNestedArea)}.";
+        }
+
+        if (playerStats.IsInNestedArea || !playerStats.IsInMainMap)
+        {
+            return $"Nested-area exit did not restore main-map flags. IsInNestedArea={playerStats.IsInNestedArea}, IsInMainMap={playerStats.IsInMainMap}.";
+        }
+
+        if (TurnOrchestrator.Instance != null && TurnOrchestrator.Instance.CurrentContext != TurnContext.MainMap)
+        {
+            return $"Nested-area exit did not return TurnOrchestrator to MainMap. Actual={TurnOrchestrator.Instance.CurrentContext}.";
+        }
+
+        playerController.TryEnterOrGenerateNestedArea();
+
+        if (playerStats.CurrentNestedArea != originalArea || playerCharacter.CurrentNestedArea != originalArea)
+        {
+            return $"Nested-area re-entry did not recover the same area instance. Expected={FormatArea(originalArea)}, PlayerStats={FormatArea(playerStats.CurrentNestedArea)}, PlayerCharacter={FormatArea(playerCharacter.CurrentNestedArea)}.";
+        }
+
+        if (playerStats.CurrentNestedAreaID != originalArea.NestedAreaID || playerCharacter.CurrentNestedAreaID != originalArea.NestedAreaID)
+        {
+            return $"Nested-area re-entry did not restore the expected nested area ID. Expected={originalArea.NestedAreaID}, PlayerStats={playerStats.CurrentNestedAreaID}, PlayerCharacter={playerCharacter.CurrentNestedAreaID}.";
+        }
+
+        if (TurnOrchestrator.Instance != null && TurnOrchestrator.Instance.CurrentContext != TurnContext.Exploration)
+        {
+            return $"Nested-area re-entry did not restore Exploration context. Actual={TurnOrchestrator.Instance.CurrentContext}.";
         }
 
         return string.Empty;

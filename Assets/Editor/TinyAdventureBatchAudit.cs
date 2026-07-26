@@ -647,6 +647,29 @@ public static partial class TinyAdventureBatchAudit
             if (!generated)
             {
                 run.GeneratedStateFailures.Add($"Nested-area smoke test did not attach a nested area to start cell {cell.CellID}.");
+                return false;
+            }
+
+            ValidateGeneratedNestedAreaParentContract(cell.NestedArea, cell, run, "first-level nested area");
+
+            var innerTargetCell = FindNestedAreaSmokeTargetCell(cell.NestedArea);
+            if (innerTargetCell != null)
+            {
+                nestedAreaGenerator.GenerateNestedAreaWithinNestedArea(cell.NestedArea, innerTargetCell.Coordinates);
+
+                if (!innerTargetCell.hasNestedArea || innerTargetCell.NestedArea == null)
+                {
+                    run.GeneratedStateFailures.Add($"Nested-area smoke test did not attach a child nested area to nested-area cell {innerTargetCell.CellID}.");
+                }
+                else
+                {
+                    ValidateGeneratedNestedAreaParentContract(innerTargetCell.NestedArea, innerTargetCell, run, "nested-area child");
+                    if (innerTargetCell.NestedArea.MainMapCellID != cell.NestedArea.MainMapCellID)
+                    {
+                        run.GeneratedStateFailures.Add(
+                            $"Nested-area child main-map ancestor mismatch. Expected={cell.NestedArea.MainMapCellID}, Actual={innerTargetCell.NestedArea.MainMapCellID}.");
+                    }
+                }
             }
             return generated;
         }
@@ -657,6 +680,55 @@ public static partial class TinyAdventureBatchAudit
             Debug.LogException(ex);
             return false;
         }
+    }
+
+    private static void ValidateGeneratedNestedAreaParentContract(INestedArea nestedArea, Cell expectedParentCell, SeedAuditReport run, string label)
+    {
+        if (nestedArea == null)
+        {
+            run.GeneratedStateFailures.Add($"Nested-area smoke test could not validate {label} because the nested area was null.");
+            return;
+        }
+
+        if (expectedParentCell == null)
+        {
+            run.GeneratedStateFailures.Add($"Nested-area smoke test could not validate {label} because the expected parent cell was null.");
+            return;
+        }
+
+        if (nestedArea.ParentCell == null)
+        {
+            run.GeneratedStateFailures.Add($"Nested-area smoke test found a null ParentCell for {label} {nestedArea.Name} ({nestedArea.NestedAreaID}).");
+        }
+        else if (!ReferenceEquals(nestedArea.ParentCell, expectedParentCell))
+        {
+            run.GeneratedStateFailures.Add(
+                $"Nested-area smoke test found the wrong ParentCell for {label} {nestedArea.Name} ({nestedArea.NestedAreaID}). Expected={expectedParentCell.CellID}, Actual={nestedArea.ParentCell.CellID}.");
+        }
+
+        if (nestedArea.ParentCellID != expectedParentCell.CellID)
+        {
+            run.GeneratedStateFailures.Add(
+                $"Nested-area smoke test found a ParentCellID mismatch for {label} {nestedArea.Name} ({nestedArea.NestedAreaID}). Expected={expectedParentCell.CellID}, Actual={nestedArea.ParentCellID}.");
+        }
+    }
+
+    private static Cell FindNestedAreaSmokeTargetCell(INestedArea area)
+    {
+        if (area == null)
+        {
+            return null;
+        }
+
+        foreach (var cell in area.GetNestedMap())
+        {
+            if (cell != null && !cell.hasNestedArea)
+            {
+                return cell;
+            }
+        }
+
+        return null;
     }
 
     private static bool TryGenerateItemSmokeTest(SeedAuditReport run)

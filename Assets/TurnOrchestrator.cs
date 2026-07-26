@@ -121,6 +121,11 @@ public class TurnOrchestrator : MonoBehaviour
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[AREA EXIT]", "TurnOrchestrator.EnterMainMap begin");
 		CurrentContext = TurnContext.MainMap;
+		PlayerStats.Instance.UpdateCurrentNestedArea(null);
+		PlayerStats.Instance.UpdateCurrentNestedAreaID(0);
+		PlayerStats.Instance.UpdateParentNestedAreaID(0);
+		PlayerStats.Instance.UpdateIsInAreas(false, true);
+		PlayerStats.Instance.RegisteredInTurnManager = false;
 		PlayerStats.Instance.InCombat = false;
 		if (PlayerStats.Instance.CurrentPlayerCharacter != null)
 		{

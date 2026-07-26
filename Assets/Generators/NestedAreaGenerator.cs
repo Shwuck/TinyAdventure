@@ -60,6 +60,7 @@ public class NestedAreaGenerator : MonoBehaviour
                 currentCell.hasNestedArea = true;
                 nestedArea.NestedAreaLevel = 0;
                 nestedArea.ParentCellID = currentCell.CellID;
+                nestedArea.SetParentCell();
                 nestedArea.MainMapCellID = currentCell.CellID;
                 currentCell.SetNestedArea(nestedArea);
                 currentCell.ChildAreaID = nestedArea.NestedAreaID;
@@ -324,6 +325,7 @@ public class NestedAreaGenerator : MonoBehaviour
         LogCellsToPermaList(nestedCells); // Log the cells to PermaLists
 
         nestedArea.ParentCellID = currentCell.CellID;
+        nestedArea.SetParentCell();
         nestedArea.MainMapCellID = parentNestedArea.MainMapCellID;
         nestedArea.NestedAreaLevel = parentNestedArea.NestedAreaLevel + 1;
     }

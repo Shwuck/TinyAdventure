@@ -20,7 +20,17 @@ public class Monster : Character
     public Monster(MonsterCreationData data)
     {
         Name = data.MonsterName;
-        MonsterID = GameManager.Instance.GetMonsterID(); // Generate unique Monster ID
+        if (GameManager.Instance != null)
+        {
+            MonsterID = GameManager.Instance.GetMonsterID(); // Secondary monster-definition/runtime ID
+            IInteractableID = GameManager.Instance.GetInteractableID(); // Authoritative runtime identity
+        }
+        else
+        {
+            GameDebugger.Instance.LogError("Monster constructor could not resolve GameManager. IDs defaulted to 0.");
+            MonsterID = 0;
+            IInteractableID = 0;
+        }
         Type = data.Type;
         IsBoss = data.IsBoss;
         Rarity = data.Rarity;

@@ -806,6 +806,7 @@ public class PlayerController : MonoBehaviour
 	{
 		if (currentNestedArea.NestedAreaLevel == 0 || currentNestedArea.ParentCellID == currentNestedArea.MainMapCellID)
 		{
+			int exitedNestedAreaID = currentNestedArea.NestedAreaID;
 			foreach (var npcGroup in currentNestedArea.GetNPCGroups())
 				npcManager.UpdateNPCGroupStatus(npcGroup);
 
@@ -816,10 +817,22 @@ public class PlayerController : MonoBehaviour
 			isInMainMap = true;
 
 			playerPosition = mapGenerator.GetCellCoordinatesContainingNestedArea(currentNestedArea);
-			currentRegion = mapGenerator.GetCell(playerPosition).RegionNumber;
+			var mainMapCell = mapGenerator.GetCell(playerPosition);
+			currentRegion = mainMapCell.RegionNumber;
+			previousCellID = currentCellID;
+			previousPlayerCell = currentPlayerCell;
+			currentPlayerCell = mainMapCell;
+			currentCellID = mainMapCell.CellID;
+			previousNestedAreaID = exitedNestedAreaID;
+			currentNestedAreaID = 0;
+			parentNestedAreaID = 0;
 
 			currentNestedArea.HandlePlayerExit(mapGenerator);
 			currentNestedArea = null;
+			PlayerStats.Instance.UpdateCurrentNestedArea(null);
+			PlayerStats.Instance.UpdateCurrentNestedAreaID(0);
+			PlayerStats.Instance.UpdateParentNestedAreaID(0);
+			PlayerStats.Instance.UpdateIsInAreas(false, true);
 
 			nestedMapPosition = Vector2Int.zero;
 			previousNestedMapPosition = Vector2Int.zero;
@@ -899,9 +912,13 @@ public class PlayerController : MonoBehaviour
 
 		if (isInNestedArea)
 		{
+			previousCellID = currentCellID;
+			previousPlayerCell = currentPlayerCell;
 			nestedMapPosition = position;
-			currentNestedArea.UpdatePlayerPosition(position);
-			npcManager.UpdateNPCsInNestedArea(currentNestedArea);
+			nestedArea.UpdatePlayerPosition(position);
+			currentPlayerCell = nestedArea.GetCellAtPosition(position);
+			currentCellID = currentPlayerCell != null ? currentPlayerCell.CellID : 0;
+			npcManager.UpdateNPCsInNestedArea(nestedArea);
 		}
 		else
 		{
@@ -914,12 +931,16 @@ public class PlayerController : MonoBehaviour
 
 	private void MovePlayerToMainMap(Vector2Int position)
 	{
+		previousCellID = currentCellID;
+		previousPlayerCell = currentPlayerCell;
 		playerPosition = position;
 		var cell = mapGenerator.map[position.x, position.y];
 		cell.isPlayerPresent = true;
 		cell.nestedAreaCanBeSeen = true;
 
-		currentRegion = mapGenerator.GetCell(position).RegionNumber;
+		currentPlayerCell = cell;
+		currentCellID = cell.CellID;
+		currentRegion = cell.RegionNumber;
 		endOfTurnManager.EndTurn();
 
 		if (cell?.hasNestedArea == true) cell.nestedAreaCanBeSeen = true;

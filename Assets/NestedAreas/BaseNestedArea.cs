@@ -72,6 +72,7 @@ public interface INestedArea
     void ReplaceObject(IInteractable oldObject, IInteractable newObject);
     void HandlePlayerReentry();
     void UpdateHostileAreaStatus();
+    void SetParentCell();
 
     // New methods for plant management
     void AddPlantToArea(PlantBase plant);
@@ -240,9 +241,17 @@ public abstract class BaseNestedArea : INestedArea
 
     public virtual void SetParentCell()
     {
-        // Retrieve the main map cell using ParentCellID from MapGenerator
-        Cell ParentCell = MapGenerator.Instance.GetCellByID(ParentCellID);
-        Debug.Log("ParentCell has been set with ID" + ParentCellID);
+        // Retrieve the parent cell using ParentCellID from MapGenerator.
+        ParentCell = MapGenerator.Instance != null ? MapGenerator.Instance.GetCellByID(ParentCellID) : null;
+
+        if (ParentCell != null)
+        {
+            Debug.Log("ParentCell has been set with ID" + ParentCellID);
+        }
+        else
+        {
+            Debug.LogWarning("ParentCell could not be resolved for ID " + ParentCellID);
+        }
     }
 
     public virtual void UpdateNestedAreaLevel()
@@ -272,6 +281,10 @@ public abstract class BaseNestedArea : INestedArea
     // Orchestrator method to perform all relevant checks on the ParentCellID
     public virtual void OrchestrateParentCellChecks()
     {
+        if (ParentCell == null && ParentCellID != 0)
+        {
+            SetParentCell();
+        }
 
         SetRandomSeed(ParentCellID);
 
