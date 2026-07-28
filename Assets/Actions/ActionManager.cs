@@ -35,6 +35,7 @@ public class ActionManager : MonoBehaviour
         environmentalActions.Add(new PickUpItemsAction());
         environmentalActions.Add(new PickUpALLItemsAction());
         environmentalActions.Add(new InspectItemsAction());
+        environmentalActions.Add(new RestAction());
         environmentalActions.Add(new ClaimLandInteraction());
         environmentalActions.Add(new DrinkInteraction());
         // Add constructable interactions

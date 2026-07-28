@@ -156,7 +156,11 @@ public static class CombatResolver
 
         Character attacker = context.Attacker;
         Character defender = context.Defender;
+        result.AttackerActionPointsBefore = attacker.ActionPoints;
         ActionCostProfile attackCostProfile = ActionCostProfileResolver.BuildForCombatAttackContext(context);
+        attackCostProfile.MigrationState = context.SpendActionPoints
+            ? ActionEconomyMigrationState.Legacy
+            : ActionEconomyMigrationState.TypedActionEconomy;
         ActionCostProfileResolver.LogPredictedCost("CombatResolver.ResolveAttack", result.ActionName, attackCostProfile, attacker);
 
         result.AccuracyValue = attacker.CalculateAccuracyAgainst(defender);

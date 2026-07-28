@@ -299,6 +299,19 @@ Metadata pattern:
 - `CostLabel = "Takes time"`
 - future stamina candidate only for clearly exertive work
 
+### 8.6 Item Interactions
+
+Item interactions now have a non-breaking metadata-only helper:
+
+- `BuildForItemInteraction(IItemInteraction interaction)`
+
+Current state:
+
+- inventory administration actions are classified as free metadata
+- `Consume` remains contextual because the interface still exposes no live cost model
+- the inventory UI does not yet consume this helper
+- item execution behavior remains unchanged
+
 ## 9. Actions Left Contextual / Unknown
 
 Left intentionally contextual:
@@ -323,14 +336,15 @@ Left intentionally contextual:
 - `Enter Cave`
 - `Pick Up Items`
 - `Pick Up All Items`
-- all `IItemInteraction` item actions
+- `Consume` item interaction
+- any unclassified `IItemInteraction` item actions
 
 Reason:
 
 - many of these still use `ActionPointCost = 0` even when comments imply time
 - some are panel-opening/initiation actions rather than true work resolution
 - travel transitions likely need future time/stamina semantics, but current live execution is still zero-cost
-- item actions still have no declared cost interface at all
+- item actions still have no live cost authority in the inventory UI path
 
 Special note:
 
@@ -427,6 +441,7 @@ Do not skip directly from this pass to AP/MP removal.
 - `IItemInteraction` still has no declared cost metadata interface
 - `Magic Attack` remains semantically messy because its path still combines combat AP semantics with direct time-progress code
 - some actions now display `Takes time` while current execution still uses the same overloaded numeric field for both AP gating and world-time progression underneath
+- item actions still lack a live cost-consuming UI path, even though a metadata helper now exists
 
 ## 15. Manual Test Plan
 

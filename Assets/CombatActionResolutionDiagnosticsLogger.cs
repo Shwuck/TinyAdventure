@@ -296,6 +296,9 @@ public static class CombatActionResolutionDiagnosticsLogger
         AppendLine(sb, $"{label}.Health: {character.Health}/{character.MaxHealth}");
         AppendLine(sb, $"{label}.ActionPoints: {character.ActionPoints}/{character.MaxActionPoints}");
         AppendLine(sb, $"{label}.MovePoints: {character.MovePoints}/{character.MaxMovePoints}");
+        AppendLine(sb, $"{label}.Stamina: {FixedPointResourceMath.Format(character.CurrentStamina)}/{FixedPointResourceMath.Format(character.MaxStamina)}");
+        AppendLine(sb, $"{label}.CombatExertion: {FixedPointResourceMath.Format(character.CurrentCombatExertion)}/{FixedPointResourceMath.Format(character.MaxCombatExertion)}");
+        AppendLine(sb, $"{label}.ConsumptionCapacity: {character.CurrentConsumptionCapacity}/{character.MaxConsumptionCapacity}");
         AppendLine(sb, $"{label}.CurrentNestedArea: {FormatArea(character.CurrentNestedArea)}");
         AppendLine(sb, $"{label}.NestedMapPosition: {character.NestedMapPosition}");
         AppendLine(sb, $"{label}.Target: {(character.Target != null ? $"{character.Target.Name} [{character.Target.IInteractableID}]" : "NULL")}");

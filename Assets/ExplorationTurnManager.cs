@@ -61,6 +61,7 @@ public class ExplorationTurnManager : BaseTurnManager
 
         // Example: light-touch reset
         PlayerStats.Instance.ResetMovePoints();
+        playerCharacter.ResetConsumptionCapacityForTurn("ExplorationTurnManager.OnPlayerTurnStart");
         PlayerController.Instance.UpdateAdaptiveActionMenu();
     }
 
@@ -78,6 +79,7 @@ public class ExplorationTurnManager : BaseTurnManager
         if (npc != null)
         {
             npc.ResetMovePointsForTurn();
+            npc.ResetConsumptionCapacityForTurn("ExplorationTurnManager.OnNPCTurnExecute");
         }
 
         int mpAfterReset = npc != null ? npc.MovePoints : -1;

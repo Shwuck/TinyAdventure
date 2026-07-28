@@ -223,6 +223,9 @@ public static class TurnDiagnosticsLogger
         sb.AppendLine($"{label}.NestedMapPosition: {character.NestedMapPosition}");
         sb.AppendLine($"{label}.InTurn: {character.InTurn}");
         sb.AppendLine($"{label}.InCombat: {character.InCombat}");
+        sb.AppendLine($"{label}.Stamina: {FixedPointResourceMath.Format(character.CurrentStamina)}/{FixedPointResourceMath.Format(character.MaxStamina)}");
+        sb.AppendLine($"{label}.CombatExertion: {FixedPointResourceMath.Format(character.CurrentCombatExertion)}/{FixedPointResourceMath.Format(character.MaxCombatExertion)}");
+        sb.AppendLine($"{label}.ConsumptionCapacity: {character.CurrentConsumptionCapacity}/{character.MaxConsumptionCapacity}");
     }
 
     // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic method.

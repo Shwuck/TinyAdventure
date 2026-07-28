@@ -145,6 +145,7 @@ public class Item : IWeapon, ITool, IWearable, IContainerItem, IEdible, ISeed
     public int HungerValue { get; set; } = 0;
     public int ThirstValue { get; set; } = 0;
     public bool IsEdible { get; set; } = false;
+    public int ConsumptionCapacityCost { get; set; } = 1;
 
     public void Consume()
     {

@@ -69,11 +69,35 @@ public enum InteractionType
 // Interactions
 #region Interactions
 
-public class InspectInteraction : IInteraction
+public class InspectInteraction : IInteraction, ITypedActionEconomyProfileProvider
 {
     public InteractionType Type => InteractionType.Inspection;
     public string Name => "Inspect";
     public int ActionPointCost => 0; // Inspecting takes no time
+    public ActionEconomyMigrationState MigrationState => ActionEconomyMigrationState.TypedActionEconomy;
+
+    public ActionCostProfile ResolveActionCostProfile(bool isCombatContext)
+    {
+        return new ActionCostProfile
+        {
+            MigrationState = MigrationState,
+            ExplorationBehaviour = ExplorationActionBehaviour.Free,
+            CombatBehaviour = CombatActionBehaviour.Free,
+            IsFree = true,
+            WorldTimeCost = 0,
+            LegacyActionPointCost = 0,
+            LegacyMovePointCost = 0,
+            StaminaCost = 0,
+            CombatExertionCost = 0,
+            CanOverexert = true,
+            EndsPlayerTurn = false,
+            CandidateForFutureStamina = false,
+            PredictedStaminaCost = 0,
+            IsContextual = false,
+            CostLabel = string.Empty,
+            Notes = "Free informational inspection action."
+        };
+    }
 
     public void ExecuteInteraction(IInteractable interactable, PlayerInventory inventory)
     {
@@ -89,7 +113,7 @@ public class InspectInteraction : IInteraction
         InspectionManager.Instance.Inspect(interactable);
 
         // End turn after inspecting (if needed)
-        EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+        ActionEconomyExecutionRouter.FinalizeInteractionProgress(this, ActionPointCost, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat, $"{GetType().Name}.ExecuteInteraction");
     }
 
     public bool IsAvailable(IInteractable interactable, PlayerInventory inventory)
@@ -132,7 +156,7 @@ public class InspectItemsAction : IEnvironmentalAction
             Debug.LogWarning("There are no items to inspect in this cell.");
         }
 
-        EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+        ActionEconomyExecutionRouter.FinalizeInteractionProgress(this, ActionPointCost, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat, $"{GetType().Name}.ExecuteInteraction");
     }
 }
 
@@ -156,7 +180,7 @@ public class InspectNPCInteraction : IInteraction
             Debug.LogWarning("Interactable object is null or not an NPC.");
         }
 
-        EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+        ActionEconomyExecutionRouter.FinalizeInteractionProgress(this, ActionPointCost, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat, $"{GetType().Name}.ExecuteInteraction");
     }
 
     public bool IsAvailable(IInteractable interactable, PlayerInventory inventory)
@@ -195,7 +219,7 @@ public class TalkInteraction : IInteraction
             }
         }
 
-        EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+        ActionEconomyExecutionRouter.FinalizeInteractionProgress(this, ActionPointCost, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat, $"{GetType().Name}.ExecuteInteraction");
     }
 
     public bool IsAvailable(IInteractable interactable, PlayerInventory inventory)
@@ -1219,7 +1243,7 @@ public class ClearShovelInteraction : IInteraction
             // Add logging for inventory or other side effects, if needed
 
             // Deduct action point cost
-            EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+            ActionEconomyExecutionRouter.FinalizeInteractionProgress(this, ActionPointCost, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat, $"{GetType().Name}.ExecuteInteraction");
         }
     }
 
@@ -1834,16 +1858,27 @@ public abstract class BaseCombatInteraction : IInteraction
 }
 
 
-public class PunchInteraction : BaseCombatInteraction
+public class PunchInteraction : BaseCombatInteraction, ITypedActionEconomyProfileProvider
 {
     public override InteractionType Type => InteractionType.Combat;
     public override string Name => "Punch";
     public override int ActionPointCost => 2;
+    public ActionEconomyMigrationState MigrationState => ActionEconomyMigrationState.TypedActionEconomy;
+
+    public ActionCostProfile ResolveActionCostProfile(bool isCombatContext)
+    {
+        ActionCostProfile profile = ActionCostProfileResolver.BuildForInteraction(this, isCombatContext);
+        profile.MigrationState = MigrationState;
+        profile.ExplorationBehaviour = ExplorationActionBehaviour.TriggerCycle;
+        profile.CombatBehaviour = CombatActionBehaviour.Flexible;
+        return profile;
+    }
 
     public override void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
         Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
         Character target = entity as Character;
+        ActionCostProfile actionCostProfile = ResolveActionCostProfile(TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
 
         // CODEXLOG003_ACTIONS_AAM: temporary Punch actor/target diagnostic.
         ActionAAMDiagnosticsLogger.LogEvent("[COMBAT EXECUTE]", "PunchInteraction.ExecuteInteraction",
@@ -1858,7 +1893,14 @@ public class PunchInteraction : BaseCombatInteraction
 
         if (attacker != null && target != null)
         {
-            attacker.PerformAttack(target, DamageType.Bludgeoning);
+            bool attackResolved = attacker.PerformAttack(target, DamageType.Bludgeoning, actionCostProfile, Name);
+            if (attackResolved &&
+                TurnOrchestrator.Instance != null &&
+                TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration &&
+                actionCostProfile.ExplorationBehaviour == ExplorationActionBehaviour.TriggerCycle)
+            {
+                PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("PunchInteraction.TypedActionEconomy", 1f);
+            }
         }
     }
 
@@ -1911,7 +1953,15 @@ public class SlashInteraction : IInteraction
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
             if (playerCharacter != null)
             {
-                playerCharacter.PerformAttack(target, DamageType.Slashing);
+                ActionCostProfile typedProfile = ActionCostProfileResolver.BuildForInteraction(this, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
+                bool attackResolved = playerCharacter.PerformAttack(target, DamageType.Slashing, typedProfile, Name);
+                if (attackResolved &&
+                    TurnOrchestrator.Instance != null &&
+                    TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration &&
+                    typedProfile.ExplorationBehaviour == ExplorationActionBehaviour.TriggerCycle)
+                {
+                    PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("SlashInteraction.TypedActionEconomy", 1f);
+                }
             }
         }
     }
@@ -1937,7 +1987,15 @@ public class StabInteraction : IInteraction
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
             if (playerCharacter != null)
             {
-                playerCharacter.PerformAttack(target, DamageType.Piercing);
+                ActionCostProfile typedProfile = ActionCostProfileResolver.BuildForInteraction(this, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
+                bool attackResolved = playerCharacter.PerformAttack(target, DamageType.Piercing, typedProfile, Name);
+                if (attackResolved &&
+                    TurnOrchestrator.Instance != null &&
+                    TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration &&
+                    typedProfile.ExplorationBehaviour == ExplorationActionBehaviour.TriggerCycle)
+                {
+                    PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("StabInteraction.TypedActionEconomy", 1f);
+                }
             }
         }
     }
@@ -1963,7 +2021,15 @@ public class BashInteraction : IInteraction
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
             if (playerCharacter != null)
             {
-                playerCharacter.PerformAttack(target, DamageType.Bludgeoning);
+                ActionCostProfile typedProfile = ActionCostProfileResolver.BuildForInteraction(this, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
+                bool attackResolved = playerCharacter.PerformAttack(target, DamageType.Bludgeoning, typedProfile, Name);
+                if (attackResolved &&
+                    TurnOrchestrator.Instance != null &&
+                    TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration &&
+                    typedProfile.ExplorationBehaviour == ExplorationActionBehaviour.TriggerCycle)
+                {
+                    PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("BashInteraction.TypedActionEconomy", 1f);
+                }
             }
         }
     }
@@ -1989,7 +2055,15 @@ public class RendInteraction : IInteraction
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
             if (playerCharacter != null)
             {
-                playerCharacter.PerformAttack(target, DamageType.Rending);
+                ActionCostProfile typedProfile = ActionCostProfileResolver.BuildForInteraction(this, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
+                bool attackResolved = playerCharacter.PerformAttack(target, DamageType.Rending, typedProfile, Name);
+                if (attackResolved &&
+                    TurnOrchestrator.Instance != null &&
+                    TurnOrchestrator.Instance.CurrentContext == TurnContext.Exploration &&
+                    typedProfile.ExplorationBehaviour == ExplorationActionBehaviour.TriggerCycle)
+                {
+                    PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("RendInteraction.TypedActionEconomy", 1f);
+                }
             }
         }
     }

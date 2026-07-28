@@ -50,6 +50,12 @@ public class PlayerStats : MonoBehaviour
     public int MaxSatiety;
     public int MaxStamina;
     public int Stamina;
+    public int MaxCombatExertion;
+    public int CombatExertion;
+    public int MaxConsumptionCapacity;
+    public int CurrentConsumptionCapacity;
+    public int MinimumCurrentStamina;
+    public int BaseStaminaRegeneration;
     public int TravelSpeed = 3;
     public int PartySize = 1;
     public int Money;
@@ -148,6 +154,12 @@ public class PlayerStats : MonoBehaviour
         AttackPower = 50;
         MaxStamina = 0;
         Stamina = 0;
+        MaxCombatExertion = 0;
+        CombatExertion = 0;
+        MaxConsumptionCapacity = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+        CurrentConsumptionCapacity = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+        MinimumCurrentStamina = FixedPointResourceMath.DefaultMinimumCurrentStamina;
+        BaseStaminaRegeneration = FixedPointResourceMath.BaseStaminaRegeneration;
     }
     #endregion
 
@@ -535,11 +547,23 @@ public class PlayerStats : MonoBehaviour
         {
             MaxStamina = 0;
             Stamina = 0;
+            MaxCombatExertion = 0;
+            CombatExertion = 0;
+            MaxConsumptionCapacity = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+            CurrentConsumptionCapacity = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+            MinimumCurrentStamina = FixedPointResourceMath.DefaultMinimumCurrentStamina;
+            BaseStaminaRegeneration = FixedPointResourceMath.BaseStaminaRegeneration;
             return;
         }
 
         MaxStamina = CurrentPlayerCharacter.MaxStamina;
         Stamina = CurrentPlayerCharacter.CurrentStamina;
+        MaxCombatExertion = CurrentPlayerCharacter.MaxCombatExertion;
+        CombatExertion = CurrentPlayerCharacter.CurrentCombatExertion;
+        MaxConsumptionCapacity = CurrentPlayerCharacter.MaxConsumptionCapacity;
+        CurrentConsumptionCapacity = CurrentPlayerCharacter.CurrentConsumptionCapacity;
+        MinimumCurrentStamina = CurrentPlayerCharacter.MinimumCurrentStamina;
+        BaseStaminaRegeneration = CurrentPlayerCharacter.BaseStaminaRegeneration;
     }
 
     #endregion

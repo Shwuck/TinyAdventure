@@ -155,7 +155,9 @@ public class PlayerPanelUI : MonoBehaviour
     public void UpdateOtherStatsDisplay()
     {
         string otherStatsTextContent = $"Hunger: {PlayerStats.Instance.Satiety} / {PlayerStats.Instance.MaxSatiety}\n" +
-                                       $"Stamina: {PlayerStats.Instance.Stamina} / {PlayerStats.Instance.MaxStamina}\n" +
+                                       $"Stamina: {FixedPointResourceMath.Format(PlayerStats.Instance.Stamina)} / {FixedPointResourceMath.Format(PlayerStats.Instance.MaxStamina)}\n" +
+                                       $"Combat Exertion: {FixedPointResourceMath.Format(PlayerStats.Instance.CombatExertion)} / {FixedPointResourceMath.Format(PlayerStats.Instance.MaxCombatExertion)}\n" +
+                                       $"Consumption Capacity: {PlayerStats.Instance.CurrentConsumptionCapacity} / {PlayerStats.Instance.MaxConsumptionCapacity}\n" +
                                        $"Action Points: {PlayerStats.Instance.ActionPoints} / {PlayerStats.Instance.MaxActionPoints}\n" +
                                        $"Move Points: {PlayerStats.Instance.MovePoints} / {PlayerStats.Instance.MaxMovePoints}";
 

@@ -93,7 +93,9 @@ That means many non-combat actions still use an AP affordability check even when
 
 ### 3.5 Item actions
 
-`IItemInteraction` currently has no cost model at all.
+`IItemInteraction` still has no live cost model in execution.
+
+A non-breaking metadata helper now exists separately in the action-cost resolver, but the inventory UI does not yet consume it.
 
 Inventory item actions are effectively free by omission because they:
 
@@ -449,9 +451,11 @@ The AAM labels positive costs as `AP` regardless of whether the action is actual
 
 That is semantically unsafe in combat.
 
-### 6.6 Item actions have no declared cost semantics
+### 6.6 Item actions have no live declared cost semantics
 
-Inventory item actions currently bypass the cost model entirely.
+Inventory item actions currently bypass the live cost model entirely.
+
+Metadata-only classification exists separately, but there is still no enforced item-action authority path.
 
 That means the project does not yet have one unified place to ask:
 

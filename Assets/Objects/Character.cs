@@ -101,8 +101,16 @@ public class Character : IInteractable
     public int ActionPoints { get; set; }
     public int MaxMovePoints = 2;
     public int MovePoints;
-    public int MaxStamina { get; private set; } = 10;
-    public int CurrentStamina { get; private set; } = 10;
+    public int MaxStamina { get; private set; } = FixedPointResourceMath.DefaultMaximumStamina;
+    public int CurrentStamina { get; private set; } = FixedPointResourceMath.DefaultMaximumStamina;
+    public int MaxCombatExertion { get; private set; } = FixedPointResourceMath.DefaultMaximumCombatExertion;
+    public int CurrentCombatExertion { get; private set; }
+    public int MaxConsumptionCapacity { get; private set; } = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+    public int CurrentConsumptionCapacity { get; private set; } = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+    public int MinimumCurrentStamina => FixedPointResourceMath.DefaultMinimumCurrentStamina;
+    public int BaseStaminaRegeneration => FixedPointResourceMath.BaseStaminaRegeneration;
+    private int pendingStaminaRegenerationBonus;
+    private int combatTakeABreathUsesRemaining = 1;
     public int Charisma;
     public int Strength;
     public int Dexterity;
@@ -140,9 +148,6 @@ public class Character : IInteractable
 
     #region Technical
     private const string StaminaDiagnosticsTag = "CODEXLOG006_STAMINA_RESOURCE";
-    private const int BaseStaminaValue = 10;
-    private const int MinimumMaxStamina = 10;
-    private const int StaminaConstitutionMultiplier = 2;
     private System.Random random = new System.Random();
 #endregion
 
@@ -200,8 +205,8 @@ public class Character : IInteractable
     public int CalculateMaxStamina()
     {
         float constitutionValue = GetStatValue("Constitution");
-        int calculatedMaxStamina = BaseStaminaValue + Mathf.RoundToInt(constitutionValue * StaminaConstitutionMultiplier);
-        int clampedMaxStamina = Mathf.Max(MinimumMaxStamina, calculatedMaxStamina);
+        int calculatedMaxStamina = FixedPointResourceMath.FromPoints(10f + (constitutionValue * 2f));
+        int clampedMaxStamina = Mathf.Max(FixedPointResourceMath.DefaultMaximumStamina, calculatedMaxStamina);
 
         if (constitutionValue <= 0f)
         {
@@ -238,6 +243,12 @@ public class Character : IInteractable
     {
         MaxStamina = CalculateMaxStamina();
         CurrentStamina = MaxStamina;
+        MaxCombatExertion = FixedPointResourceMath.DefaultMaximumCombatExertion;
+        CurrentCombatExertion = 0;
+        MaxConsumptionCapacity = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+        CurrentConsumptionCapacity = MaxConsumptionCapacity;
+        pendingStaminaRegenerationBonus = 0;
+        combatTakeABreathUsesRemaining = 1;
         ClampStamina($"{context}:InitializeStamina");
         SyncPlayerStatsStaminaMirror();
 
@@ -258,20 +269,33 @@ public class Character : IInteractable
     {
         int previousMaxStamina = MaxStamina;
         int previousCurrentStamina = CurrentStamina;
+        int previousCurrentCombatExertion = CurrentCombatExertion;
 
-        MaxStamina = Mathf.Max(MinimumMaxStamina, MaxStamina);
-        CurrentStamina = Mathf.Clamp(CurrentStamina, 0, MaxStamina);
+        MaxStamina = Mathf.Max(FixedPointResourceMath.DefaultMaximumStamina, MaxStamina);
+        MaxCombatExertion = Mathf.Max(0, MaxCombatExertion);
+        MaxConsumptionCapacity = Mathf.Max(FixedPointResourceMath.DefaultMaximumConsumptionCapacity, MaxConsumptionCapacity);
+        CurrentStamina = Mathf.Clamp(CurrentStamina, MinimumCurrentStamina, MaxStamina);
+        CurrentCombatExertion = Mathf.Clamp(CurrentCombatExertion, 0, MaxCombatExertion);
+        CurrentConsumptionCapacity = Mathf.Clamp(CurrentConsumptionCapacity, 0, MaxConsumptionCapacity);
 
-        if (previousMaxStamina != MaxStamina || previousCurrentStamina != CurrentStamina)
+        if (previousMaxStamina != MaxStamina || previousCurrentStamina != CurrentStamina || previousCurrentCombatExertion != CurrentCombatExertion)
         {
-            LogStaminaWarning($"ClampStamina adjusted values. Context={context}, Previous={previousCurrentStamina}/{previousMaxStamina}, Current={CurrentStamina}/{MaxStamina}");
+            LogStaminaWarning($"ClampStamina adjusted values. Context={context}, PreviousStamina={FixedPointResourceMath.Format(previousCurrentStamina)}/{FixedPointResourceMath.Format(previousMaxStamina)}, CurrentStamina={FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}, PreviousCombatExertion={FixedPointResourceMath.Format(previousCurrentCombatExertion)}, CurrentCombatExertion={FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}");
         }
     }
 
     public bool CanSpendStamina(int amount)
     {
+        return CanSpendStamina(amount, out _);
+    }
+
+    public bool CanSpendStamina(int amount, out string rejectionReason)
+    {
+        rejectionReason = string.Empty;
+
         if (amount < 0)
         {
+            rejectionReason = "Stamina spend cannot be negative.";
             return false;
         }
 
@@ -280,26 +304,27 @@ public class Character : IInteractable
             return true;
         }
 
-        return CurrentStamina >= amount;
+        int projectedStamina = CurrentStamina - amount;
+        if (projectedStamina < MinimumCurrentStamina)
+        {
+            rejectionReason = $"Projected stamina {FixedPointResourceMath.Format(projectedStamina)} is below the debt floor {FixedPointResourceMath.Format(MinimumCurrentStamina)}.";
+            return false;
+        }
+
+        return true;
     }
 
     public bool SpendStamina(int amount, string reason = "")
     {
-        if (amount < 0)
+        if (!CanSpendStamina(amount, out string rejectionReason))
         {
-            LogStaminaWarning($"SpendStamina rejected negative spend. Amount={amount}, Reason={reason}");
+            LogStaminaWarning($"SpendStamina rejected. Amount={FixedPointResourceMath.Format(amount)}, Current={FixedPointResourceMath.Format(CurrentStamina)}, Reason={reason}, Rejection={rejectionReason}");
             return false;
         }
 
         if (amount == 0)
         {
             return true;
-        }
-
-        if (!CanSpendStamina(amount))
-        {
-            LogStaminaWarning($"SpendStamina rejected insufficient stamina spend. Requested={amount}, Current={CurrentStamina}, Reason={reason}");
-            return false;
         }
 
         int previousCurrentStamina = CurrentStamina;
@@ -307,29 +332,201 @@ public class Character : IInteractable
         ClampStamina($"{reason}:SpendStamina");
         SyncPlayerStatsStaminaMirror();
 
-        LogStaminaInfo($"SpendStamina completed. Reason={reason}, Spend={amount}, PreviousCurrent={previousCurrentStamina}, Current={CurrentStamina}/{MaxStamina}");
+        LogStaminaInfo($"SpendStamina completed. Reason={reason}, Spend={FixedPointResourceMath.Format(amount)}, PreviousCurrent={FixedPointResourceMath.Format(previousCurrentStamina)}, Current={FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}");
+        return true;
+    }
+
+    public bool CanSpendCombatExertion(int amount)
+    {
+        return CanSpendCombatExertion(amount, out _);
+    }
+
+    public bool CanSpendCombatExertion(int amount, out string rejectionReason)
+    {
+        rejectionReason = string.Empty;
+
+        if (amount == 0)
+        {
+            return true;
+        }
+
+        if (amount < 0)
+        {
+            rejectionReason = "Combat exertion spend cannot be negative.";
+            return false;
+        }
+
+        if (CurrentCombatExertion < amount)
+        {
+            rejectionReason = $"Insufficient combat exertion. Requested={FixedPointResourceMath.Format(amount)}, Current={FixedPointResourceMath.Format(CurrentCombatExertion)}.";
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool CanSpendConsumptionCapacity(int amount, out string rejectionReason)
+    {
+        rejectionReason = string.Empty;
+
+        if (amount == 0)
+        {
+            return true;
+        }
+
+        if (amount < 0)
+        {
+            rejectionReason = "Consumption capacity spend cannot be negative.";
+            return false;
+        }
+
+        if (CurrentConsumptionCapacity < amount)
+        {
+            rejectionReason = $"Insufficient consumption capacity. Requested={amount}, Current={CurrentConsumptionCapacity}.";
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool SpendConsumptionCapacity(int amount, string reason = "")
+    {
+        if (!CanSpendConsumptionCapacity(amount, out string rejectionReason))
+        {
+            LogStaminaWarning($"SpendConsumptionCapacity rejected. Amount={amount}, Current={CurrentConsumptionCapacity}, Reason={reason}, Rejection={rejectionReason}");
+            return false;
+        }
+
+        if (amount == 0)
+        {
+            return true;
+        }
+
+        int previousCurrentConsumptionCapacity = CurrentConsumptionCapacity;
+        CurrentConsumptionCapacity = Mathf.Max(0, CurrentConsumptionCapacity - amount);
+        ClampStamina($"{reason}:SpendConsumptionCapacity");
+        SyncPlayerStatsStaminaMirror();
+
+        LogStaminaInfo($"SpendConsumptionCapacity completed. Reason={reason}, Spend={amount}, PreviousCurrent={previousCurrentConsumptionCapacity}, Current={CurrentConsumptionCapacity}/{MaxConsumptionCapacity}");
+        return true;
+    }
+
+    public void ResetConsumptionCapacityForTurn(string context = "Unknown")
+    {
+        int previous = CurrentConsumptionCapacity;
+        CurrentConsumptionCapacity = MaxConsumptionCapacity;
+        ClampStamina($"{context}:ResetConsumptionCapacityForTurn");
+        SyncPlayerStatsStaminaMirror();
+        LogStaminaInfo($"ResetConsumptionCapacityForTurn completed. Context={context}, PreviousCurrent={previous}, Current={CurrentConsumptionCapacity}/{MaxConsumptionCapacity}");
+    }
+
+    public void QueueStaminaRegenerationBonus(int bonusAmount, string reason = "")
+    {
+        if (bonusAmount <= 0)
+        {
+            return;
+        }
+
+        pendingStaminaRegenerationBonus += bonusAmount;
+        LogStaminaInfo($"Queued stamina regeneration bonus. Reason={reason}, Bonus={FixedPointResourceMath.Format(bonusAmount)}, PendingBonus={FixedPointResourceMath.Format(pendingStaminaRegenerationBonus)}");
+    }
+
+    public bool CanUseTakeABreath()
+    {
+        return combatTakeABreathUsesRemaining > 0;
+    }
+
+    public bool SpendTakeABreathUse(string reason = "")
+    {
+        if (!CanUseTakeABreath())
+        {
+            LogStaminaWarning($"SpendTakeABreathUse rejected. Reason={reason}, Remaining={combatTakeABreathUsesRemaining}");
+            return false;
+        }
+
+        combatTakeABreathUsesRemaining--;
+        LogStaminaInfo($"SpendTakeABreathUse completed. Reason={reason}, Remaining={combatTakeABreathUsesRemaining}");
+        return true;
+    }
+
+    public bool SpendCombatExertion(int amount, string reason = "")
+    {
+        if (!CanSpendCombatExertion(amount, out string rejectionReason))
+        {
+            LogStaminaWarning($"SpendCombatExertion rejected. Amount={FixedPointResourceMath.Format(amount)}, Current={FixedPointResourceMath.Format(CurrentCombatExertion)}, Reason={reason}, Rejection={rejectionReason}");
+            return false;
+        }
+
+        if (amount == 0)
+        {
+            return true;
+        }
+
+        int previousCurrentCombatExertion = CurrentCombatExertion;
+        CurrentCombatExertion = Mathf.Max(0, CurrentCombatExertion - amount);
+        ClampStamina($"{reason}:SpendCombatExertion");
+        SyncPlayerStatsStaminaMirror();
+
+        LogStaminaInfo($"SpendCombatExertion completed. Reason={reason}, Spend={FixedPointResourceMath.Format(amount)}, PreviousCurrent={FixedPointResourceMath.Format(previousCurrentCombatExertion)}, Current={FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}");
+        return true;
+    }
+
+    public int GetModifiedMaximumCombatExertion(ActionEffortModifierSet modifiers = null)
+    {
+        ActionEffortModifierSet appliedModifiers = modifiers ?? ActionEffortModifierSet.None;
+        int modifiedValue = Mathf.RoundToInt((MaxCombatExertion + appliedModifiers.CombatExertionFlatModifier) * appliedModifiers.CombatExertionMultiplier);
+        return Mathf.Max(0, modifiedValue);
+    }
+
+    public void ResetCombatExertionForTurn(string context = "Unknown", ActionEffortModifierSet modifiers = null)
+    {
+        int previousCombatExertion = CurrentCombatExertion;
+        int resolvedMaximumCombatExertion = CurrentStamina > 0 ? GetModifiedMaximumCombatExertion(modifiers) : 0;
+        CurrentCombatExertion = resolvedMaximumCombatExertion;
+        combatTakeABreathUsesRemaining = 1;
+        ClampStamina($"{context}:ResetCombatExertionForTurn");
+        SyncPlayerStatsStaminaMirror();
+
+        LogStaminaInfo($"ResetCombatExertionForTurn completed. Context={context}, PreviousCurrent={FixedPointResourceMath.Format(previousCombatExertion)}, Current={FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}, CurrentStamina={FixedPointResourceMath.Format(CurrentStamina)}");
+    }
+
+    public int ResolveStaminaRegeneration(string context = "Unknown", ActionEffortModifierSet modifiers = null)
+    {
+        ActionEffortModifierSet appliedModifiers = modifiers ?? ActionEffortModifierSet.None;
+        int resolvedRegeneration = Mathf.RoundToInt((BaseStaminaRegeneration + appliedModifiers.StaminaFlatModifier) * appliedModifiers.StaminaMultiplier);
+        resolvedRegeneration += pendingStaminaRegenerationBonus;
+        pendingStaminaRegenerationBonus = 0;
+        resolvedRegeneration = Mathf.Max(0, resolvedRegeneration);
+        int previousCurrentStamina = CurrentStamina;
+        RegenerateStamina(resolvedRegeneration, $"{context}:ResolveStaminaRegeneration");
+        return Mathf.Max(0, CurrentStamina - previousCurrentStamina);
+    }
+
+    public bool RegenerateStamina(int amount, string reason = "")
+    {
+        if (amount < 0)
+        {
+            LogStaminaWarning($"RegenerateStamina rejected negative amount. Amount={FixedPointResourceMath.Format(amount)}, Reason={reason}");
+            return false;
+        }
+
+        if (amount == 0)
+        {
+            return true;
+        }
+
+        int previousCurrentStamina = CurrentStamina;
+        CurrentStamina += amount;
+        ClampStamina($"{reason}:RegenerateStamina");
+        SyncPlayerStatsStaminaMirror();
+
+        LogStaminaInfo($"RegenerateStamina completed. Reason={reason}, Regen={FixedPointResourceMath.Format(amount)}, PreviousCurrent={FixedPointResourceMath.Format(previousCurrentStamina)}, Current={FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}");
         return true;
     }
 
     public void RestoreStamina(int amount, string reason = "")
     {
-        if (amount < 0)
-        {
-            LogStaminaWarning($"RestoreStamina rejected negative restore. Amount={amount}, Reason={reason}");
-            return;
-        }
-
-        if (amount == 0)
-        {
-            return;
-        }
-
-        int previousCurrentStamina = CurrentStamina;
-        CurrentStamina += amount;
-        ClampStamina($"{reason}:RestoreStamina");
-        SyncPlayerStatsStaminaMirror();
-
-        LogStaminaInfo($"RestoreStamina completed. Reason={reason}, Restore={amount}, PreviousCurrent={previousCurrentStamina}, Current={CurrentStamina}/{MaxStamina}");
+        RegenerateStamina(amount, reason);
     }
 
     public float GetStaminaPercent()
@@ -344,32 +541,32 @@ public class Character : IInteractable
 
     public int GetStaminaRecoveryPerTurn()
     {
-        return Mathf.Max(1, Mathf.RoundToInt(GetStatValue("Constitution") * 0.25f));
+        return BaseStaminaRegeneration;
     }
 
     public int GetStaminaRecoveryOnWait()
     {
-        return Mathf.Max(GetStaminaRecoveryPerTurn(), 2);
+        return BaseStaminaRegeneration;
     }
 
     public void RecoverStaminaForTurn(string context)
     {
-        RestoreStamina(GetStaminaRecoveryPerTurn(), $"{context}:RecoverStaminaForTurn");
+        ResolveStaminaRegeneration($"{context}:RecoverStaminaForTurn");
     }
 
     public void RecoverStaminaOnWait(string context)
     {
-        RestoreStamina(GetStaminaRecoveryOnWait(), $"{context}:RecoverStaminaOnWait");
+        ResolveStaminaRegeneration($"{context}:RecoverStaminaOnWait");
     }
 
     public void RecoverStaminaOnRest(string context)
     {
-        RestoreStamina(Mathf.Max(GetStaminaRecoveryOnWait(), Mathf.RoundToInt(MaxStamina * 0.25f)), $"{context}:RecoverStaminaOnRest");
+        ResolveStaminaRegeneration($"{context}:RecoverStaminaOnRest");
     }
 
     public void RecoverStaminaFully(string context)
     {
-        RestoreStamina(MaxStamina, $"{context}:RecoverStaminaFully");
+        RegenerateStamina(MaxStamina, $"{context}:RecoverStaminaFully");
     }
 
     private void SyncPlayerStatsStaminaMirror()
@@ -381,6 +578,12 @@ public class Character : IInteractable
 
         PlayerStats.Instance.MaxStamina = MaxStamina;
         PlayerStats.Instance.Stamina = CurrentStamina;
+        PlayerStats.Instance.MaxCombatExertion = MaxCombatExertion;
+        PlayerStats.Instance.CombatExertion = CurrentCombatExertion;
+        PlayerStats.Instance.MaxConsumptionCapacity = MaxConsumptionCapacity;
+        PlayerStats.Instance.CurrentConsumptionCapacity = CurrentConsumptionCapacity;
+        PlayerStats.Instance.MinimumCurrentStamina = MinimumCurrentStamina;
+        PlayerStats.Instance.BaseStaminaRegeneration = BaseStaminaRegeneration;
     }
 
     private void LogStaminaInfo(string message)
@@ -890,7 +1093,8 @@ public class Character : IInteractable
         new BashInteraction(),
         new StabInteraction(),
         new RendInteraction(),
-        new PunchInteraction()
+        new PunchInteraction(),
+        new TakeABreathInteraction()
     };
     }
 
@@ -907,10 +1111,31 @@ public class Character : IInteractable
 
     public virtual void PerformAttack(Character target, DamageType damageType = DamageType.Bludgeoning)
     {
+        bool useTypedAttackEconomyByDefault = TurnOrchestrator.Instance != null &&
+                                              TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat;
+
+        if (useTypedAttackEconomyByDefault && target != null)
+        {
+            string inferredSource = CombatActionResolutionDiagnosticsLogger.InferActionName(this, damageType);
+            ActionCostProfile typedActionCostProfile = ActionCostProfileResolver.BuildForCombatAttackContext(
+                CombatResolver.CreatePhysicalAttackContext(this, target, damageType, inferredSource));
+            PerformAttack(target, damageType, typedActionCostProfile, inferredSource);
+            return;
+        }
+
+        PerformAttack(target, damageType, null, string.Empty);
+    }
+
+    public virtual bool PerformAttack(Character target, DamageType damageType, ActionCostProfile typedActionCostProfile, string source = "")
+    {
         GameDebugger.Instance.LogInfo("PerformAttack has been called!");
         int apBeforeAttack = ActionPoints;
-        AttackContext attackContext = CombatResolver.CreatePhysicalAttackContext(this, target, damageType,
-            CombatActionResolutionDiagnosticsLogger.InferActionName(this, damageType));
+        bool useTypedActionEconomy = typedActionCostProfile != null &&
+                                     typedActionCostProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy;
+        string actionSource = string.IsNullOrWhiteSpace(source)
+            ? CombatActionResolutionDiagnosticsLogger.InferActionName(this, damageType)
+            : source;
+        AttackContext attackContext = CombatResolver.CreatePhysicalAttackContext(this, target, damageType, actionSource);
 
         if (target == null)
         {
@@ -918,7 +1143,7 @@ public class Character : IInteractable
             CombatActionResolutionDiagnosticsLogger.LogWarning("Character.PerformAttack aborted because target is null",
                 $"Attacker={Name} [{IInteractableID}]\nRequestedDamageType={damageType}\nAPBefore={apBeforeAttack}\nAPAfter={ActionPoints}",
                 this);
-            return;
+            return false;
         }
 
         AttackResult precheckResult = CombatResolver.ValidateAttack(attackContext);
@@ -931,15 +1156,39 @@ public class Character : IInteractable
                 $"APBefore={apBeforeAttack}\n" +
                 $"APAfter={ActionPoints}",
                 this, target);
-            return;
+            return false;
+        }
+
+        ActionCostCommitResult typedCommitResult = null;
+        if (useTypedActionEconomy)
+        {
+            ActionCostCommitment commitment = ActionCostProfileResolver.CreateCommitment(typedActionCostProfile, null, actionSource);
+            typedCommitResult = commitment.TryCommit(this, actionSource);
+            if (!typedCommitResult.IsCommitted)
+            {
+                CombatActionResolutionDiagnosticsLogger.LogWarning("Character.PerformAttack rejected typed economy commitment",
+                    $"ActionName={actionSource}\n" +
+                    $"RequestedDamageType={damageType}\n" +
+                    $"RejectionReason={typedCommitResult.RejectionReason}\n" +
+                    $"StaminaBefore={FixedPointResourceMath.Format(CurrentStamina)}\n" +
+                    $"CombatExertionBefore={FixedPointResourceMath.Format(CurrentCombatExertion)}",
+                    this, target);
+                return false;
+            }
+
+            attackContext.SpendActionPoints = false;
+            attackContext.ActionPointCost = 0;
         }
 
         GameDebugger.Instance.LogInfo($"{Name} is attacking {target.Name} with {damageType} damage. Target ID: {target.IInteractableID}");
         CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK START]", "Character.PerformAttack begin",
-            $"ActionName={CombatActionResolutionDiagnosticsLogger.InferActionName(this, damageType)}\n" +
+            $"ActionName={actionSource}\n" +
             $"RequestedDamageType={damageType}\n" +
             $"Weapon={CombatActionResolutionDiagnosticsLogger.FormatItemSummary(GetMainHandItem())}\n" +
             $"APBefore={apBeforeAttack}\n" +
+            $"TypedActionEconomy={useTypedActionEconomy}\n" +
+            $"StaminaBefore={FixedPointResourceMath.Format(CurrentStamina)}\n" +
+            $"CombatExertionBefore={FixedPointResourceMath.Format(CurrentCombatExertion)}\n" +
             $"TargetActive={target.IsActive}\n" +
             $"TargetAlive={target.IsAlive}",
             this, target);
@@ -976,11 +1225,17 @@ public class Character : IInteractable
             $"RequestedDamageType={damageType}\n" +
             $"APBefore={apBeforeAttack}\n" +
             $"APAfter={ActionPoints}\n" +
+            $"TypedActionEconomy={useTypedActionEconomy}\n" +
+            $"StaminaAfter={FixedPointResourceMath.Format(CurrentStamina)}\n" +
+            $"CombatExertionAfter={FixedPointResourceMath.Format(CurrentCombatExertion)}\n" +
+            $"TypedCommitState={(typedCommitResult != null ? typedCommitResult.State.ToString() : "Legacy")}\n" +
             $"ResultValid={attackResult.IsValid}\n" +
             $"Hit={attackResult.Hit}\n" +
             $"Resolver={attackResult.ResolverName}\n" +
             $"ContextAfterHostilityRefresh={TurnOrchestrator.Instance?.CurrentContext.ToString() ?? "UNKNOWN"}",
             this, target);
+
+        return true;
     }
 
     public virtual float CalculateAccuracyAgainst(Character target)
@@ -2158,15 +2413,16 @@ private BodyPart GetRandomBodyPart()
 
     public void OnTurnEnd()
     {
-        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Turn ended. Stance: {Stance}, Final State: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}, Remaining AP: {ActionPoints}");
+        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Turn ended. Stance: {Stance}, Final State: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}, Remaining AP: {ActionPoints}, Stamina: {FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}, Combat Exertion: {FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}");
         int actionPointsBeforeEnd = ActionPoints;
 
         ApplyBuffsAndDebuffsAtTurnEnd();
         ActionPoints = 0;
+        int resolvedRegeneration = ResolveStaminaRegeneration($"{Name}.OnTurnEnd");
         if (InCombat || this == PlayerStats.Instance?.CurrentPlayerCharacter)
         {
             CombatActionResolutionDiagnosticsLogger.LogEvent("[TURN END]", "Character.OnTurnEnd zeroed action points",
-                $"APBefore={actionPointsBeforeEnd}\nAPAfter={ActionPoints}\nTurnEndSource=Character.OnTurnEnd",
+                $"APBefore={actionPointsBeforeEnd}\nAPAfter={ActionPoints}\nStaminaAfter={FixedPointResourceMath.Format(CurrentStamina)}\nCombatExertionAfter={FixedPointResourceMath.Format(CurrentCombatExertion)}\nRegenerationApplied={FixedPointResourceMath.Format(resolvedRegeneration)}\nTurnEndSource=Character.OnTurnEnd",
                 this);
         }
     }
@@ -2445,7 +2701,8 @@ private BodyPart GetRandomBodyPart()
         new BashInteraction(),
         new StabInteraction(),
         new RendInteraction(),
-        new PunchInteraction()
+        new PunchInteraction(),
+        new TakeABreathInteraction()
     };
     }
 

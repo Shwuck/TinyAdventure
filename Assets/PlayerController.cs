@@ -309,6 +309,7 @@ public class PlayerController : MonoBehaviour
         bool combatContext = IsCombatTurnContext();
         Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
         ActionCostProfile movementCostProfile = ActionCostProfileResolver.BuildForMovement(combatContext);
+        bool usesTypedMovementEconomy = movementCostProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy;
         int apBefore = PlayerStats.Instance.ActionPoints;
         int mpBefore = PlayerStats.Instance.MovePoints;
         Vector2Int positionBefore = playerPosition;
@@ -319,20 +320,25 @@ public class PlayerController : MonoBehaviour
             _ => "None"
         };
 
-        if (turnManagedContext && combatContext && PlayerStats.Instance.MovePoints < 1)
+        Vector2Int targetPosition = playerPosition + direction;
+        bool canValidateTarget = isInNestedArea
+            ? currentNestedArea != null && currentNestedArea.IsValidPosition(targetPosition) && IsCellPassable(targetPosition)
+            : IsValidPosition(targetPosition, false) && IsCellPassable(targetPosition);
+
+        if (!canValidateTarget)
         {
-            GameDebugger.Instance.LogInfo("PlayerController.RequestPlayerMove rejected due to zero combat MovePoints.");
+            GameDebugger.Instance.LogInfo("PlayerController.RequestPlayerMove rejected because the target cell was not passable or was out of bounds.");
             TurnDiagnosticsLogger.LogEvent("[PLAYER MOVEMENT]", "PlayerController.RequestPlayerMove",
                 $"InputSource: {inputSource}\n" +
-                $"Mode: Combat\n" +
+                $"Mode: {(combatContext ? "Combat" : IsExplorationTurnContext() ? "Exploration" : "Other")}\n" +
                 $"MovementRequestMethod: PlayerController.RequestPlayerMove\n" +
                 $"MovementSuccess: False\n" +
-                $"BlockedReason: NoMovePoints\n" +
+                $"BlockedReason: ValidationFailed\n" +
                 $"Direction: {newDirection}\n" +
                 $"PositionBefore: {positionBefore}\n" +
                 $"PositionAfter: {playerPosition}\n" +
                 $"MovementCost: 1\n" +
-                $"CostCategory: MovementBudget\n" +
+                $"CostCategory: {(combatContext ? "MovementBudget" : "TimeCostingMovement")}\n" +
                 $"APBefore: {apBefore}\n" +
                 $"APAfter: {PlayerStats.Instance.ActionPoints}\n" +
                 $"MPBefore: {mpBefore}\n" +
@@ -342,8 +348,41 @@ public class PlayerController : MonoBehaviour
                 $"ActiveTurnManager: {activeTurnManager}",
                 playerCharacter);
             ActionCostProfileResolver.LogPredictedCost("PlayerController.RequestPlayerMove blocked", "PlayerMove", movementCostProfile, playerCharacter);
-            ShowNotEnoughMPFeedback("move");
             return;
+        }
+
+        ActionCostCommitResult movementCommitResult = null;
+        if (turnManagedContext && usesTypedMovementEconomy && playerCharacter != null)
+        {
+            ActionCostCommitment movementCommitment = ActionCostProfileResolver.CreateCommitment(movementCostProfile, null, $"PlayerController.RequestPlayerMove:{inputSource}");
+            movementCommitResult = movementCommitment.TryCommit(playerCharacter, $"PlayerController.RequestPlayerMove:{inputSource}");
+
+            if (!movementCommitResult.IsCommitted)
+            {
+                GameDebugger.Instance.LogWarning($"PlayerController.RequestPlayerMove typed economy rejected. Reason={movementCommitResult.RejectionReason}");
+                TurnDiagnosticsLogger.LogEvent("[PLAYER MOVEMENT]", "PlayerController.RequestPlayerMove",
+                    $"InputSource: {inputSource}\n" +
+                    $"Mode: {(combatContext ? "Combat" : IsExplorationTurnContext() ? "Exploration" : "Other")}\n" +
+                    $"MovementRequestMethod: PlayerController.RequestPlayerMove\n" +
+                    $"MovementSuccess: False\n" +
+                    $"BlockedReason: TypedEconomyRejected\n" +
+                    $"RejectReason: {movementCommitResult.RejectionReason}\n" +
+                    $"Direction: {newDirection}\n" +
+                    $"PositionBefore: {positionBefore}\n" +
+                    $"PositionAfter: {playerPosition}\n" +
+                    $"MovementCost: 1\n" +
+                    $"CostCategory: {(combatContext ? "MovementBudget" : "TimeCostingMovement")}\n" +
+                    $"APBefore: {apBefore}\n" +
+                    $"APAfter: {PlayerStats.Instance.ActionPoints}\n" +
+                    $"MPBefore: {mpBefore}\n" +
+                    $"MPAfter: {PlayerStats.Instance.MovePoints}\n" +
+                    $"ExplorationTurnCompletionRequested: False\n" +
+                    $"CombatTurnRemainsOpen: {IsPlayerCombatTurnActive()}\n" +
+                    $"ActiveTurnManager: {activeTurnManager}",
+                    playerCharacter);
+                ActionCostProfileResolver.LogPredictedCost("PlayerController.RequestPlayerMove rejected", "PlayerMove", movementCostProfile, playerCharacter);
+                return;
+            }
         }
 
         bool moved = Move(direction);
@@ -381,8 +420,6 @@ public class PlayerController : MonoBehaviour
         bool worldTimeAdvanced = false;
         if (turnManagedContext)
         {
-            DeductMovePoints(1);
-
             if (!combatContext && IsExplorationTurnContext())
             {
                 explorationTurnCompletionRequested = CompleteExplorationTurnForTimeCostingAction($"PlayerMove:{inputSource}", 1f);
@@ -409,6 +446,8 @@ public class PlayerController : MonoBehaviour
             $"APAfter: {PlayerStats.Instance.ActionPoints}\n" +
             $"MPBefore: {mpBefore}\n" +
             $"MPAfter: {PlayerStats.Instance.MovePoints}\n" +
+            $"TypedMovementEconomy: {usesTypedMovementEconomy}\n" +
+            $"TypedMovementCommitState: {(movementCommitResult != null ? movementCommitResult.State.ToString() : "None")}\n" +
             $"WorldTimeAdvanced: {worldTimeAdvanced}\n" +
             $"ExplorationTurnCompletionRequested: {explorationTurnCompletionRequested}\n" +
             $"CombatTurnRemainsOpen: {combatContext && IsPlayerCombatTurnActive()}\n" +
@@ -959,7 +998,7 @@ public class PlayerController : MonoBehaviour
 		endOfTurnManager.AddTurnProgress(progress);
 	}
 
-	private bool CompleteExplorationTurnForTimeCostingAction(string source, float actionDuration)
+    public bool CompleteExplorationTurnForTimeCostingAction(string source, float actionDuration)
 	{
         if (!IsExplorationTurnContext())
         {
@@ -1817,8 +1856,95 @@ public class PlayerController : MonoBehaviour
         }
 
         int actionPointCost = interaction.ActionPointCost;
-        bool characterOwnedCombatAction = CombatActionUsesCharacterActionPoints(interaction);
-        ActionCostProfile actionCostProfile = ActionCostProfileResolver.BuildForInteraction(interaction, IsCombatTurnContext());
+        ActionCostProfile actionCostProfile = ActionEconomyExecutionRouter.ResolveProfile(interaction, IsCombatTurnContext())
+            ?? ActionCostProfileResolver.BuildForInteraction(interaction, IsCombatTurnContext());
+        bool usesTypedActionEconomy = actionCostProfile != null &&
+                                      actionCostProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy;
+        bool characterOwnedCombatAction = CombatActionUsesCharacterActionPoints(interaction) && !usesTypedActionEconomy;
+
+        if (!usesTypedActionEconomy)
+        {
+            actionCostProfile.MigrationState = ActionEconomyMigrationState.Legacy;
+        }
+
+        if (usesTypedActionEconomy)
+        {
+            Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
+            if (interaction.Type == InteractionType.Combat &&
+                (playerCharacter == null || !playerCharacter.IsCombatActorAvailable()))
+            {
+                GameDebugger.Instance.LogWarning("PlayerController.ExecutePlayerAction rejected typed combat action because player character is unavailable.");
+                CombatActionResolutionDiagnosticsLogger.LogWarning("PlayerController.ExecutePlayerAction rejected typed combat action because player attacker is unavailable",
+                    $"ActionName={interaction?.Name ?? "NULL"}\n" +
+                    $"Target={(entity as Character)?.Name ?? entity?.Name ?? "NULL"}\n" +
+                    $"PlayerIsAlive={playerCharacter?.IsAlive.ToString() ?? "NULL"}\n" +
+                    $"PlayerIsActive={playerCharacter?.IsActive.ToString() ?? "NULL"}\n" +
+                    $"PlayerInCombat={playerCharacter?.InCombat.ToString() ?? "NULL"}\n" +
+                    $"PlayerInTurn={playerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
+                    $"PlayerStatsInCombat={PlayerStats.Instance.InCombat}\n" +
+                    $"TypedActionEconomy={usesTypedActionEconomy}\n" +
+                    $"MigrationState={actionCostProfile.GetMigrationStateText()}",
+                    playerCharacter, entity as Character);
+                return;
+            }
+
+            ActionCostProfileResolver.LogPredictedCost("PlayerController.ExecutePlayerAction typed", interaction.Name, actionCostProfile, playerCharacter);
+
+            PlayerStats.Instance.Attacking = true;
+            SetInteractingWithTargetFromSelection(interaction, entity);
+
+            if (interaction.Type == InteractionType.Combat)
+            {
+                Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
+                Character target = entity as Character;
+                ActionAAMDiagnosticsLogger.LogEvent("[COMBAT EXECUTE]", "Player typed combat interaction executing",
+                    $"ActionName: {interaction.Name}\n" +
+                    $"TypedActionEconomy: {usesTypedActionEconomy}\n" +
+                    $"MigrationState: {actionCostProfile.GetMigrationStateText()}\n" +
+                    $"ExplorationBehaviour: {actionCostProfile.GetExplorationBehaviourText()}\n" +
+                    $"CombatBehaviour: {actionCostProfile.GetCombatBehaviourText()}\n" +
+                    $"Attacker: {FormatAAMCharacter(attacker)}\n" +
+                    $"Target: {FormatAAMCharacter(target)}\n" +
+                    $"AttackerNestedArea: {FormatAAMArea(attacker?.CurrentNestedArea)}\n" +
+                    $"TargetNestedArea: {FormatAAMArea(target?.CurrentNestedArea)}\n" +
+                    $"TargetIsActive: {target?.IsActive.ToString() ?? "NULL"}\n" +
+                    $"TargetIsAlive: {target?.IsAlive.ToString() ?? "NULL"}");
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK ENTRY]", "PlayerController.ExecutePlayerAction typed combat action requested",
+                    $"ActionName={interaction.Name}\n" +
+                    $"TypedActionEconomy={usesTypedActionEconomy}\n" +
+                    $"MigrationState={actionCostProfile.GetMigrationStateText()}\n" +
+                    $"StaminaCost={actionCostProfile.GetStaminaCostText()}\n" +
+                    $"CombatExertionCost={actionCostProfile.GetCombatExertionCostText()}\n" +
+                    $"CombatBehaviour={actionCostProfile.GetCombatBehaviourText()}\n" +
+                    $"TargetIsActive={target?.IsActive.ToString() ?? "NULL"}\n" +
+                    $"TargetIsAlive={target?.IsAlive.ToString() ?? "NULL"}",
+                    attacker, target);
+            }
+
+            interaction.ExecuteInteraction(entity, PlayerInventory.Instance);
+
+            if (interaction.Type == InteractionType.Combat)
+            {
+                Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
+                Character target = entity as Character;
+                INestedArea area = attacker?.CurrentNestedArea ?? target?.CurrentNestedArea ?? PlayerStats.Instance.CurrentNestedArea;
+
+                area?.UpdateHostileAreaStatus();
+                TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "PlayerController.ExecutePlayerAction after typed combat action",
+                    $"ActionName: {interaction.Name}\n" +
+                    $"TypedActionEconomy: {usesTypedActionEconomy}\n" +
+                    $"Attacker: {FormatAAMCharacter(attacker)}\n" +
+                    $"Target: {FormatAAMCharacter(target)}\n" +
+                    $"AreaUpdated: {FormatAAMArea(area)}\n" +
+                    $"AreaHasHostiles: {area?.IsHostileArea.ToString() ?? "NULL"}");
+                TurnOrchestrator.Instance?.TryUpdateTurnContext();
+            }
+
+            PlayerStats.Instance.Attacking = false;
+            UpdateAdaptiveActionMenu();
+            RefreshCombatStatusUI();
+            return;
+        }
 
         if (PlayerStats.Instance.ActionPoints >= actionPointCost)
         {
@@ -2508,21 +2634,50 @@ public class PlayerController : MonoBehaviour
         }
 
         int actionPointCost = action.ActionPointCost;
-        ActionCostProfile actionCostProfile = ActionCostProfileResolver.BuildForEnvironmentalAction(action, IsCombatTurnContext());
+        ActionCostProfile actionCostProfile = ActionEconomyExecutionRouter.ResolveProfile(action, IsCombatTurnContext())
+            ?? ActionCostProfileResolver.BuildForEnvironmentalAction(action, IsCombatTurnContext());
+        bool usesTypedActionEconomy = actionCostProfile != null &&
+                                      actionCostProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy;
         ActionCostProfileResolver.LogPredictedCost("PlayerController.ExecuteEnvironmentalAction", action.Name, actionCostProfile, PlayerStats.Instance.CurrentPlayerCharacter);
+
+        if (usesTypedActionEconomy)
+        {
+            Character actor = PlayerStats.Instance.CurrentPlayerCharacter;
+            if (actor == null)
+            {
+                GameDebugger.Instance.LogWarning("PlayerController.ExecuteEnvironmentalAction rejected typed environmental action because no player character is active.");
+                return;
+            }
+
+            if (!IsCombatTurnContext() && actionCostProfile.ExplorationBehaviour == ExplorationActionBehaviour.Unavailable)
+            {
+                GameDebugger.Instance.LogWarning($"PlayerController.ExecuteEnvironmentalAction rejected typed environmental action '{action.Name}' because exploration behaviour is unavailable.");
+                return;
+            }
+
+            ActionCostCommitment commitment = ActionCostProfileResolver.CreateCommitment(actionCostProfile, null, $"PlayerController.ExecuteEnvironmentalAction:{action.Name}");
+            ActionCostCommitResult commitResult = commitment.TryCommit(actor, $"PlayerController.ExecuteEnvironmentalAction:{action.Name}");
+            if (!commitResult.IsCommitted)
+            {
+                GameDebugger.Instance.LogWarning($"PlayerController.ExecuteEnvironmentalAction typed economy rejected for '{action.Name}'. Reason={commitResult.RejectionReason}");
+                return;
+            }
+
+            action.ExecuteAction(cell, PlayerInventory.Instance);
+            ActionEconomyExecutionRouter.FinalizeInteractionProgress(action, actionPointCost, IsCombatTurnContext(), $"PlayerController.ExecuteEnvironmentalAction:{action.Name}");
+            return;
+        }
 
         if (PlayerStats.Instance.ActionPoints >= actionPointCost)
         {
-            // Execute the environmental action
             action.ExecuteAction(cell, PlayerInventory.Instance);
-            DeductActionPoints(actionPointCost); // Deduct AP and check if the turn should end
+            DeductActionPoints(actionPointCost);
         }
         else
         {
-            // Store the remaining AP cost for the next turn
             PlayerStats.Instance.PendingActionPointsCost = actionPointCost - PlayerStats.Instance.ActionPoints;
             PlayerStats.Instance.HasPendingAction = true;
-            DeductActionPoints(PlayerStats.Instance.ActionPoints); // Set AP to 0 and end the turn
+            DeductActionPoints(PlayerStats.Instance.ActionPoints);
         }
     }
     #endregion

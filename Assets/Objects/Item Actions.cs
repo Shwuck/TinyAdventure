@@ -5,10 +5,35 @@ using System.Linq;
 // Item Interactions
 #region Item Interactions
 
-public class ConsumeInteraction : IItemInteraction
+public class ConsumeInteraction : IItemInteraction, ITypedActionEconomyProfileProvider
 {
     public InteractionType Type => InteractionType.Item;
     public string Name => "Consume";
+    public ActionEconomyMigrationState MigrationState => ActionEconomyMigrationState.TypedActionEconomy;
+
+    public ActionCostProfile ResolveActionCostProfile(bool isCombatContext)
+    {
+        return new ActionCostProfile
+        {
+            MigrationState = MigrationState,
+            ExplorationBehaviour = ExplorationActionBehaviour.TriggerCycle,
+            CombatBehaviour = CombatActionBehaviour.Flexible,
+            IsFree = false,
+            WorldTimeCost = 0,
+            LegacyActionPointCost = 0,
+            LegacyMovePointCost = 0,
+            StaminaCost = 0,
+            CombatExertionCost = isCombatContext ? FixedPointResourceMath.FromPoints(1f) : 0,
+            ConsumptionCapacityCost = 1,
+            CanOverexert = true,
+            EndsPlayerTurn = false,
+            CandidateForFutureStamina = false,
+            PredictedStaminaCost = 0,
+            IsContextual = false,
+            CostLabel = string.Empty,
+            Notes = "Typed consumable action. Consumption capacity is committed live; stamina remains free."
+        };
+    }
 
     public void ExecuteInteraction(Item item, Inventory inventory)
     {
@@ -33,10 +58,25 @@ public class ConsumeInteraction : IItemInteraction
     }
 }
 
-public class EquipInteraction : IItemInteraction
+public class EquipInteraction : IItemInteraction, ITypedActionEconomyProfileProvider
 {
     public InteractionType Type => InteractionType.Item;
     public string Name => "Equip";
+    public ActionEconomyMigrationState MigrationState => ActionEconomyMigrationState.TypedActionEconomy;
+
+    public ActionCostProfile ResolveActionCostProfile(bool isCombatContext)
+    {
+        ActionCostProfile profile = ActionCostProfileResolver.BuildForItemInteraction(this);
+        profile.MigrationState = MigrationState;
+        profile.ExplorationBehaviour = ExplorationActionBehaviour.Free;
+        profile.CombatBehaviour = CombatActionBehaviour.Flexible;
+        profile.IsFree = false;
+        profile.StaminaCost = 0;
+        profile.CombatExertionCost = isCombatContext ? FixedPointResourceMath.FromPoints(1f) : 0;
+        profile.CanOverexert = true;
+        profile.Notes = "Typed tactical equipment action. Exploration is free; combat spends one combat exertion.";
+        return profile;
+    }
 
     public void ExecuteInteraction(Item item, Inventory inventory)
     {

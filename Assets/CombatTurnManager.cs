@@ -122,26 +122,35 @@ public class CombatTurnManager : BaseTurnManager
 
         int playerStatsAPBeforeReset = PlayerStats.Instance.ActionPoints;
         int playerStatsMPBeforeReset = PlayerStats.Instance.MovePoints;
+        int playerStatsCombatExertionBeforeReset = PlayerStats.Instance.CombatExertion;
         int characterAPBeforeReset = playerCharacter != null ? playerCharacter.ActionPoints : -1;
         int characterMPBeforeReset = playerCharacter != null ? playerCharacter.MovePoints : -1;
+        int characterCombatExertionBeforeReset = playerCharacter != null ? playerCharacter.CurrentCombatExertion : -1;
         PlayerStats.Instance.ResetActionPoints();
         PlayerStats.Instance.ResetMovePoints();
         if (playerCharacter != null)
         {
             playerCharacter.ActionPoints = PlayerStats.Instance.ActionPoints;
             playerCharacter.MovePoints = PlayerStats.Instance.MovePoints;
+            playerCharacter.ResetCombatExertionForTurn("CombatTurnManager.OnPlayerTurnStart");
+            playerCharacter.ResetConsumptionCapacityForTurn("CombatTurnManager.OnPlayerTurnStart");
+            PlayerStats.Instance.SyncStaminaFromCurrentPlayerCharacter();
         }
         UIController.Instance.UpdateTurnOrderUI();
         // CODEXLOG001_TURNLIFECYCLE: temporary player combat resource reset diagnostic.
         TurnDiagnosticsLogger.LogEvent("[PLAYER TURN START]", "CombatTurnManager.OnPlayerTurnStart AP/MP reset",
             $"APReset: {playerStatsAPBeforeReset} -> {PlayerStats.Instance.ActionPoints}\n" +
             $"MPReset: {playerStatsMPBeforeReset} -> {PlayerStats.Instance.MovePoints}\n" +
+            $"CombatExertionReset: {FixedPointResourceMath.Format(playerStatsCombatExertionBeforeReset)} -> {FixedPointResourceMath.Format(PlayerStats.Instance.CombatExertion)}\n" +
             $"PlayerStatsAP: {PlayerStats.Instance.ActionPoints}\n" +
             $"CharacterAPBefore: {characterAPBeforeReset}\n" +
             $"CharacterAP: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
             $"PlayerStatsMP: {PlayerStats.Instance.MovePoints}\n" +
             $"CharacterMPBefore: {characterMPBeforeReset}\n" +
             $"CharacterMP: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"CharacterCombatExertionBefore: {FixedPointResourceMath.Format(characterCombatExertionBeforeReset)}\n" +
+            $"CharacterCombatExertionAfter: {FixedPointResourceMath.Format(playerCharacter?.CurrentCombatExertion ?? 0)}\n" +
+            $"CharacterConsumptionCapacityAfter: {playerCharacter?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
             "InputAccepted: True\nPlayerTurn: True",
             playerCharacter);
         // CODEXLOG003_ACTIONS_AAM: temporary combat AP ownership diagnostic.
@@ -159,6 +168,11 @@ public class CombatTurnManager : BaseTurnManager
             $"PlayerStatsMPAfterReset={PlayerStats.Instance.MovePoints}\n" +
             $"CharacterMPBeforeReset={characterMPBeforeReset}\n" +
             $"CharacterMPAfterReset={playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"PlayerStatsCombatExertionBeforeReset={FixedPointResourceMath.Format(playerStatsCombatExertionBeforeReset)}\n" +
+            $"PlayerStatsCombatExertionAfterReset={FixedPointResourceMath.Format(PlayerStats.Instance.CombatExertion)}\n" +
+            $"CharacterCombatExertionBeforeReset={FixedPointResourceMath.Format(characterCombatExertionBeforeReset)}\n" +
+            $"CharacterCombatExertionAfterReset={FixedPointResourceMath.Format(playerCharacter?.CurrentCombatExertion ?? 0)}\n" +
+            $"CharacterConsumptionCapacityAfterReset={playerCharacter?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
             $"ResetSource=CombatTurnManager.OnPlayerTurnStart",
             playerCharacter);
         LogTurnOrderDiagnostic("[COMBAT TURN ORDER]", "CombatTurnManager.OnPlayerTurnStart resources reset",
@@ -166,6 +180,8 @@ public class CombatTurnManager : BaseTurnManager
             $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
             $"PlayerCharacter.ActionPoints: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
             $"PlayerCharacter.MovePoints: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"PlayerCharacter.CombatExertion: {FixedPointResourceMath.Format(playerCharacter?.CurrentCombatExertion ?? 0)}\n" +
+            $"PlayerCharacter.ConsumptionCapacity: {playerCharacter?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
             "InputAccepted: True\nPlayerTurn: True");
         MessageLogManager.Instance?.Log("combat_player_turn",
             playerCharacter != null ? playerCharacter.Name : "Player",
@@ -229,11 +245,14 @@ public class CombatTurnManager : BaseTurnManager
         Vector2Int positionBefore = npc != null ? npc.NestedMapPosition : Vector2Int.zero;
         int apBefore = npc != null ? npc.ActionPoints : -1;
         int mpBeforeReset = npc != null ? npc.MovePoints : -1;
+        int combatExertionBeforeReset = npc != null ? npc.CurrentCombatExertion : -1;
         int maxMovePoints = npc != null ? npc.MaxMovePoints : -1;
 
         if (npc != null)
         {
             npc.ResetMovePointsForTurn();
+            npc.ResetCombatExertionForTurn("CombatTurnManager.OnNPCTurnExecute");
+            npc.ResetConsumptionCapacityForTurn("CombatTurnManager.OnNPCTurnExecute");
         }
 
         int mpAfterReset = npc != null ? npc.MovePoints : -1;
@@ -245,6 +264,9 @@ public class CombatTurnManager : BaseTurnManager
             $"MaxMovePoints used: {maxMovePoints}\n" +
             $"AP before combat NPC turn reset: {apBefore}\n" +
             $"AP after combat NPC turn reset: {apAfterMovementReset}\n" +
+            $"CombatExertion before combat NPC turn reset: {FixedPointResourceMath.Format(combatExertionBeforeReset)}\n" +
+            $"CombatExertion after combat NPC turn reset: {FixedPointResourceMath.Format(npc?.CurrentCombatExertion ?? 0)}\n" +
+            $"ConsumptionCapacity after combat NPC turn reset: {npc?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
             "Reset source/method: CombatTurnManager.OnNPCTurnExecute -> Character.ResetMovePointsForTurn\n" +
             "ExecuteTurnActions will reset AP: True",
             npc);
@@ -292,7 +314,8 @@ public class CombatTurnManager : BaseTurnManager
             $"AP after: {npc?.ActionPoints.ToString() ?? "NULL"}\n" +
             $"MP before reset: {mpBeforeReset}\n" +
             $"MP after reset: {mpAfterReset}\n" +
-            $"MP after: {npc?.MovePoints.ToString() ?? "NULL"}",
+            $"MP after: {npc?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"CombatExertion after: {FixedPointResourceMath.Format(npc?.CurrentCombatExertion ?? 0)}",
             npc);
 
         if (!npc.IsCombatActorAvailable() || !npc.InCombat)

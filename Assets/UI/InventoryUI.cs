@@ -387,6 +387,74 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
+        bool combatContext = TurnOrchestrator.Instance != null &&
+                             TurnOrchestrator.Instance.CurrentContext == TurnContext.Combat;
+
+        ActionCostProfile typedProfile = ActionEconomyExecutionRouter.ResolveProfile(action, combatContext)
+            ?? ActionCostProfileResolver.BuildForItemInteraction(action);
+        if (typedProfile != null && typedProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy)
+        {
+            ActionCostProfileResolver.LogPredictedCost("InventoryUI.PerformAction typed", action.Name, typedProfile, character);
+
+            Item selectedTypedItem = null;
+            if (currentList == ActiveList.Inventory &&
+                containers.Count > 0 &&
+                selectedItemIndex >= 0 &&
+                selectedItemIndex < containers.Count)
+            {
+                InventoryContainer typedContainer = containers[selectedItemIndex];
+                if (typedContainer?.Items.Count > 0)
+                {
+                    selectedTypedItem = typedContainer.Items[0];
+                }
+            }
+
+            if (combatContext && typedProfile.CombatBehaviour == CombatActionBehaviour.Unavailable)
+            {
+                GameDebugger.Instance.LogWarning($"InventoryUI.PerformAction rejected typed item action '{action.Name}' because combat behaviour is unavailable.");
+                return;
+            }
+
+            if (!combatContext && typedProfile.ExplorationBehaviour == ExplorationActionBehaviour.Unavailable)
+            {
+                GameDebugger.Instance.LogWarning($"InventoryUI.PerformAction rejected typed item action '{action.Name}' because exploration behaviour is unavailable.");
+                return;
+            }
+
+            if (action is ConsumeInteraction && selectedTypedItem != null)
+            {
+                typedProfile.ConsumptionCapacityCost = Mathf.Max(1, selectedTypedItem.ConsumptionCapacityCost);
+                typedProfile.CombatExertionCost = combatContext ? FixedPointResourceMath.FromPoints(1f) : 0;
+            }
+
+            ActionCostCommitment commitment = ActionCostProfileResolver.CreateCommitment(typedProfile, null, $"InventoryUI.PerformAction:{action.Name}");
+            ActionCostCommitResult commitResult = commitment.TryCommit(character, $"InventoryUI.PerformAction:{action.Name}");
+            if (!commitResult.IsCommitted)
+            {
+                GameDebugger.Instance.LogWarning($"InventoryUI.PerformAction typed economy rejected for '{action.Name}'. Reason={commitResult.RejectionReason}");
+                return;
+            }
+
+            if (currentList == ActiveList.Inventory)
+            {
+                if (containers.Count > 0 && selectedItemIndex >= 0 && selectedItemIndex < containers.Count)
+                {
+                    InventoryContainer container = containers[selectedItemIndex];
+                    if (container?.Items.Count > 0) action.ExecuteInteraction(container.Items[0], inventory);
+                }
+            }
+            else if (currentList == ActiveList.Equipment)
+            {
+                if (character.EquippedItems.TryGetValue(equipmentSlots[selectedEquipmentIndex], out Item equippedItem))
+                {
+                    action.ExecuteInteraction(equippedItem, inventory);
+                }
+            }
+
+            RefreshListsAndKeepPlace();
+            return;
+        }
+
         if (currentList == ActiveList.Inventory)
         {
             if (containers.Count > 0 && selectedItemIndex >= 0 && selectedItemIndex < containers.Count)
