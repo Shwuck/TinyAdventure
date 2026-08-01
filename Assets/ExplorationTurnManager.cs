@@ -56,11 +56,6 @@ public class ExplorationTurnManager : BaseTurnManager
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[PLAYER TURN]", "ExplorationTurnManager.OnPlayerTurnStart", null, playerCharacter);
 
-        // If you want exploration movement to respect some kind of points, you can reset them here.
-        // If AP is combat-only, you might just refresh movement/UI.
-
-        // Example: light-touch reset
-        PlayerStats.Instance.ResetMovePoints();
         playerCharacter.ResetConsumptionCapacityForTurn("ExplorationTurnManager.OnPlayerTurnStart");
         PlayerController.Instance.UpdateAdaptiveActionMenu();
     }
@@ -72,36 +67,23 @@ public class ExplorationTurnManager : BaseTurnManager
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
         TurnDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute", null, npc);
         Vector2Int positionBefore = npc != null ? npc.NestedMapPosition : Vector2Int.zero;
-        int apBefore = npc != null ? npc.ActionPoints : -1;
-        int mpBeforeReset = npc != null ? npc.MovePoints : -1;
-        int maxMovePoints = npc != null ? npc.MaxMovePoints : -1;
-
         if (npc != null)
         {
-            npc.ResetMovePointsForTurn();
             npc.ResetConsumptionCapacityForTurn("ExplorationTurnManager.OnNPCTurnExecute");
         }
 
-        int mpAfterReset = npc != null ? npc.MovePoints : -1;
-        int apAfterMovementReset = npc != null ? npc.ActionPoints : -1;
         // CODEXLOG002_MOVEMENT_AI: temporary NPC exploration movement-resource diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute movement point reset",
-            $"Movement points before NPC exploration turn reset: {mpBeforeReset}\n" +
-            $"Movement points after NPC exploration turn reset: {mpAfterReset}\n" +
-            $"MaxMovePoints used: {maxMovePoints}\n" +
-            $"AP before NPC exploration turn reset: {apBefore}\n" +
-            $"AP after NPC exploration turn reset: {apAfterMovementReset}\n" +
-            "Reset source/method: ExplorationTurnManager.OnNPCTurnExecute -> Character.ResetMovePointsForTurn\n" +
-            "ExecuteTurnActions will reset AP: True",
+            $"Exploration opportunity reset: ConsumptionCapacity refreshed only.\n" +
+            $"ConsumptionCapacity after NPC exploration turn reset: {npc?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
+            "Reset source/method: ExplorationTurnManager.OnNPCTurnExecute -> Character.ResetConsumptionCapacityForTurn",
             npc);
 
         // CODEXLOG002_MOVEMENT_AI: temporary entity-turn movement diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "ExplorationTurnManager.OnNPCTurnExecute begin",
             $"Calling ExecuteTurnActions: {npc != null}\n" +
             $"Position before: {positionBefore}\n" +
-            $"AP before: {apBefore}\n" +
-            $"MP before reset: {mpBeforeReset}\n" +
-            $"MP after reset: {mpAfterReset}",
+            $"ConsumptionCapacity refreshed: {npc?.CurrentConsumptionCapacity.ToString() ?? "NULL"}",
             npc);
         npc.ExecuteTurnActions();
         // CODEXLOG002_MOVEMENT_AI: temporary entity-turn movement diagnostic.
@@ -109,11 +91,7 @@ public class ExplorationTurnManager : BaseTurnManager
             $"Position before: {positionBefore}\n" +
             $"Position after: {npc?.NestedMapPosition.ToString() ?? "NULL"}\n" +
             $"Position changed: {npc != null && npc.NestedMapPosition != positionBefore}\n" +
-            $"AP before: {apBefore}\n" +
-            $"AP after: {npc?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"MP before reset: {mpBeforeReset}\n" +
-            $"MP after reset: {mpAfterReset}\n" +
-            $"MP after: {npc?.MovePoints.ToString() ?? "NULL"}",
+            $"ConsumptionCapacity after: {npc?.CurrentConsumptionCapacity.ToString() ?? "NULL"}",
             npc);
     }
 

@@ -238,10 +238,6 @@ public class TurnManager : MonoBehaviour
             yield return new WaitForSeconds(delay);
         }
 
-        // Reset ActionPoints and MovePoints after delay
-        character.ActionPoints = character.MaxActionPoints;
-        character.MovePoints = character.MaxMovePoints;
-
         if (isPlayer)
         {
             StartPlayerTurn();
@@ -259,10 +255,6 @@ public class TurnManager : MonoBehaviour
         GameDebugger.Instance.LogInfo("Player's turn started.");
         UIController.Instance.UpdateTurnOrderUI();
 
-        // Reset the player's action and move points
-        PlayerStats.Instance.ResetActionPoints();
-        PlayerStats.Instance.ResetMovePoints();
-
         // Update the action menu or any relevant UI components for the player
         PlayerController.Instance.UpdateAdaptiveActionMenu();
 
@@ -273,8 +265,6 @@ public class TurnManager : MonoBehaviour
     public void PlayerTurnCompleted()
     {
         isPlayerTurn = false;
-        PlayerStats.Instance.ResetActionPoints();
-        PlayerStats.Instance.ResetMovePoints();
         currentTurnIndex++;
         ExecuteNextTurn();
     }

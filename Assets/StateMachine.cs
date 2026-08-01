@@ -16,11 +16,27 @@ public class StateMachine
         GameDebugger.Instance.LogInfo($"StateMachine initialized for owner {Owner.IInteractableID} ({characterName})");
     }
 
-    public void ChangeState(IState newState)
+    public void ChangeState(IState newState, string reason = null)
     {
         string characterName = Owner.Name;
-        GameDebugger.Instance.LogInfo($"Changing state for Character {Owner.IInteractableID} ({characterName})");
+        if (newState == null)
+        {
+            GameDebugger.Instance.LogWarning($"Changing state for Character {Owner.IInteractableID} ({characterName}) was skipped because the new state was null.");
+            return;
+        }
+
         string previousState = CurrentState != null ? CurrentState.GetType().Name : "NULL";
+        string nextState = newState.GetType().Name;
+        if (CurrentState != null && CurrentState.GetType() == newState.GetType())
+        {
+            GameDebugger.Instance.LogInfo($"Changing state for Character {Owner.IInteractableID} ({characterName}) was skipped because the state is already {nextState}.");
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.ChangeState no-op",
+                $"Previous state: {previousState}\nNew state: {nextState}\nReason: {reason ?? "Same state type"}",
+                Owner);
+            return;
+        }
+
+        GameDebugger.Instance.LogInfo($"Changing state for Character {Owner.IInteractableID} ({characterName})");
 
         CurrentState?.ExitState(Owner);
         CurrentState = newState;
@@ -29,109 +45,53 @@ public class StateMachine
         GameDebugger.Instance.LogInfo($"State changed for Character {Owner.IInteractableID} ({characterName}) to {CurrentState.GetType().Name}");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.ChangeState",
-            $"Previous state: {previousState}\nNew state: {CurrentState.GetType().Name}\nStance: {Owner.Stance}",
+            $"Previous state: {previousState}\nNew state: {CurrentState.GetType().Name}\nReason: {reason ?? "Unspecified"}\nStance: {Owner.Stance}",
             Owner);
     }
 
-    public void Update()
+    public CharacterDecisionResult Update()
     {
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.Update",
             $"Current state: {CurrentState?.GetType().Name ?? "NULL"}\nStance: {(Owner != null ? Owner.Stance.ToString() : "NULL")}\nTarget: {Owner?.Target?.Name ?? "NULL"}",
             Owner);
-        CurrentState?.UpdateState(Owner);
-    }
-
-    public void UpdateState(Character owner)
-    {
-        if (owner == null)
+        if (Owner == null)
         {
             GameDebugger.Instance.LogError("[StateMachine] UpdateState was called with a NULL owner!");
             // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
             MovementAIDiagnosticsLogger.LogWarning("StateMachine.UpdateState null owner", "Reason for no action: owner null");
-            return;
+            return null;
         }
 
-        GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} updating state. Stance: {owner.Stance}, Target: {owner.Target?.Name ?? "None"}, AP: {owner.ActionPoints}, MP: {owner.MovePoints}");
-
-        // Check if the character has a valid target
-        if (owner.Target == null || !owner.Target.IsAlive)
+        if (CurrentState == null)
         {
-            GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} has no valid target. Returning to Idle.");
-            // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.UpdateState no valid target",
-                $"Selected action: ChangeState\nReason for no movement: target null or not alive\nTarget: {owner.Target?.Name ?? "NULL"}",
-                owner);
-            owner.stateMachine.ChangeState(new IdleState());
-            return;
+            MovementAIDiagnosticsLogger.LogWarning("StateMachine.Update missing current state",
+                $"Owner={Owner.Name} [{Owner.IInteractableID}]\nReason=CurrentState was null");
+            return null;
         }
 
-        // Ensure the character is actually hostile before attacking
-        if (owner.Stance == NPCStance.Hostile)
+        CharacterDecisionResult result = CurrentState.UpdateState(Owner);
+        if (result == null)
         {
-            Vector2Int ownerPosition = owner.NestedMapPosition;
-            Vector2Int targetPosition = owner.Target.NestedMapPosition;
-            int distanceToTarget = Mathf.Abs(ownerPosition.x - targetPosition.x) + Mathf.Abs(ownerPosition.y - targetPosition.y);
-
-            GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} is at {ownerPosition}, Target {owner.Target.Name} is at {targetPosition}. Distance: {distanceToTarget}");
-
-            if (owner.IsTargetInRange(owner.Target))
-            {
-                GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} is ATTACKING {owner.Target.Name} at {targetPosition}!");
-                // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.UpdateState selected attack",
-                    $"Selected action: Attack\nTarget: {owner.Target.Name}\nTarget cell: {targetPosition}",
-                    owner);
-                owner.PerformAttack(owner.Target);
-
-                if (owner.ActionPoints <= 0)
-                {
-                    GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} has no more AP after attacking. Ending turn.");
-                    return;
-                }
-            }
-            else
-            {
-                if (owner.MovePoints > 0)
-                {
-                    GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} is MOVING toward {owner.Target.Name} from {ownerPosition} to {targetPosition}.");
-                    // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                    MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.UpdateState selected movement",
-                        $"Selected action: MoveTowardsTarget\nTarget: {owner.Target.Name}\nTarget cell: {targetPosition}",
-                        owner);
-                    owner.MoveTowardsCharacter(owner.Target);
-                    owner.MovePoints--;
-
-                    Vector2Int newPosition = owner.NestedMapPosition;
-                    int newDistanceToTarget = Mathf.Abs(newPosition.x - targetPosition.x) + Mathf.Abs(newPosition.y - targetPosition.y);
-
-                    GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} moved to {newPosition}. New Distance to {owner.Target.Name}: {newDistanceToTarget}");
-
-                    if (owner.IsTargetInRange(owner.Target))
-                    {
-                        GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} has reached attack range of {owner.Target.Name} at {targetPosition}. Attacking now.");
-                        owner.PerformAttack(owner.Target);
-                    }
-                }
-                else
-                {
-                    GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} has no MovePoints left. Ending turn.");
-                    // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                    MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.UpdateState no movement",
-                        "Selected action: None\nReason for no movement: no MovePoints",
-                        owner);
-                }
-            }
+            MovementAIDiagnosticsLogger.LogWarning("StateMachine.Update missing state result",
+                $"Owner={Owner.Name} [{Owner.IInteractableID}]\nState={CurrentState.GetType().Name}\nReason=State returned null");
+            return null;
         }
-        else
+
+        if (!result.Resolved)
         {
-            GameDebugger.Instance.LogInfo($"[StateMachine] {owner.Name} is NOT hostile. Defaulting to IdleState.");
-            // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "StateMachine.UpdateState non-hostile",
-                "Selected action: ChangeState\nReason: owner not hostile\nNew state: IdleState",
-                owner);
-            owner.stateMachine.ChangeState(new IdleState());
+            MovementAIDiagnosticsLogger.LogWarning("StateMachine.Update unresolved state result",
+                $"Owner={Owner.Name} [{Owner.IInteractableID}]\nState={CurrentState.GetType().Name}\nDecisionType={result.DecisionType}\nReason={result.Reason}",
+                Owner);
         }
+
+        if (Owner.LastTurnDecisionResult == CharacterTurnDecisionResult.None &&
+            result.TurnDecisionResult != CharacterTurnDecisionResult.None)
+        {
+            Owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason ?? "State returned an explicit decision.");
+        }
+
+        return result;
     }
 
     public void HandleStanceChange(NPCStance stance)
@@ -166,17 +126,16 @@ public class StateMachine
 public interface IState
 {
     void EnterState(Character owner);
-    void UpdateState(Character owner);
+    CharacterDecisionResult UpdateState(Character owner);
     void ExitState(Character owner);
 }
 
 public class IdleState : IState
 {
-    private const int MaxIterations = 1;
-
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Idling;
+        owner.SetCombatParticipationState(CombatParticipationState.Unaware, "Entered Idle state.");
         GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has entered Idle state.");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "IdleState.EnterState",
@@ -184,7 +143,7 @@ public class IdleState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         if (owner.IInteractableID == PlayerStats.Instance.InteractingWithID && owner.IsPlayerVisible)
         {
@@ -193,12 +152,21 @@ public class IdleState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "IdleState.UpdateState no movement",
                 "Selected action: None\nReason for no movement: interacting with player and player visible",
                 owner);
-            owner.RecordTurnDecision(CharacterTurnDecisionResult.Idled, "IdleState ended the turn because the NPC is busy interacting with the player.");
-            owner.ConsumeRemainingActionPointsForTurn("IdleState.UpdateState interacting with visible player");
-            return;
+            CharacterDecisionResult result = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+                WasAttempted = true,
+                WasCommitted = true,
+                EndsOpportunity = true,
+                Reason = "IdleState ended the turn because the NPC is busy interacting with the player.",
+                ActionName = "IntentionalIdle"
+            };
+            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+            return result;
         }
 
-        int iterationCount = 1;
         CharacterDecisionResult decision = CharacterDecisionResolver.ResolveWorldDecision(owner);
 
         owner.RecordTurnDecision(
@@ -206,7 +174,6 @@ public class IdleState : IState
             decision?.Reason ?? "IdleState defaulted to idle because CharacterDecisionResolver returned null.");
 
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "IdleState.UpdateState resolved via CharacterDecisionResolver",
-            $"Iteration: {iterationCount}\n" +
             $"DecisionType: {decision?.DecisionType.ToString() ?? "NULL"}\n" +
             $"TurnDecisionResult: {decision?.TurnDecisionResult.ToString() ?? "NULL"}\n" +
             $"CandidateCount: {decision?.CandidateCount.ToString() ?? "NULL"}\n" +
@@ -216,10 +183,11 @@ public class IdleState : IState
             $"Reason: {decision?.Reason ?? "NULL"}",
             owner);
 
-        owner.ConsumeRemainingActionPointsForTurn("IdleState.UpdateState turn resolved");
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "IdleState.UpdateState resolved",
-            $"IterationCount: {iterationCount}/{MaxIterations}\nDecisionResult: {owner.LastTurnDecisionResult}\nDecisionReason: {owner.LastTurnDecisionReason}\nAP after resolve: {owner.ActionPoints}\nMP after resolve: {owner.MovePoints}",
+            $"DecisionResult: {owner.LastTurnDecisionResult}\nDecisionReason: {owner.LastTurnDecisionReason}\nStamina after resolve: {FixedPointResourceMath.Format(owner.CurrentStamina)}\nCombatExertion after resolve: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}",
             owner);
+
+        return decision;
     }
 
     public void ExitState(Character owner)
@@ -231,11 +199,10 @@ public class IdleState : IState
 
 public class HostileState : IState
 {
-    private const int MaxIterations = 10;
-
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Hostile;
+        owner.SetCombatParticipationState(CombatParticipationState.Engaged, "Entered Hostile state.");
         GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has entered Hostile state. Their target is: {owner.Target?.Name ?? "None"}");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "HostileState.EnterState",
@@ -243,84 +210,136 @@ public class HostileState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         if (owner == null || !owner.IsCombatActorAvailable())
         {
-            return;
+            return new CharacterDecisionResult
+            {
+                Resolved = false,
+                DecisionType = CharacterWorldDecisionType.SkippedCannotAct,
+                TurnDecisionResult = CharacterTurnDecisionResult.Skipped,
+                Reason = "HostileState skipped because the actor was unavailable.",
+                EndsOpportunity = true
+            };
         }
 
-        int iterationCount = 0;
-
-        while (owner.ActionPoints > 0 && iterationCount < MaxIterations)
+        if (!EnsureValidHostileTarget(owner, "HostileState.UpdateState"))
         {
-            iterationCount++;
-            GameDebugger.Instance.LogInfo($"HostileState Update: Character {owner.IInteractableID} ({owner.Name}) with Target {owner.Target?.Name ?? "None"}.");
-
-            if (!EnsureValidHostileTarget(owner, $"HostileState.UpdateState iteration {iterationCount}"))
+            return new CharacterDecisionResult
             {
-                return;
-            }
-
-            if (owner.Target != null && owner.IsTargetInRange(owner.Target))
-            {
-                int configuredActionCost = Math.Max(owner.GetActionCost("Attack"), 1);
-                const int effectiveAttackCost = 2;
-                if (owner.ActionPoints >= effectiveAttackCost)
-                {
-                    // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                    MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "HostileState.UpdateState selected attack",
-                        $"Selected action: Attack\nTarget: {owner.Target.Name}\nConfigured action cost: {configuredActionCost}\nEffective shared action cost: {effectiveAttackCost}",
-                        owner);
-                    CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK ENTRY]", "HostileState.UpdateState initiating shared attack",
-                        $"ActionName={CombatActionResolutionDiagnosticsLogger.InferActionName(owner, owner.GetMainHandItem() == null ? DamageType.Bludgeoning : owner.GetMainHandItem().DamageType)}\n" +
-                        $"Target={owner.Target.Name} [{owner.Target.IInteractableID}]\n" +
-                        $"ConfiguredActionCost={configuredActionCost}\n" +
-                        $"EffectiveSharedActionCost={effectiveAttackCost}\n" +
-                        $"APSpendAuthority=Character.PerformAttack\n" +
-                        $"ExtraAPSpendRemoved={true}",
-                        owner, owner.Target);
-                    owner.PerformAttack(owner.Target);
-                    GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) attacked {owner.Target.Name}. Effective cost: {effectiveAttackCost}. Remaining AP: {owner.ActionPoints}");
-                }
-                else
-                {
-                    GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has insufficient AP to attack. Breaking out of loop.");
-                    break;
-                }
-            }
-            else if (owner.Target != null && !owner.IsTargetInRange(owner.Target))
-            {
-                if (owner.MovePoints > 0)
-                {
-                    // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                    MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "HostileState.UpdateState selected movement",
-                        $"Selected action: MoveTowardsTarget\nTarget: {owner.Target.Name}\nTarget cell: {owner.Target.NestedMapPosition}",
-                        owner);
-                    owner.MoveTowardsCharacter(owner.Target);
-                    owner.MovePoints--;
-                    GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved towards {owner.Target.Name}. Remaining MovePoints: {owner.MovePoints}");
-                }
-                else
-                {
-                    GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has insufficient MovePoints to move. Breaking out of loop.");
-                    break;
-                }
-            }
-            else
-            {
-                if (!ExitHostileStateWithoutTarget(owner, "HostileState.UpdateState reached no-target branch"))
-                {
-                    return;
-                }
-            }
-
-            if (iterationCount >= MaxIterations)
-            {
-                GameDebugger.Instance.LogWarning($"Character {owner.IInteractableID} ({owner.Name}) exceeded max iterations in Hostile state loop.");
-                break;
-            }
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "No valid hostile target was available; hostility memory was retained.",
+                EndsOpportunity = true
+            };
         }
+
+        if (owner.Target != null && owner.IsTargetInRange(owner.Target))
+        {
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "HostileState.UpdateState selected attack",
+                $"Selected action: Attack\nTarget: {owner.Target.Name}\nCombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}",
+                owner);
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK ENTRY]", "HostileState.UpdateState initiating shared attack",
+                $"ActionName={CombatActionResolutionDiagnosticsLogger.InferActionName(owner, owner.GetMainHandItem() == null ? DamageType.Bludgeoning : owner.GetMainHandItem().DamageType)}\n" +
+                $"Target={owner.Target.Name} [{owner.Target.IInteractableID}]\n" +
+                $"CombatExertionBefore={FixedPointResourceMath.Format(owner.CurrentCombatExertion)}\n" +
+                $"StaminaBefore={FixedPointResourceMath.Format(owner.CurrentStamina)}",
+                owner, owner.Target);
+            Character targetBeforeAttack = owner.Target;
+            bool attackResolved = owner.PerformAttack(targetBeforeAttack);
+            if (!attackResolved)
+            {
+                MovementAIDiagnosticsLogger.LogWarning("HostileState.UpdateState attack failed",
+                    $"Selected action: Attack\nTarget: {targetBeforeAttack?.Name ?? "NULL"}\nFailure reason: attack rejected or aborted\nCombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}\nStamina: {FixedPointResourceMath.Format(owner.CurrentStamina)}",
+                    owner);
+                return new CharacterDecisionResult
+                {
+                    Resolved = true,
+                    DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                    TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                    Reason = "Hostile attack was rejected or aborted.",
+                    EndsOpportunity = true
+                };
+            }
+
+            GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) attacked {targetBeforeAttack.Name}. Remaining CombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}");
+            CharacterDecisionResult result = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.PerformedAction,
+                TurnDecisionResult = CharacterTurnDecisionResult.CombatAction,
+                WasAttempted = true,
+                WasCommitted = true,
+                ChangedWorldState = true,
+                MayContinueCombatTurn = owner.IsCombatActorAvailable() && owner.CurrentCombatExertion > 0 && !(TurnOrchestrator.Instance?.HasPendingContextTransition ?? false),
+                EndsOpportunity = true,
+                ModeTransitionPending = TurnOrchestrator.Instance?.HasPendingContextTransition ?? false,
+                Reason = $"HostileState committed attack against {targetBeforeAttack.Name}.",
+                ActionName = "Attack"
+            };
+            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+            return result;
+        }
+
+        if (owner.CurrentCombatExertion <= 0)
+        {
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "HostileState.UpdateState no movement",
+                "Selected action: None\nReason for no movement: no CombatExertion",
+                owner);
+            CharacterDecisionResult result = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "Hostile actor had no Combat Exertion left.",
+                EndsOpportunity = true
+            };
+            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+            return result;
+        }
+
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "HostileState.UpdateState selected movement",
+            $"Selected action: MoveTowardsTarget\nTarget: {owner.Target.Name}\nTarget cell: {owner.Target.NestedMapPosition}",
+            owner);
+        Character targetBeforeMove = owner.Target;
+        bool moved = owner.MoveTowardsCharacter(targetBeforeMove);
+        if (!moved)
+        {
+            MovementAIDiagnosticsLogger.LogWarning("HostileState.UpdateState movement failed",
+                $"Selected action: MoveTowardsTarget\nTarget: {targetBeforeMove.Name}\nFailure reason: blocked or unaffordable movement\nCombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}\nStamina: {FixedPointResourceMath.Format(owner.CurrentStamina)}",
+                owner);
+            CharacterDecisionResult result = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.FailedMovement,
+                TurnDecisionResult = CharacterTurnDecisionResult.FailedMovement,
+                Reason = "Hostile movement was blocked or unaffordable.",
+                EndsOpportunity = true
+            };
+            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+            return result;
+        }
+
+        GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved towards {targetBeforeMove.Name}. Remaining CombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}");
+        CharacterDecisionResult movedResult = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.MoveTowardsCandidate,
+            TurnDecisionResult = CharacterTurnDecisionResult.Moved,
+            WasAttempted = true,
+            WasCommitted = true,
+            PositionChanged = true,
+            ChangedWorldState = true,
+            MayContinueCombatTurn = owner.IsCombatActorAvailable() && owner.CurrentCombatExertion > 0 && !(TurnOrchestrator.Instance?.HasPendingContextTransition ?? false),
+            EndsOpportunity = true,
+            ModeTransitionPending = TurnOrchestrator.Instance?.HasPendingContextTransition ?? false,
+            Reason = $"HostileState moved toward {targetBeforeMove.Name}.",
+            ActionName = "MoveTowardsTarget"
+        };
+        owner.RecordTurnDecision(movedResult.TurnDecisionResult, movedResult.Reason);
+        return movedResult;
     }
 
     public void ExitState(Character owner)
@@ -344,26 +363,15 @@ public class HostileState : IState
             return true;
         }
 
-        ExitHostileStateWithoutTarget(owner, $"{source}: no valid hostile target");
-        return false;
-    }
-
-    private bool ExitHostileStateWithoutTarget(Character owner, string source)
-    {
-        owner.ClearCombatTarget(source);
-        owner.IsHostile = false;
-        owner.InCombat = false;
-        owner.Stance = NPCStance.Default;
-        owner.ActionPoints = 0;
-        owner.stateMachine.ChangeState(new IdleState());
-        TurnOrchestrator.Instance?.TryUpdateTurnContext();
-        CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "HostileState.UpdateState exited hostile state due to invalid or missing target",
+        owner.ClearCombatTarget($"{source}: no valid hostile target");
+        owner.SetCombatParticipationState(CombatParticipationState.Searching, $"{source}: no valid hostile target was available.");
+        owner.RecordTurnDecision(CharacterTurnDecisionResult.NoActionAvailable, $"{source}: no valid hostile target was available; hostility retained.");
+        CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "HostileState.UpdateState retained hostility without target",
             $"Source={source}\n" +
             $"Actor={owner.Name} [{owner.IInteractableID}]\n" +
-            $"IsHostileAfter={owner.IsHostile}\n" +
-            $"StanceAfter={owner.Stance}\n" +
-            $"InCombatAfter={owner.InCombat}\n" +
-            $"APAfter={owner.ActionPoints}",
+            $"IsHostile={owner.IsHostile}\n" +
+            $"Stance={owner.Stance}\n" +
+            $"InCombat={owner.InCombat}",
             owner);
         return false;
     }
@@ -371,11 +379,10 @@ public class HostileState : IState
 
 public class FriendlyState : IState
 {
-    private const int MaxIterations = 10;
-
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Idling; // Friendly but idle
+        owner.SetCombatParticipationState(CombatParticipationState.Uninvolved, "Entered Friendly state.");
         GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has entered Friendly state.");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FriendlyState.EnterState",
@@ -383,36 +390,30 @@ public class FriendlyState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
-        int iterationCount = 0;
-
-        while (owner.ActionPoints > 0 && iterationCount < MaxIterations)
+        CharacterDecisionResult result = CharacterDecisionResolver.ResolveWorldDecision(owner);
+        if (result == null)
         {
-            iterationCount++;
-
-            int actionCost = Math.Max(owner.GetActionCost("FriendlyAction"), 1);
-            if (owner.ActionPoints >= actionCost)
+            result = new CharacterDecisionResult
             {
-                // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FriendlyState.UpdateState selected friendly action",
-                    $"Selected action: FriendlyAction\nReason for no movement: friendly state action consumes AP\nAction cost: {actionCost}",
-                    owner);
-                owner.SpendActionPoints(actionCost);
-                GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) performed Friendly action. Cost: {actionCost}. Remaining AP: {owner.ActionPoints}");
-            }
-            else
-            {
-                GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has insufficient AP for friendly action. Breaking out of loop.");
-                break;
-            }
-
-            if (iterationCount >= MaxIterations)
-            {
-                GameDebugger.Instance.LogWarning($"Character {owner.IInteractableID} ({owner.Name}) exceeded max iterations in Friendly state loop.");
-                break;
-            }
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+                Reason = "Friendly state had no decision result; intentionally idled.",
+                EndsOpportunity = true,
+                WasAttempted = true,
+                WasCommitted = true,
+                ActionName = "IntentionalIdle"
+            };
         }
+
+        owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FriendlyState.UpdateState resolved",
+            $"Selected action: {result.ActionName ?? result.DecisionType.ToString()}\nReason: {result.Reason}",
+            owner);
+        GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) friendly state resolved with {result.DecisionType}.");
+        return result;
     }
 
     public void ExitState(Character owner)
@@ -423,11 +424,10 @@ public class FriendlyState : IState
 
 public class FleeingState : IState
 {
-    private const int MaxIterations = 10;
-
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Fleeing;
+        owner.SetCombatParticipationState(CombatParticipationState.Fleeing, "Entered Fleeing state.");
         GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has entered Fleeing state.");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FleeingState.EnterState",
@@ -435,36 +435,62 @@ public class FleeingState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
-        int iterationCount = 0;
-
-        while (owner.ActionPoints > 0 && iterationCount < MaxIterations)
+        Character threatSource = owner.Target ?? owner.FollowTarget ?? PlayerStats.Instance?.CurrentPlayerCharacter;
+        if (threatSource == null)
         {
-            iterationCount++;
-
-            if (owner.MovePoints > 0)
+            CharacterDecisionResult noThreatResult = new CharacterDecisionResult
             {
-                // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FleeingState.UpdateState selected movement",
-                    "Selected action: MoveAwayFromPlayer",
-                    owner);
-                owner.MoveAwayFromPlayer();
-                owner.MovePoints--;
-                GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved away from player. Remaining MovePoints: {owner.MovePoints}");
-            }
-            else
-            {
-                GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has insufficient MovePoints to move away. Breaking out of loop.");
-                break;
-            }
-
-            if (iterationCount >= MaxIterations)
-            {
-                GameDebugger.Instance.LogWarning($"Character {owner.IInteractableID} ({owner.Name}) exceeded max iterations in Fleeing state loop.");
-                break;
-            }
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+                Reason = "Fleeing state had no valid threat source.",
+                EndsOpportunity = true,
+                WasAttempted = true,
+                WasCommitted = true,
+                ActionName = "IntentionalIdle"
+            };
+            owner.RecordTurnDecision(noThreatResult.TurnDecisionResult, noThreatResult.Reason);
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FleeingState.UpdateState no threat",
+                "Selected action: None\nReason for no movement: no valid threat source",
+                owner);
+            return noThreatResult;
         }
+
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FleeingState.UpdateState selected movement",
+            $"Selected action: MoveAwayFromCharacter\nThreatSource: {threatSource.Name}",
+            owner);
+        bool moved = owner.MoveAwayFromCharacter(threatSource);
+        CharacterDecisionResult result = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement,
+            TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement,
+            WasAttempted = true,
+            WasCommitted = moved,
+            PositionChanged = moved,
+            ChangedWorldState = moved,
+            Reason = moved
+                ? $"Moved away from {threatSource.Name}."
+                : $"Could not move away from {threatSource.Name}.",
+            EndsOpportunity = true,
+            ActionName = "MoveAwayFromCharacter"
+        };
+
+        if (!moved)
+        {
+            MovementAIDiagnosticsLogger.LogWarning("FleeingState.UpdateState movement failed",
+                $"Selected action: MoveAwayFromCharacter\nThreatSource: {threatSource.Name}\nFailure reason: blocked or unaffordable movement",
+                owner);
+        }
+        else
+        {
+            GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved away from {threatSource.Name}. Remaining CombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}");
+        }
+
+        owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+        return result;
     }
 
     public void ExitState(Character owner)
@@ -475,11 +501,10 @@ public class FleeingState : IState
 
 public class FollowingState : IState
 {
-    private const int MaxIterations = 10;
-
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Following;
+        owner.SetCombatParticipationState(CombatParticipationState.Aware, "Entered Following state.");
         GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has entered Following state.");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FollowingState.EnterState",
@@ -487,36 +512,62 @@ public class FollowingState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
-        int iterationCount = 0;
-
-        while (owner.ActionPoints > 0 && iterationCount < MaxIterations)
+        Character followTarget = owner.FollowTarget ?? PlayerStats.Instance?.CurrentPlayerCharacter;
+        if (followTarget == null)
         {
-            iterationCount++;
-
-            if (owner.MovePoints > 0)
+            CharacterDecisionResult noTargetResult = new CharacterDecisionResult
             {
-                // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FollowingState.UpdateState selected movement",
-                    "Selected action: MoveTowardsPlayer",
-                    owner);
-                owner.MoveTowardsPlayer();
-                owner.MovePoints--;
-                GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved towards player. Remaining MovePoints: {owner.MovePoints}");
-            }
-            else
-            {
-                GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has insufficient MovePoints to follow player. Breaking out of loop.");
-                break;
-            }
-
-            if (iterationCount >= MaxIterations)
-            {
-                GameDebugger.Instance.LogWarning($"Character {owner.IInteractableID} ({owner.Name}) exceeded max iterations in Following state loop.");
-                break;
-            }
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+                Reason = "Following state had no valid follow target.",
+                EndsOpportunity = true,
+                WasAttempted = true,
+                WasCommitted = true,
+                ActionName = "IntentionalIdle"
+            };
+            owner.RecordTurnDecision(noTargetResult.TurnDecisionResult, noTargetResult.Reason);
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FollowingState.UpdateState no follow target",
+                "Selected action: None\nReason for no movement: no valid follow target",
+                owner);
+            return noTargetResult;
         }
+
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FollowingState.UpdateState selected movement",
+            $"Selected action: MoveTowardsCharacter\nFollowTarget: {followTarget.Name}",
+            owner);
+        bool moved = owner.MoveTowardsCharacter(followTarget);
+        CharacterDecisionResult result = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement,
+            TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement,
+            WasAttempted = true,
+            WasCommitted = moved,
+            PositionChanged = moved,
+            ChangedWorldState = moved,
+            Reason = moved
+                ? $"Moved towards {followTarget.Name}."
+                : $"Could not move towards {followTarget.Name}.",
+            EndsOpportunity = true,
+            ActionName = "MoveTowardsCharacter"
+        };
+
+        if (!moved)
+        {
+            MovementAIDiagnosticsLogger.LogWarning("FollowingState.UpdateState movement failed",
+                $"Selected action: MoveTowardsCharacter\nFollowTarget: {followTarget.Name}\nFailure reason: blocked or unaffordable movement",
+                owner);
+        }
+        else
+        {
+            GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved towards {followTarget.Name}. Remaining CombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}");
+        }
+
+        owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+        return result;
     }
 
     public void ExitState(Character owner)
@@ -530,6 +581,7 @@ public class TrueIdleState : IState
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.TrueIdle;
+        owner.SetCombatParticipationState(CombatParticipationState.Uninvolved, "Entered TrueIdle state.");
         GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) has entered TrueIdle state.");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "TrueIdleState.EnterState",
@@ -537,16 +589,26 @@ public class TrueIdleState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "TrueIdleState.UpdateState no movement",
-            "Selected action: None\nReason for no movement: TrueIdle consumes AP and MP",
+            "Selected action: None\nReason for no movement: TrueIdle intentionally idles without resource spend.",
             owner);
-        owner.RecordTurnDecision(CharacterTurnDecisionResult.Idled, "TrueIdle state consumed the entire NPC turn.");
-        owner.SpendActionPoints(owner.ActionPoints);  // Consume all AP
-        owner.MovePoints = 0;  // Ensure they don't move
-        GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) remains idle. All AP and MovePoints consumed.");
+        CharacterDecisionResult result = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+            TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+            WasAttempted = true,
+            WasCommitted = true,
+            EndsOpportunity = true,
+            Reason = "TrueIdle state consumed the entire NPC turn.",
+            ActionName = "IntentionalIdle"
+        };
+        owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+        GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) remains idle without resource spend.");
+        return result;
     }
 
     public void ExitState(Character owner)
@@ -562,6 +624,7 @@ public class MonsterAggroState : IState
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Hostile;
+        owner.SetCombatParticipationState(CombatParticipationState.Engaged, "Entered MonsterAggro state.");
         GameDebugger.Instance.LogInfo($"Monster {owner.IInteractableID} ({owner.Name}) is now aggressive!");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterAggroState.EnterState",
@@ -569,7 +632,7 @@ public class MonsterAggroState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         Monster monster = owner as Monster;
         if (monster == null || monster.Target == null)
@@ -578,7 +641,17 @@ public class MonsterAggroState : IState
             MovementAIDiagnosticsLogger.LogWarning("MonsterAggroState.UpdateState no action",
                 $"Selected action: None\nReason for no movement: monster null or target null\nTarget: {owner?.Target?.Name ?? "NULL"}",
                 owner);
-            return;
+            CharacterDecisionResult noAction = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "MonsterAggroState had no target.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Searching, "MonsterAggroState had no target.");
+            owner.RecordTurnDecision(noAction.TurnDecisionResult, noAction.Reason);
+            return noAction;
         }
 
         if (monster.IsTargetInRange(monster.Target))
@@ -590,18 +663,82 @@ public class MonsterAggroState : IState
             CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK ENTRY]", "MonsterAggroState.UpdateState initiating shared attack",
                 $"ActionName={CombatActionResolutionDiagnosticsLogger.InferActionName(monster, monster.GetMainHandItem() == null ? DamageType.Bludgeoning : monster.GetMainHandItem().DamageType)}\n" +
                 $"Target={monster.Target.Name} [{monster.Target.IInteractableID}]\n" +
-                $"APSpendAuthority=Character.PerformAttack",
+                $"TypedCombatAuthority=Character.PerformAttack",
                 monster, monster.Target);
-            monster.PerformAttack(monster.Target);
+            bool attackResolved = monster.PerformAttack(monster.Target);
+            if (!attackResolved)
+            {
+                MovementAIDiagnosticsLogger.LogWarning("MonsterAggroState.UpdateState attack failed",
+                    $"Selected action: Attack\nTarget: {monster.Target.Name}\nFailure reason: attack rejected or aborted",
+                    monster);
+                CharacterDecisionResult failed = new CharacterDecisionResult
+                {
+                    Resolved = true,
+                    DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                    TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                    Reason = "MonsterAggroState attack was rejected or aborted.",
+                    EndsOpportunity = true
+                };
+                owner.RecordTurnDecision(failed.TurnDecisionResult, failed.Reason);
+                return failed;
+            }
+
+            CharacterDecisionResult result = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.PerformedAction,
+                TurnDecisionResult = CharacterTurnDecisionResult.CombatAction,
+                WasAttempted = true,
+                WasCommitted = true,
+                ChangedWorldState = true,
+                MayContinueCombatTurn = monster.IsCombatActorAvailable() && monster.CurrentCombatExertion > 0 && !(TurnOrchestrator.Instance?.HasPendingContextTransition ?? false),
+                EndsOpportunity = true,
+                ModeTransitionPending = TurnOrchestrator.Instance?.HasPendingContextTransition ?? false,
+                Reason = $"Monster attacked {monster.Target.Name}.",
+                ActionName = "Attack"
+            };
+            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+            return result;
         }
-        else
+
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterAggroState.UpdateState selected movement",
+            $"Selected action: MoveTowardsTarget\nTarget: {monster.Target.Name}\nTarget cell: {monster.Target.NestedMapPosition}",
+            monster);
+        bool moved = monster.MoveTowardsCharacter(monster.Target);
+        if (!moved)
         {
-            // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterAggroState.UpdateState selected movement",
-                $"Selected action: MoveTowardsTarget\nTarget: {monster.Target.Name}\nTarget cell: {monster.Target.NestedMapPosition}",
+            MovementAIDiagnosticsLogger.LogWarning("MonsterAggroState.UpdateState movement failed",
+                $"Selected action: MoveTowardsTarget\nTarget: {monster.Target.Name}\nFailure reason: blocked or unaffordable movement",
                 monster);
-            monster.MoveTowardsCharacter(monster.Target);
+            CharacterDecisionResult failedMove = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.FailedMovement,
+                TurnDecisionResult = CharacterTurnDecisionResult.FailedMovement,
+                Reason = "MonsterAggroState movement was blocked or unaffordable.",
+                EndsOpportunity = true
+            };
+            owner.RecordTurnDecision(failedMove.TurnDecisionResult, failedMove.Reason);
+            return failedMove;
         }
+
+        CharacterDecisionResult movedResult = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.MoveTowardsCandidate,
+            TurnDecisionResult = CharacterTurnDecisionResult.Moved,
+            WasAttempted = true,
+            WasCommitted = true,
+            PositionChanged = true,
+            ChangedWorldState = true,
+            MayContinueCombatTurn = monster.IsCombatActorAvailable() && monster.CurrentCombatExertion > 0 && !(TurnOrchestrator.Instance?.HasPendingContextTransition ?? false),
+            EndsOpportunity = true,
+            ModeTransitionPending = TurnOrchestrator.Instance?.HasPendingContextTransition ?? false,
+            Reason = $"Monster moved towards {monster.Target.Name}.",
+            ActionName = "MoveTowardsTarget"
+        };
+        owner.RecordTurnDecision(movedResult.TurnDecisionResult, movedResult.Reason);
+        return movedResult;
     }
 
     public void ExitState(Character owner)
@@ -615,6 +752,7 @@ public class MonsterChaseState : IState
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Chasing;
+        owner.SetCombatParticipationState(CombatParticipationState.Engaged, "Entered MonsterChase state.");
         GameDebugger.Instance.LogInfo($"Monster {owner.IInteractableID} ({owner.Name}) is chasing its target!");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterChaseState.EnterState",
@@ -622,7 +760,7 @@ public class MonsterChaseState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         Monster monster = owner as Monster;
         if (monster == null || monster.Target == null)
@@ -631,7 +769,17 @@ public class MonsterChaseState : IState
             MovementAIDiagnosticsLogger.LogWarning("MonsterChaseState.UpdateState no action",
                 $"Selected action: None\nReason for no movement: monster null or target null\nTarget: {owner?.Target?.Name ?? "NULL"}",
                 owner);
-            return;
+            CharacterDecisionResult noAction = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "MonsterChaseState had no target.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Searching, "MonsterChaseState had no target.");
+            owner.RecordTurnDecision(noAction.TurnDecisionResult, noAction.Reason);
+            return noAction;
         }
 
         if (monster.Target == null || !monster.Target.IsAlive || !monster.CanSeeTarget(monster.Target))
@@ -641,14 +789,56 @@ public class MonsterChaseState : IState
                 $"Selected action: ChangeState\nReason for no movement: target invalid, dead, or not visible\nTarget: {monster.Target?.Name ?? "NULL"}",
                 monster);
             monster.stateMachine.ChangeState(new MonsterIdleState());
-            return;
+            CharacterDecisionResult lostTarget = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "MonsterChaseState lost visibility on the target and returned to idle.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Searching, "MonsterChaseState lost target visibility.");
+            owner.RecordTurnDecision(lostTarget.TurnDecisionResult, lostTarget.Reason);
+            return lostTarget;
         }
 
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterChaseState.UpdateState selected movement",
             $"Selected action: MoveTowardsTarget\nTarget: {monster.Target.Name}\nTarget cell: {monster.Target.NestedMapPosition}",
             monster);
-        monster.MoveTowardsCharacter(monster.Target);
+        bool moved = monster.MoveTowardsCharacter(monster.Target);
+        if (!moved)
+        {
+            MovementAIDiagnosticsLogger.LogWarning("MonsterChaseState.UpdateState movement failed",
+                $"Selected action: MoveTowardsTarget\nTarget: {monster.Target.Name}\nFailure reason: blocked or unaffordable movement",
+                monster);
+            CharacterDecisionResult failedMove = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.FailedMovement,
+                TurnDecisionResult = CharacterTurnDecisionResult.FailedMovement,
+                Reason = "MonsterChaseState movement was blocked or unaffordable.",
+                EndsOpportunity = true
+            };
+            owner.RecordTurnDecision(failedMove.TurnDecisionResult, failedMove.Reason);
+            return failedMove;
+        }
+
+        CharacterDecisionResult result = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.MoveTowardsCandidate,
+            TurnDecisionResult = CharacterTurnDecisionResult.Moved,
+            WasAttempted = true,
+            WasCommitted = true,
+            PositionChanged = true,
+            ChangedWorldState = true,
+            Reason = $"Monster moved towards {monster.Target.Name}.",
+            EndsOpportunity = true,
+            ActionName = "MoveTowardsTarget"
+        };
+        owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+        return result;
     }
 
     public void ExitState(Character owner)
@@ -662,6 +852,7 @@ public class MonsterFleeState : IState
     public void EnterState(Character owner)
     {
         owner.Status = NPCStatus.Fleeing;
+        owner.SetCombatParticipationState(CombatParticipationState.Fleeing, "Entered MonsterFlee state.");
         GameDebugger.Instance.LogInfo($"Monster {owner.IInteractableID} ({owner.Name}) is fleeing!");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.EnterState",
@@ -669,7 +860,7 @@ public class MonsterFleeState : IState
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         Monster monster = owner as Monster;
         if (monster == null)
@@ -678,7 +869,17 @@ public class MonsterFleeState : IState
             MovementAIDiagnosticsLogger.LogWarning("MonsterFleeState.UpdateState no action",
                 "Selected action: None\nReason for no movement: owner is not Monster",
                 owner);
-            return;
+            CharacterDecisionResult noAction = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "MonsterFleeState owner was not a Monster.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Uninvolved, "MonsterFleeState owner was not a Monster.");
+            owner.RecordTurnDecision(noAction.TurnDecisionResult, noAction.Reason);
+            return noAction;
         }
 
         if (monster.Health > (monster.MaxHealth * 0.3)) // Stop fleeing if health recovers
@@ -687,8 +888,18 @@ public class MonsterFleeState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.UpdateState recovered",
                 "Selected action: ChangeState\nReason for no movement: health recovered\nNew state: MonsterIdleState",
                 monster);
-            monster.stateMachine.ChangeState(new MonsterIdleState());
-            return;
+            monster.stateMachine.ChangeState(new MonsterIdleState(), "Monster recovered while fleeing.");
+            CharacterDecisionResult recovered = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "Monster recovered and changed back to idle.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Uninvolved, "MonsterFleeState recovered.");
+            owner.RecordTurnDecision(recovered.TurnDecisionResult, recovered.Reason);
+            return recovered;
         }
 
         if (monster.Target != null)
@@ -697,7 +908,29 @@ public class MonsterFleeState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.UpdateState selected movement",
                 $"Selected action: MoveAwayFromTarget\nTarget: {monster.Target.Name}",
                 monster);
-            monster.MoveAwayFromCharacter(monster.Target);
+            bool moved = monster.MoveAwayFromCharacter(monster.Target);
+            if (!moved)
+            {
+                MovementAIDiagnosticsLogger.LogWarning("MonsterFleeState.UpdateState movement failed",
+                    $"Selected action: MoveAwayFromTarget\nTarget: {monster.Target.Name}\nFailure reason: blocked or unaffordable movement",
+                    monster);
+            }
+            CharacterDecisionResult result = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement,
+                TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement,
+                WasAttempted = true,
+                WasCommitted = moved,
+                PositionChanged = moved,
+                ChangedWorldState = moved,
+                Reason = moved ? $"Moved away from {monster.Target.Name}." : $"Could not move away from {monster.Target.Name}.",
+                EndsOpportunity = true,
+                ActionName = "MoveAwayFromTarget"
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Fleeing, "MonsterFleeState resolved movement.");
+            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
+            return result;
         }
         else
         {
@@ -705,6 +938,16 @@ public class MonsterFleeState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.UpdateState no target",
                 "Selected action: None\nReason for no movement: target null",
                 monster);
+            CharacterDecisionResult noTarget = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+                Reason = "MonsterFleeState had no target.",
+                EndsOpportunity = true
+            };
+            owner.RecordTurnDecision(noTarget.TurnDecisionResult, noTarget.Reason);
+            return noTarget;
         }
     }
 
@@ -722,13 +965,14 @@ public class MonsterIdleState : IState
     public void EnterState(Character owner)
     {
         GameDebugger.Instance.LogInfo($"{owner.Name} has entered Monster Idle state.");
+        owner.SetCombatParticipationState(CombatParticipationState.Unaware, "Entered MonsterIdle state.");
         // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterIdleState.EnterState",
             "State: MonsterIdle",
             owner);
     }
 
-    public void UpdateState(Character owner)
+    public CharacterDecisionResult UpdateState(Character owner)
     {
         Monster monster = owner as Monster;
         if (monster == null)
@@ -737,7 +981,17 @@ public class MonsterIdleState : IState
             MovementAIDiagnosticsLogger.LogWarning("MonsterIdleState.UpdateState no action",
                 "Selected action: None\nReason for no movement: owner is not Monster",
                 owner);
-            return;
+            CharacterDecisionResult noAction = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "MonsterIdleState owner was not a Monster.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Uninvolved, "MonsterIdleState owner was not a Monster.");
+            owner.RecordTurnDecision(noAction.TurnDecisionResult, noAction.Reason);
+            return noAction;
         }
 
         turnsSinceLastPatrol++;
@@ -748,9 +1002,44 @@ public class MonsterIdleState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterIdleState.UpdateState selected patrol movement",
                 $"Selected action: MoveRandom\nPatrolIntervalTurns: {PatrolIntervalTurns}\nTurnsSinceLastPatrol: {turnsSinceLastPatrol}",
                 monster);
-            monster.MoveInRandomDirection();
+            bool moved = monster.MoveInRandomDirection();
+            if (!moved)
+            {
+                MovementAIDiagnosticsLogger.LogWarning("MonsterIdleState.UpdateState patrol movement failed",
+                    "Selected action: MoveRandom\nFailure reason: blocked or unavailable movement",
+                    monster);
+            }
+            else
+            {
+                GameDebugger.Instance.LogInfo($"{monster.Name} is patrolling.");
+            }
             turnsSinceLastPatrol = 0;
-            GameDebugger.Instance.LogInfo($"{monster.Name} is patrolling.");
+
+            CharacterDecisionResult patrolResult = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = moved ? CharacterWorldDecisionType.WanderFallback : CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.Idled,
+                WasAttempted = true,
+                WasCommitted = moved,
+                PositionChanged = moved,
+                ChangedWorldState = moved,
+                Reason = moved ? "Monster patrolled one step." : "Monster attempted to patrol but no valid move existed.",
+                EndsOpportunity = true,
+                ActionName = moved ? "RandomPatrol" : "IntentionalIdle"
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Unaware, "MonsterIdleState patrol result.");
+            owner.RecordTurnDecision(patrolResult.TurnDecisionResult, patrolResult.Reason);
+            if (monster.IsPlayerVisible)
+            {
+                monster.Target = monster.FindClosestEnemy();
+                // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
+                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterIdleState.UpdateState player visible",
+                    $"Selected action: ChangeState\nNew state: MonsterAggroState\nTarget: {monster.Target?.Name ?? "NULL"}",
+                    monster);
+                monster.stateMachine.ChangeState(new MonsterAggroState(), "Player became visible to monster.");
+            }
+            return patrolResult;
         }
         else
         {
@@ -758,16 +1047,26 @@ public class MonsterIdleState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterIdleState.UpdateState waiting",
                 $"Selected action: None\nReason for no movement: patrol interval not yet reached\nPatrolIntervalTurns: {PatrolIntervalTurns}\nTurnsSinceLastPatrol: {turnsSinceLastPatrol}",
                 monster);
-        }
-
-        if (monster.IsPlayerVisible)
-        {
-            monster.Target = monster.FindClosestEnemy();
-            // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterIdleState.UpdateState player visible",
-                $"Selected action: ChangeState\nNew state: MonsterAggroState\nTarget: {monster.Target?.Name ?? "NULL"}",
-                monster);
-            monster.stateMachine.ChangeState(new MonsterAggroState());
+            CharacterDecisionResult waitResult = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+                Reason = "Monster idle turn waited for patrol interval.",
+                EndsOpportunity = true
+            };
+            owner.SetCombatParticipationState(CombatParticipationState.Unaware, "MonsterIdleState waiting.");
+            owner.RecordTurnDecision(waitResult.TurnDecisionResult, waitResult.Reason);
+            if (monster.IsPlayerVisible)
+            {
+                monster.Target = monster.FindClosestEnemy();
+                // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
+                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterIdleState.UpdateState player visible",
+                    $"Selected action: ChangeState\nNew state: MonsterAggroState\nTarget: {monster.Target?.Name ?? "NULL"}",
+                    monster);
+                monster.stateMachine.ChangeState(new MonsterAggroState(), "Player became visible to monster.");
+            }
+            return waitResult;
         }
     }
 

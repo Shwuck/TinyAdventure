@@ -63,12 +63,6 @@ public class CombatTurnManager : BaseTurnManager
             return true;
         }
 
-        if (!character.InCombat)
-        {
-            GameDebugger.Instance.LogInfo($"[CombatTurnManager] Skipping {character.Name} as they are no longer in combat.");
-            return true;
-        }
-
         if (character.CurrentNestedArea == null)
         {
             GameDebugger.Instance.LogWarning($"[CombatTurnManager] Skipping {character.Name} as their NestedArea is NULL.");
@@ -120,54 +114,25 @@ public class CombatTurnManager : BaseTurnManager
 
         UIController.Instance.UpdateTurnOrderUI();
 
-        int playerStatsAPBeforeReset = PlayerStats.Instance.ActionPoints;
-        int playerStatsMPBeforeReset = PlayerStats.Instance.MovePoints;
         int playerStatsCombatExertionBeforeReset = PlayerStats.Instance.CombatExertion;
-        int characterAPBeforeReset = playerCharacter != null ? playerCharacter.ActionPoints : -1;
-        int characterMPBeforeReset = playerCharacter != null ? playerCharacter.MovePoints : -1;
         int characterCombatExertionBeforeReset = playerCharacter != null ? playerCharacter.CurrentCombatExertion : -1;
-        PlayerStats.Instance.ResetActionPoints();
-        PlayerStats.Instance.ResetMovePoints();
         if (playerCharacter != null)
         {
-            playerCharacter.ActionPoints = PlayerStats.Instance.ActionPoints;
-            playerCharacter.MovePoints = PlayerStats.Instance.MovePoints;
             playerCharacter.ResetCombatExertionForTurn("CombatTurnManager.OnPlayerTurnStart");
             playerCharacter.ResetConsumptionCapacityForTurn("CombatTurnManager.OnPlayerTurnStart");
             PlayerStats.Instance.SyncStaminaFromCurrentPlayerCharacter();
         }
         UIController.Instance.UpdateTurnOrderUI();
         // CODEXLOG001_TURNLIFECYCLE: temporary player combat resource reset diagnostic.
-        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN START]", "CombatTurnManager.OnPlayerTurnStart AP/MP reset",
-            $"APReset: {playerStatsAPBeforeReset} -> {PlayerStats.Instance.ActionPoints}\n" +
-            $"MPReset: {playerStatsMPBeforeReset} -> {PlayerStats.Instance.MovePoints}\n" +
+        TurnDiagnosticsLogger.LogEvent("[PLAYER TURN START]", "CombatTurnManager.OnPlayerTurnStart combat resources reset",
             $"CombatExertionReset: {FixedPointResourceMath.Format(playerStatsCombatExertionBeforeReset)} -> {FixedPointResourceMath.Format(PlayerStats.Instance.CombatExertion)}\n" +
-            $"PlayerStatsAP: {PlayerStats.Instance.ActionPoints}\n" +
-            $"CharacterAPBefore: {characterAPBeforeReset}\n" +
-            $"CharacterAP: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"PlayerStatsMP: {PlayerStats.Instance.MovePoints}\n" +
-            $"CharacterMPBefore: {characterMPBeforeReset}\n" +
-            $"CharacterMP: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
             $"CharacterCombatExertionBefore: {FixedPointResourceMath.Format(characterCombatExertionBeforeReset)}\n" +
             $"CharacterCombatExertionAfter: {FixedPointResourceMath.Format(playerCharacter?.CurrentCombatExertion ?? 0)}\n" +
             $"CharacterConsumptionCapacityAfter: {playerCharacter?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
+            $"Stamina: {FixedPointResourceMath.Format(playerCharacter?.CurrentStamina ?? 0)}/{FixedPointResourceMath.Format(playerCharacter?.MaxStamina ?? 0)}\n" +
             "InputAccepted: True\nPlayerTurn: True",
             playerCharacter);
-        // CODEXLOG003_ACTIONS_AAM: temporary combat AP ownership diagnostic.
-        ActionAAMDiagnosticsLogger.LogEvent("[AP RESET]", "CombatTurnManager.OnPlayerTurnStart synced player character AP",
-            $"PlayerStats.ActionPoints after reset: {PlayerStats.Instance.ActionPoints}\n" +
-            $"PlayerCharacter.ActionPoints before sync: {characterAPBeforeReset}\n" +
-            $"PlayerCharacter.ActionPoints after sync: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"PlayerStats.MovePoints after reset: {PlayerStats.Instance.MovePoints}");
-        CombatActionResolutionDiagnosticsLogger.LogEvent("[AP RESET]", "CombatTurnManager.OnPlayerTurnStart synced player combat resources",
-            $"PlayerStatsAPBeforeReset={playerStatsAPBeforeReset}\n" +
-            $"PlayerStatsAPAfterReset={PlayerStats.Instance.ActionPoints}\n" +
-            $"CharacterAPBeforeReset={characterAPBeforeReset}\n" +
-            $"CharacterAPAfterReset={playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"PlayerStatsMPBeforeReset={playerStatsMPBeforeReset}\n" +
-            $"PlayerStatsMPAfterReset={PlayerStats.Instance.MovePoints}\n" +
-            $"CharacterMPBeforeReset={characterMPBeforeReset}\n" +
-            $"CharacterMPAfterReset={playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
+        CombatActionResolutionDiagnosticsLogger.LogEvent("[TURN START]", "CombatTurnManager.OnPlayerTurnStart synced player combat resources",
             $"PlayerStatsCombatExertionBeforeReset={FixedPointResourceMath.Format(playerStatsCombatExertionBeforeReset)}\n" +
             $"PlayerStatsCombatExertionAfterReset={FixedPointResourceMath.Format(PlayerStats.Instance.CombatExertion)}\n" +
             $"CharacterCombatExertionBeforeReset={FixedPointResourceMath.Format(characterCombatExertionBeforeReset)}\n" +
@@ -176,17 +141,11 @@ public class CombatTurnManager : BaseTurnManager
             $"ResetSource=CombatTurnManager.OnPlayerTurnStart",
             playerCharacter);
         LogTurnOrderDiagnostic("[COMBAT TURN ORDER]", "CombatTurnManager.OnPlayerTurnStart resources reset",
-            $"PlayerStats.ActionPoints: {PlayerStats.Instance.ActionPoints}\n" +
-            $"PlayerStats.MovePoints: {PlayerStats.Instance.MovePoints}\n" +
-            $"PlayerCharacter.ActionPoints: {playerCharacter?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"PlayerCharacter.MovePoints: {playerCharacter?.MovePoints.ToString() ?? "NULL"}\n" +
             $"PlayerCharacter.CombatExertion: {FixedPointResourceMath.Format(playerCharacter?.CurrentCombatExertion ?? 0)}\n" +
             $"PlayerCharacter.ConsumptionCapacity: {playerCharacter?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
             "InputAccepted: True\nPlayerTurn: True");
         MessageLogManager.Instance?.Log("combat_player_turn",
-            playerCharacter != null ? playerCharacter.Name : "Player",
-            PlayerStats.Instance.ActionPoints,
-            PlayerStats.Instance.MovePoints);
+            playerCharacter != null ? playerCharacter.Name : "Player");
         PlayerController.Instance.UpdateAdaptiveActionMenu();
 
         OnPlayerTurn?.Invoke();
@@ -201,7 +160,7 @@ public class CombatTurnManager : BaseTurnManager
             return;
         }
 
-        if (!npc.IsCombatActorAvailable() || !npc.InCombat)
+        if (!npc.IsCombatActorAvailable())
         {
             CombatActionResolutionDiagnosticsLogger.LogWarning("CombatTurnManager.OnNPCTurnExecute skipped invalid combatant",
                 $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
@@ -214,23 +173,23 @@ public class CombatTurnManager : BaseTurnManager
             return;
         }
 
-        if ((npc.IsHostile || npc.Stance == NPCStance.Hostile) &&
-            !npc.TryRefreshCombatTarget("CombatTurnManager.OnNPCTurnExecute hostile actor validation", out Character replacementTarget))
+        if (npc.IsHostile || npc.Stance == NPCStance.Hostile)
         {
-            npc.IsHostile = false;
-            npc.InCombat = false;
-            npc.Stance = NPCStance.Default;
-            npc.stateMachine?.HandleStanceChange(npc.Stance);
-            CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "CombatTurnManager.OnNPCTurnExecute removed hostile combatant with no valid target",
-                $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
-                $"ReplacementTarget={replacementTarget?.Name ?? "NULL"}\n" +
-                $"IsHostileAfter={npc.IsHostile}\n" +
-                $"StanceAfter={npc.Stance}\n" +
-                $"InCombatAfter={npc.InCombat}",
-                npc);
-            DeregisterCharacter(npc);
-            TurnOrchestrator.Instance?.TryUpdateTurnContext();
-            return;
+            if (!npc.TryRefreshCombatTarget("CombatTurnManager.OnNPCTurnExecute hostile actor validation", out Character replacementTarget))
+            {
+                npc.SetCombatParticipationState(CombatParticipationState.Searching, "CombatTurnManager.OnNPCTurnExecute hostile actor validation found no target.");
+                CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "CombatTurnManager.OnNPCTurnExecute retained hostile combatant without target",
+                    $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
+                    $"ReplacementTarget={replacementTarget?.Name ?? "NULL"}\n" +
+                    $"IsHostileAfter={npc.IsHostile}\n" +
+                    $"StanceAfter={npc.Stance}\n" +
+                    $"CombatParticipationAfter={npc.CombatParticipation}",
+                    npc);
+            }
+            else
+            {
+                npc.SetCombatParticipationState(CombatParticipationState.Engaged, "CombatTurnManager.OnNPCTurnExecute refreshed hostile target.");
+            }
         }
 
         UIController.Instance.UpdateTurnOrderUI();
@@ -243,41 +202,27 @@ public class CombatTurnManager : BaseTurnManager
         LogCombatActorTurnMessage(npc);
 
         Vector2Int positionBefore = npc != null ? npc.NestedMapPosition : Vector2Int.zero;
-        int apBefore = npc != null ? npc.ActionPoints : -1;
-        int mpBeforeReset = npc != null ? npc.MovePoints : -1;
         int combatExertionBeforeReset = npc != null ? npc.CurrentCombatExertion : -1;
-        int maxMovePoints = npc != null ? npc.MaxMovePoints : -1;
 
         if (npc != null)
         {
-            npc.ResetMovePointsForTurn();
             npc.ResetCombatExertionForTurn("CombatTurnManager.OnNPCTurnExecute");
             npc.ResetConsumptionCapacityForTurn("CombatTurnManager.OnNPCTurnExecute");
         }
 
-        int mpAfterReset = npc != null ? npc.MovePoints : -1;
-        int apAfterMovementReset = npc != null ? npc.ActionPoints : -1;
         // CODEXLOG002_MOVEMENT_AI: temporary NPC combat movement-resource diagnostic.
-        MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "CombatTurnManager.OnNPCTurnExecute movement point reset",
-            $"Movement points before combat NPC turn reset: {mpBeforeReset}\n" +
-            $"Movement points after combat NPC turn reset: {mpAfterReset}\n" +
-            $"MaxMovePoints used: {maxMovePoints}\n" +
-            $"AP before combat NPC turn reset: {apBefore}\n" +
-            $"AP after combat NPC turn reset: {apAfterMovementReset}\n" +
+        MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "CombatTurnManager.OnNPCTurnExecute combat resource reset",
             $"CombatExertion before combat NPC turn reset: {FixedPointResourceMath.Format(combatExertionBeforeReset)}\n" +
             $"CombatExertion after combat NPC turn reset: {FixedPointResourceMath.Format(npc?.CurrentCombatExertion ?? 0)}\n" +
             $"ConsumptionCapacity after combat NPC turn reset: {npc?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
-            "Reset source/method: CombatTurnManager.OnNPCTurnExecute -> Character.ResetMovePointsForTurn\n" +
-            "ExecuteTurnActions will reset AP: True",
+            "Reset source/method: CombatTurnManager.OnNPCTurnExecute -> Character.ResetCombatExertionForTurn",
             npc);
 
         // CODEXLOG002_MOVEMENT_AI: temporary combat entity-turn movement diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[ENTITY TURN]", "CombatTurnManager.OnNPCTurnExecute begin",
             $"Calling ExecuteTurnActions: {npc != null}\n" +
             $"Position before: {positionBefore}\n" +
-            $"AP before: {apBefore}\n" +
-            $"MP before reset: {mpBeforeReset}\n" +
-            $"MP after reset: {mpAfterReset}",
+            $"CombatExertion before reset: {FixedPointResourceMath.Format(combatExertionBeforeReset)}",
             npc);
 
         npc.ExecuteTurnActions();
@@ -310,15 +255,10 @@ public class CombatTurnManager : BaseTurnManager
             $"Position before: {positionBefore}\n" +
             $"Position after: {npc?.NestedMapPosition.ToString() ?? "NULL"}\n" +
             $"Position changed: {npc != null && npc.NestedMapPosition != positionBefore}\n" +
-            $"AP before: {apBefore}\n" +
-            $"AP after: {npc?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"MP before reset: {mpBeforeReset}\n" +
-            $"MP after reset: {mpAfterReset}\n" +
-            $"MP after: {npc?.MovePoints.ToString() ?? "NULL"}\n" +
             $"CombatExertion after: {FixedPointResourceMath.Format(npc?.CurrentCombatExertion ?? 0)}",
             npc);
 
-        if (!npc.IsCombatActorAvailable() || !npc.InCombat)
+        if (!npc.IsCombatActorAvailable())
         {
             CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "CombatTurnManager.OnNPCTurnExecute deregistered actor after turn",
                 $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
@@ -392,7 +332,7 @@ public class CombatTurnManager : BaseTurnManager
     private void PruneInvalidCombatants(string source)
     {
         List<Character> invalidCombatants = DiagnosticGetRegisteredCharactersSnapshot()
-            .Where(character => character == null || !character.IsAlive || !character.IsActive || !character.InCombat)
+            .Where(character => character == null || !character.IsAlive || !character.IsActive)
             .ToList();
 
         foreach (Character combatant in invalidCombatants)
@@ -417,16 +357,28 @@ public class CombatTurnManager : BaseTurnManager
     {
         Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
         bool hasPlayer = DiagnosticGetRegisteredCharactersSnapshot()
-            .Any(character => character != null && character == playerCharacter && character.IsAlive && character.IsActive && character.InCombat);
+            .Any(character => character != null && character == playerCharacter && character.IsAlive && character.IsActive);
         bool hasOtherCombatant = DiagnosticGetRegisteredCharactersSnapshot()
             .Any(character => character != null &&
                               character != playerCharacter &&
                               character.IsAlive &&
                               character.IsActive &&
-                              character.InCombat &&
-                              (character.IsHostile || character.Stance == NPCStance.Hostile || playerCharacter?.Target == character || character.Target == playerCharacter));
+                              (IsCombatConflictParticipant(character) ||
+                               character.IsHostile ||
+                               character.Stance == NPCStance.Hostile ||
+                               playerCharacter?.Target == character ||
+                               character.Target == playerCharacter));
 
         return hasPlayer && hasOtherCombatant;
+    }
+
+    private static bool IsCombatConflictParticipant(Character character)
+    {
+        return character != null &&
+               (character.CombatParticipation == CombatParticipationState.Engaged ||
+                character.CombatParticipation == CombatParticipationState.Assisting ||
+                character.CombatParticipation == CombatParticipationState.Fleeing ||
+                character.CombatParticipation == CombatParticipationState.Searching);
     }
 
     protected override bool ShouldAutoStartNextCycle()

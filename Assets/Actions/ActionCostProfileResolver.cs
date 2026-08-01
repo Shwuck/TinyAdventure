@@ -212,18 +212,18 @@ public static class ActionCostProfileResolver
             IsFree = false,
             WorldTimeCost = isCombatContext ? 0 : DefaultMovementWorldTimeCost,
             LegacyActionPointCost = 0,
-            LegacyMovePointCost = DefaultMovementLegacyMovePointCost,
+            LegacyMovePointCost = 0,
             StaminaCost = 0,
-            CombatExertionCost = isCombatContext ? FixedPointResourceMath.FromPoints(1f) : null,
+            CombatExertionCost = isCombatContext ? FixedPointResourceMath.FromPoints(1f) : 0,
             CanOverexert = true,
             EndsPlayerTurn = !isCombatContext,
-            CandidateForFutureStamina = true,
-            PredictedStaminaCost = DefaultMovementPredictedStaminaCost,
+            CandidateForFutureStamina = false,
+            PredictedStaminaCost = UnknownPredictedStaminaCost,
             IsContextual = false,
             CostLabel = string.Empty,
             Notes = isCombatContext
-                ? "Combat movement currently spends MP and keeps the combat turn open. Predicted stamina is metadata only."
-                : "Exploration movement currently advances world time and completes the player turn. Predicted stamina is metadata only."
+                ? "Combat movement spends one combat exertion per step and remains flexible while affordable."
+                : "Exploration movement is free, triggers an exploration cycle, and does not spend stamina or exertion."
         };
     }
 
@@ -231,9 +231,9 @@ public static class ActionCostProfileResolver
     {
         return new ActionCostProfile
         {
-            MigrationState = ActionEconomyMigrationState.Legacy,
+            MigrationState = ActionEconomyMigrationState.TypedActionEconomy,
             ExplorationBehaviour = isCombatContext ? ExplorationActionBehaviour.Unavailable : ExplorationActionBehaviour.Committed,
-            CombatBehaviour = CombatActionBehaviour.Unavailable,
+            CombatBehaviour = isCombatContext ? CombatActionBehaviour.Committed : CombatActionBehaviour.Unavailable,
             IsFree = false,
             WorldTimeCost = isCombatContext ? 0 : 1,
             LegacyActionPointCost = 0,
@@ -245,7 +245,7 @@ public static class ActionCostProfileResolver
             CandidateForFutureStamina = false,
             PredictedStaminaCost = 0,
             IsContextual = false,
-            CostLabel = "Ends turn",
+            CostLabel = string.Empty,
             Notes = isCombatContext
                 ? "Combat End Turn is a turn-completion control, not a stamina-spending action. Future versions may use it for recovery."
                 : "Exploration Wait is a time-costing turn-completion action, not a stamina-spending action. Future versions may use it for recovery."
@@ -316,6 +316,11 @@ public static class ActionCostProfileResolver
             return BuildTypedRecoveryProfile();
         }
 
+        if (interaction is MagicInteraction)
+        {
+            return BuildTypedMagicProfile(isCombatContext);
+        }
+
         if (interaction is InspectInteraction ||
             interaction is InspectNPCInteraction ||
             interaction is TalkInteraction)
@@ -363,7 +368,7 @@ public static class ActionCostProfileResolver
                 CombatBehaviour = CombatActionBehaviour.Flexible,
                 IsFree = false,
                 WorldTimeCost = 0,
-                LegacyActionPointCost = rawCost > 0 ? rawCost : CombatResolver.DefaultPhysicalAttackActionPointCost,
+                LegacyActionPointCost = 0,
                 LegacyMovePointCost = 0,
                 StaminaCost = DefaultPhysicalAttackPredictedStaminaCost,
                 CombatExertionCost = null,
@@ -372,32 +377,14 @@ public static class ActionCostProfileResolver
                 CandidateForFutureStamina = true,
                 PredictedStaminaCost = DefaultPhysicalAttackPredictedStaminaCost,
                 IsContextual = false,
-                CostLabel = FormatActionPointLabel(rawCost > 0 ? rawCost : CombatResolver.DefaultPhysicalAttackActionPointCost),
-                Notes = "Shared physical combat action. Current AP semantics stay live; predicted stamina is metadata only."
+                CostLabel = string.Empty,
+                Notes = "Shared physical combat action. Stamina is authoritative and combat exertion inherits from stamina."
             };
         }
 
         if (IsMagicCombatAction(normalizedActionName))
         {
-            return new ActionCostProfile
-            {
-                MigrationState = ActionEconomyMigrationState.Legacy,
-                ExplorationBehaviour = ExplorationActionBehaviour.Unavailable,
-                CombatBehaviour = CombatActionBehaviour.Unavailable,
-                IsFree = false,
-                WorldTimeCost = rawCost,
-                LegacyActionPointCost = rawCost,
-                LegacyMovePointCost = 0,
-                StaminaCost = 0,
-                CombatExertionCost = 0,
-                CanOverexert = false,
-                EndsPlayerTurn = false,
-                CandidateForFutureStamina = false,
-                PredictedStaminaCost = UnknownPredictedStaminaCost,
-                IsContextual = true,
-                CostLabel = rawCost > 0 ? FormatActionPointLabel(rawCost) : string.Empty,
-                Notes = "Magic action remains AP-backed today and also advances world time in its direct execution path. Future stamina use is intentionally left uncertain in this pass."
-            };
+            return BuildTypedMagicProfile(isCombatContext);
         }
 
         if (IsContextualZeroCostInteraction(normalizedActionName, rawCost))
@@ -409,7 +396,7 @@ public static class ActionCostProfileResolver
                 CombatBehaviour = CombatActionBehaviour.Free,
                 IsFree = false,
                 WorldTimeCost = 0,
-                LegacyActionPointCost = rawCost,
+                LegacyActionPointCost = 0,
                 LegacyMovePointCost = 0,
                 StaminaCost = 0,
                 CombatExertionCost = 0,
@@ -433,7 +420,7 @@ public static class ActionCostProfileResolver
                 CombatBehaviour = CombatActionBehaviour.Unavailable,
                 IsFree = false,
                 WorldTimeCost = interaction.Type == InteractionType.Combat ? 0 : rawCost,
-                LegacyActionPointCost = rawCost,
+                LegacyActionPointCost = 0,
                 LegacyMovePointCost = 0,
                 StaminaCost = candidateForFutureStamina ? GetPredictedWorkStaminaCost(normalizedActionName) : 0,
                 CombatExertionCost = candidateForFutureStamina ? null : 0,
@@ -442,12 +429,10 @@ public static class ActionCostProfileResolver
                 CandidateForFutureStamina = candidateForFutureStamina,
                 PredictedStaminaCost = candidateForFutureStamina ? GetPredictedWorkStaminaCost(normalizedActionName) : 0,
                 IsContextual = false,
-                CostLabel = interaction.Type == InteractionType.Combat && isCombatContext
-                    ? FormatActionPointLabel(rawCost)
-                    : "Takes time",
+                CostLabel = string.Empty,
                 Notes = interaction.Type == InteractionType.Combat
-                    ? "Combat interaction remains AP-backed."
-                    : "Legacy ActionPointCost is currently overloaded here as both AP-style gate and world-time progress. Predicted stamina is metadata only."
+                    ? "Combat interaction is resolved by the typed combat authority."
+                    : "Legacy interaction uses structured turn behaviour and world-time progression only."
             };
         }
 
@@ -510,7 +495,7 @@ public static class ActionCostProfileResolver
                 CombatBehaviour = CombatActionBehaviour.Free,
                 IsFree = false,
                 WorldTimeCost = 0,
-                LegacyActionPointCost = rawCost,
+                LegacyActionPointCost = 0,
                 LegacyMovePointCost = 0,
                 StaminaCost = 0,
                 CombatExertionCost = 0,
@@ -534,19 +519,19 @@ public static class ActionCostProfileResolver
             CombatBehaviour = CombatActionBehaviour.Unavailable,
             IsFree = false,
             WorldTimeCost = rawCost,
-            LegacyActionPointCost = rawCost,
+            LegacyActionPointCost = 0,
             LegacyMovePointCost = 0,
             StaminaCost = candidateForFutureStamina ? GetPredictedWorkStaminaCost(normalizedActionName) : 0,
             CombatExertionCost = candidateForFutureStamina ? null : 0,
             CanOverexert = true,
             EndsPlayerTurn = rawCost > 0 && !isCombatContext,
             CandidateForFutureStamina = candidateForFutureStamina,
-            PredictedStaminaCost = predictedCost,
-            IsContextual = false,
-            CostLabel = rawCost > 0 ? "Takes time" : string.Empty,
-            Notes = candidateForFutureStamina
-                ? "Physical work/travel-like environmental action. Predicted stamina is metadata only."
-                : "Time-costing environmental action. Current AP/turn semantics stay live; predicted stamina is metadata only."
+                PredictedStaminaCost = predictedCost,
+                IsContextual = false,
+                CostLabel = rawCost > 0 ? "Takes time" : string.Empty,
+                Notes = candidateForFutureStamina
+                    ? "Physical work/travel-like environmental action. Predicted stamina is metadata only."
+                : "Time-costing environmental action. Legacy turn semantics stay live; predicted stamina is metadata only."
         };
     }
 
@@ -572,7 +557,7 @@ public static class ActionCostProfileResolver
             CombatBehaviour = CombatActionBehaviour.Flexible,
             IsFree = false,
             WorldTimeCost = 0,
-            LegacyActionPointCost = ClampNonNegative(context.ActionPointCost),
+            LegacyActionPointCost = 0,
             LegacyMovePointCost = 0,
             StaminaCost = futureStaminaCandidate ? DefaultPhysicalAttackPredictedStaminaCost : 0,
             CombatExertionCost = futureStaminaCandidate ? null : 0,
@@ -581,7 +566,7 @@ public static class ActionCostProfileResolver
             CandidateForFutureStamina = futureStaminaCandidate,
             PredictedStaminaCost = predictedStaminaCost,
             IsContextual = context.Category == AttackCategory.Magic || context.Category == AttackCategory.Ability,
-            CostLabel = FormatActionPointLabel(ClampNonNegative(context.ActionPointCost)),
+            CostLabel = string.Empty,
             Notes = futureStaminaCandidate
                 ? "Shared physical attack path. Predicted stamina cost is metadata only and is not enforced."
                 : "Shared attack path with non-physical category. Future stamina use remains intentionally uncertain."
@@ -636,7 +621,7 @@ public static class ActionCostProfileResolver
         };
     }
 
-    private static ActionCostProfile BuildTypedPhysicalCombatProfile(int legacyActionPointCost, bool isCombatContext)
+    private static ActionCostProfile BuildTypedPhysicalCombatProfile(int legacyTurnCostHint, bool isCombatContext)
     {
         return new ActionCostProfile
         {
@@ -645,7 +630,7 @@ public static class ActionCostProfileResolver
             CombatBehaviour = CombatActionBehaviour.Flexible,
             IsFree = false,
             WorldTimeCost = 0,
-            LegacyActionPointCost = legacyActionPointCost,
+            LegacyActionPointCost = legacyTurnCostHint,
             LegacyMovePointCost = 0,
             StaminaCost = FixedPointResourceMath.FromPoints(5f),
             CombatExertionCost = isCombatContext ? null : 0,
@@ -655,7 +640,7 @@ public static class ActionCostProfileResolver
             CandidateForFutureStamina = true,
             PredictedStaminaCost = FixedPointResourceMath.FromPoints(5f),
             IsContextual = false,
-            CostLabel = legacyActionPointCost > 0 ? FormatActionPointLabel(legacyActionPointCost) : string.Empty,
+            CostLabel = string.Empty,
             Notes = "Typed physical combat action. Stamina is authoritative and combat exertion inherits from stamina."
         };
     }
@@ -696,7 +681,7 @@ public static class ActionCostProfileResolver
             LegacyActionPointCost = 0,
             LegacyMovePointCost = 0,
             StaminaCost = 0,
-            CombatExertionCost = FixedPointResourceMath.FromPoints(1f),
+            CombatExertionCost = FixedPointResourceMath.FromPoints(3f),
             ConsumptionCapacityCost = 0,
             CanOverexert = true,
             EndsPlayerTurn = false,
@@ -720,7 +705,7 @@ public static class ActionCostProfileResolver
             LegacyActionPointCost = 0,
             LegacyMovePointCost = 0,
             StaminaCost = 0,
-            CombatExertionCost = 0,
+            CombatExertionCost = FixedPointResourceMath.FromPoints(1f),
             ConsumptionCapacityCost = 0,
             CanOverexert = true,
             EndsPlayerTurn = false,
@@ -729,6 +714,30 @@ public static class ActionCostProfileResolver
             IsContextual = false,
             CostLabel = string.Empty,
             Notes = "Typed tactical equipment action. Exploration is free; combat spends one combat exertion."
+        };
+    }
+
+    private static ActionCostProfile BuildTypedMagicProfile(bool isCombatContext)
+    {
+        return new ActionCostProfile
+        {
+            MigrationState = ActionEconomyMigrationState.TypedActionEconomy,
+            ExplorationBehaviour = ExplorationActionBehaviour.Unavailable,
+            CombatBehaviour = isCombatContext ? CombatActionBehaviour.Flexible : CombatActionBehaviour.Unavailable,
+            IsFree = false,
+            WorldTimeCost = 0,
+            LegacyActionPointCost = 0,
+            LegacyMovePointCost = 0,
+            StaminaCost = 0,
+            CombatExertionCost = FixedPointResourceMath.FromPoints(2f),
+            ConsumptionCapacityCost = 0,
+            CanOverexert = true,
+            EndsPlayerTurn = false,
+            CandidateForFutureStamina = false,
+            PredictedStaminaCost = UnknownPredictedStaminaCost,
+            IsContextual = true,
+            CostLabel = string.Empty,
+            Notes = "Typed magic combat action. Uses combat exertion only and does not spend physical stamina."
         };
     }
 
@@ -761,14 +770,14 @@ public static class ActionCostProfileResolver
         return new ActionCostProfile
         {
             MigrationState = ActionEconomyMigrationState.TypedActionEconomy,
-            ExplorationBehaviour = ExplorationActionBehaviour.TriggerCycle,
+            ExplorationBehaviour = ExplorationActionBehaviour.Free,
             CombatBehaviour = CombatActionBehaviour.Flexible,
             IsFree = false,
             WorldTimeCost = 0,
             LegacyActionPointCost = 0,
             LegacyMovePointCost = 0,
             StaminaCost = 0,
-            CombatExertionCost = null,
+            CombatExertionCost = FixedPointResourceMath.FromPoints(1f),
             ConsumptionCapacityCost = 1,
             CanOverexert = true,
             EndsPlayerTurn = false,
@@ -859,11 +868,6 @@ public static class ActionCostProfileResolver
     private static int ClampNonNegative(int value)
     {
         return Mathf.Max(0, value);
-    }
-
-    private static string FormatActionPointLabel(int actionPointCost)
-    {
-        return actionPointCost > 0 ? $"{actionPointCost} AP" : string.Empty;
     }
 
     private static bool IsFreeInformationalInteraction(IInteraction interaction, string normalizedActionName)

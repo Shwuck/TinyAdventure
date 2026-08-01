@@ -48,9 +48,11 @@ public enum CharacterWorldDecisionType
     None,
     MoveTowardsCandidate,
     UseAffordanceInPlace,
+    PerformedAction,
     IntentionalIdle,
     WanderFallback,
     FailedMovement,
+    NoActionAvailable,
     SkippedCannotAct
 }
 
@@ -134,9 +136,17 @@ public sealed class CharacterDecisionResult
     public CharacterInterestTag SelectedInterest { get; set; }
     public InterestCandidate SelectedCandidate { get; set; }
     public int CandidateCount { get; set; }
+    public bool WasAttempted { get; set; }
+    public bool WasCommitted { get; set; }
+    public bool PositionChanged { get; set; }
+    public bool ChangedWorldState { get; set; }
     public bool MovementAttempted { get; set; }
     public bool MovementSucceeded { get; set; }
     public bool RandomWanderSelected { get; set; }
+    public bool MayContinueCombatTurn { get; set; }
+    public bool EndsOpportunity { get; set; } = true;
+    public bool ModeTransitionPending { get; set; }
+    public string ActionName { get; set; }
     public string Reason { get; set; }
 }
 
@@ -389,6 +399,19 @@ public static class CharacterDecisionResolver
         result.CandidateCount = candidates.Count;
         InterestCandidate selectedCandidate = candidates.FirstOrDefault();
 
+        if (selectedCandidate == null)
+        {
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "CharacterDecisionResolver.ResolveWorldDecision candidate starvation",
+                $"Profile={profile.ProfileId}\n" +
+                $"ProfileSource={profile.SourceDescription}\n" +
+                $"Interests={profile.FormatInterests()}\n" +
+                $"AllowsRandomWanderFallback={profile.AllowsRandomWanderFallback}\n" +
+                $"CurrentArea={actor.CurrentNestedArea?.Name ?? "NULL"}\n" +
+                $"CandidateCount=0\n" +
+                $"Reason=No matching world affordance was generated for this actor profile.",
+                actor);
+        }
+
         if (selectedCandidate != null)
         {
             result.SelectedCandidate = selectedCandidate;
@@ -398,26 +421,29 @@ public static class CharacterDecisionResolver
             {
                 result.DecisionType = CharacterWorldDecisionType.UseAffordanceInPlace;
                 result.TurnDecisionResult = CharacterTurnDecisionResult.PerformedAction;
+                result.WasAttempted = true;
+                result.WasCommitted = true;
+                result.ChangedWorldState = true;
+                result.EndsOpportunity = true;
+                result.MayContinueCombatTurn = false;
+                result.ActionName = selectedCandidate.SourceName;
                 result.Reason = $"Used {selectedCandidate.SourceName} for {selectedCandidate.MatchingInterest} without moving.";
                 LogDecision(actor, result);
                 return result;
             }
 
             result.MovementAttempted = true;
-
-            if (actor.MovePoints <= 0)
-            {
-                result.DecisionType = CharacterWorldDecisionType.FailedMovement;
-                result.TurnDecisionResult = CharacterTurnDecisionResult.FailedMovement;
-                result.Reason = $"Selected {selectedCandidate.SourceName} for {selectedCandidate.MatchingInterest}, but no MovePoints remained.";
-                LogDecision(actor, result);
-                return result;
-            }
+            result.WasAttempted = true;
+            result.ActionName = $"MoveTowards_{selectedCandidate.SourceName}";
 
             bool moved = actor.MoveTowards(selectedCandidate.TargetPosition);
             result.MovementSucceeded = moved;
+            result.PositionChanged = moved;
+            result.WasCommitted = moved;
+            result.ChangedWorldState = moved;
             result.DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement;
             result.TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement;
+            result.WasCommitted = moved;
             result.Reason = moved
                 ? $"Moved toward {selectedCandidate.SourceName} for {selectedCandidate.MatchingInterest}."
                 : $"Could not move toward {selectedCandidate.SourceName} for {selectedCandidate.MatchingInterest}.";
@@ -456,15 +482,22 @@ public static class CharacterDecisionResolver
 
     private static void ResolveIdleFallback(Character actor, CharacterDecisionProfile profile, CharacterDecisionResult result)
     {
-        if (profile.AllowsRandomWanderFallback && actor.MovePoints > 0 && UnityEngine.Random.value < 0.2f)
+        if (profile.AllowsRandomWanderFallback && UnityEngine.Random.value < 0.2f)
         {
             result.MovementAttempted = true;
             result.RandomWanderSelected = true;
+            result.WasAttempted = true;
+            result.ActionName = "RandomWander";
 
             bool moved = actor.MoveInRandomDirection();
             result.MovementSucceeded = moved;
+            result.PositionChanged = moved;
+            result.WasCommitted = moved;
+            result.ChangedWorldState = moved;
             result.DecisionType = moved ? CharacterWorldDecisionType.WanderFallback : CharacterWorldDecisionType.IntentionalIdle;
             result.TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.Idled;
+            result.WasCommitted = moved;
+            result.EndsOpportunity = true;
             result.Reason = moved
                 ? "No stronger world affordance was available, so the actor chose one bounded wander step."
                 : "No stronger world affordance was available; wander fallback was considered but no valid move existed.";
@@ -473,6 +506,10 @@ public static class CharacterDecisionResolver
 
         result.DecisionType = CharacterWorldDecisionType.IntentionalIdle;
         result.TurnDecisionResult = CharacterTurnDecisionResult.Idled;
+        result.WasAttempted = true;
+        result.WasCommitted = true;
+        result.EndsOpportunity = true;
+        result.ActionName = "IntentionalIdle";
         result.Reason = "No matching world affordance was found, so the actor intentionally idled.";
     }
 

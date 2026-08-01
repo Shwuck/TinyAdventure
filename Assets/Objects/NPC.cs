@@ -50,7 +50,6 @@ public class NPC : Character
         Status = NPCStatus.Idling;
         IsPassable = false;
         Speed = Mathf.Max(1, Speed);
-        ActionPoints = MaxActionPoints;
         CurrentNeed = new Need();
 
         InitializeInteractions();

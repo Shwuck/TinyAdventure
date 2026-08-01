@@ -19,9 +19,6 @@ public class AttackContext
     public AttackCategory Category { get; set; }
     public DamageType RequestedDamageType { get; set; }
     public Item Weapon { get; set; }
-    public int ActionPointCost { get; set; } = CombatResolver.DefaultPhysicalAttackActionPointCost;
-    public string ActionPointSpendSource { get; set; } = "Character.PerformAttack";
-    public bool SpendActionPoints { get; set; } = true;
     public bool ApplyOnHitEffects { get; set; } = true;
     public bool IsPlayerControlled { get; set; }
 }
@@ -87,10 +84,6 @@ public class AttackResult
     public bool DefenderWasActiveBefore { get; set; }
     public bool DefenderIsActiveAfter { get; set; }
     public bool DeathOccurred { get; set; }
-    public int AttackerActionPointsBefore { get; set; }
-    public int AttackerActionPointsAfter { get; set; }
-    public int ActionPointsSpent { get; set; }
-    public string ActionPointSpendSource { get; set; }
     public bool OnHitEffectsApplied { get; set; }
     public bool WeaponOnHitEffectsApplied { get; set; }
     public bool OnHitTakenEffectsPresent { get; set; }
@@ -113,8 +106,6 @@ public class AttackResult
 
 public static class CombatResolver
 {
-    public const int DefaultPhysicalAttackActionPointCost = 2;
-
     public static AttackContext CreatePhysicalAttackContext(Character attacker, Character defender, DamageType requestedDamageType, string sourceActionName = null)
     {
         Item weapon = attacker != null ? attacker.GetMainHandItem() : null;
@@ -128,9 +119,6 @@ public static class CombatResolver
             SourceActionName = sourceActionName ?? CombatActionResolutionDiagnosticsLogger.InferActionName(attacker, requestedDamageType),
             Category = weapon != null ? AttackCategory.Weapon : isNaturalAttack ? AttackCategory.Natural : AttackCategory.Unarmed,
             Weapon = weapon,
-            ActionPointCost = DefaultPhysicalAttackActionPointCost,
-            ActionPointSpendSource = "Character.PerformAttack",
-            SpendActionPoints = true,
             ApplyOnHitEffects = true,
             IsPlayerControlled = attacker != null && attacker == PlayerStats.Instance?.CurrentPlayerCharacter
         };
@@ -146,7 +134,6 @@ public static class CombatResolver
             Category = context != null ? context.Category : AttackCategory.Unarmed,
             RequestedDamageType = context != null ? context.RequestedDamageType : DamageType.None,
             Weapon = context?.Weapon,
-            ActionPointSpendSource = context?.ActionPointSpendSource
         };
 
         if (!ValidateAttackContext(context, result, logFailure: true))
@@ -156,11 +143,7 @@ public static class CombatResolver
 
         Character attacker = context.Attacker;
         Character defender = context.Defender;
-        result.AttackerActionPointsBefore = attacker.ActionPoints;
         ActionCostProfile attackCostProfile = ActionCostProfileResolver.BuildForCombatAttackContext(context);
-        attackCostProfile.MigrationState = context.SpendActionPoints
-            ? ActionEconomyMigrationState.Legacy
-            : ActionEconomyMigrationState.TypedActionEconomy;
         ActionCostProfileResolver.LogPredictedCost("CombatResolver.ResolveAttack", result.ActionName, attackCostProfile, attacker);
 
         result.AccuracyValue = attacker.CalculateAccuracyAgainst(defender);
@@ -200,14 +183,6 @@ public static class CombatResolver
             }
         }
 
-        if (context.SpendActionPoints)
-        {
-            attacker.SpendActionPoints(context.ActionPointCost, context.ActionPointSpendSource);
-        }
-
-        result.AttackerActionPointsAfter = attacker.ActionPoints;
-        result.ActionPointsSpent = result.AttackerActionPointsBefore - result.AttackerActionPointsAfter;
-
         CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK RESOLVED]", "CombatResolver.ResolveAttack",
             $"ActionName={result.ActionName}\n" +
             $"RequestedDamageType={result.RequestedDamageType}\n" +
@@ -235,9 +210,6 @@ public static class CombatResolver
             $"ArmourValueUsed={result.ArmourValueUsed}\n" +
             $"BodyPartCoverageUsed={result.BodyPartCoverageUsed}\n" +
             $"DamageBreakdown={FormatDamageLines(result)}\n" +
-            $"APBefore={result.AttackerActionPointsBefore}\n" +
-            $"APAfter={result.AttackerActionPointsAfter}\n" +
-            $"APCostSource={result.ActionPointSpendSource}\n" +
             $"HealthBefore={result.DefenderHealthBefore}\n" +
             $"HealthAfter={result.DefenderHealthAfter}\n" +
             $"DeathOccurred={result.DeathOccurred}\n" +
@@ -256,8 +228,7 @@ public static class CombatResolver
             ActionName = context?.SourceActionName ?? "Attack",
             Category = context != null ? context.Category : AttackCategory.Unarmed,
             RequestedDamageType = context != null ? context.RequestedDamageType : DamageType.None,
-            Weapon = context?.Weapon,
-            ActionPointSpendSource = context?.ActionPointSpendSource
+            Weapon = context?.Weapon
         };
 
         ValidateAttackContext(context, result, logFailure: true);
@@ -282,7 +253,6 @@ public static class CombatResolver
             $"ActionName={result?.ActionName ?? "Attack"}\n" +
             $"RequestedDamageType={result?.RequestedDamageType.ToString() ?? "None"}\n" +
             $"InvalidReason={result?.InvalidReason ?? "Unknown"}\n" +
-            $"APBefore={result?.AttackerActionPointsBefore.ToString() ?? "NULL"}\n" +
             $"AttackerState={DescribeCharacterState(result?.Attacker)}\n" +
             $"DefenderState={DescribeCharacterState(result?.Defender)}",
             result?.Attacker, result?.Defender);
@@ -328,7 +298,6 @@ public static class CombatResolver
 
         result.DidStart = true;
         result.IsValid = true;
-        result.AttackerActionPointsBefore = attacker.ActionPoints;
 
         if (!attacker.IsAlive)
         {
@@ -397,18 +366,6 @@ public static class CombatResolver
             if (logFailure)
             {
                 LogInvalidAttack(result, "CombatResolver.ResolveAttack rejected untargetable defender");
-            }
-
-            return false;
-        }
-
-        if (context.SpendActionPoints && attacker.ActionPoints < context.ActionPointCost)
-        {
-            result.IsValid = false;
-            result.InvalidReason = "Insufficient AP.";
-            if (logFailure)
-            {
-                LogInvalidAttack(result, "CombatResolver.ResolveAttack rejected due to insufficient AP");
             }
 
             return false;

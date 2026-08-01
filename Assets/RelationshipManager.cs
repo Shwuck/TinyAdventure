@@ -122,6 +122,7 @@ public static class RelationshipManager
             hostility.Source.Stance = NPCStance.Hostile;
             hostility.Source.Target = hostility.Target;
             hostility.Source.InCombat = true;
+            hostility.Source.SetCombatParticipationState(CombatParticipationState.Engaged, "Applied active local hostility.");
 
             // CODEXLOG004_RELATIONSHIPS: temporary relationship-to-combat-state diagnostic.
             RelationshipDiagnosticsLogger.LogEvent("[RELATIONSHIP HOSTILITY APPLIED]", "RelationshipManager.ApplyLocalHostilitiesToActorState",

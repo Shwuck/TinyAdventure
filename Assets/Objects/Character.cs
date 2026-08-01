@@ -16,6 +16,17 @@ public enum CharacterTurnDecisionResult
     TurnConsumed
 }
 
+public enum CombatParticipationState
+{
+    Uninvolved,
+    Unaware,
+    Aware,
+    Searching,
+    Fleeing,
+    Engaged,
+    Assisting
+}
+
 public class Character : IInteractable
 {
     #region Identification
@@ -81,6 +92,7 @@ public class Character : IInteractable
     public bool InCombat { get; set; }
     public Character Target { get; set; }
     public Character FollowTarget { get; set; }
+    public CombatParticipationState CombatParticipation { get; private set; } = CombatParticipationState.Uninvolved;
     public float RemainingTurnTime { get; set; } = 1.0f;
     public CharacterTurnDecisionResult LastTurnDecisionResult { get; private set; } = CharacterTurnDecisionResult.None;
     public string LastTurnDecisionReason { get; private set; } = "Unresolved";
@@ -101,12 +113,12 @@ public class Character : IInteractable
     public int ActionPoints { get; set; }
     public int MaxMovePoints = 2;
     public int MovePoints;
-    public int MaxStamina { get; private set; } = FixedPointResourceMath.DefaultMaximumStamina;
-    public int CurrentStamina { get; private set; } = FixedPointResourceMath.DefaultMaximumStamina;
-    public int MaxCombatExertion { get; private set; } = FixedPointResourceMath.DefaultMaximumCombatExertion;
-    public int CurrentCombatExertion { get; private set; }
-    public int MaxConsumptionCapacity { get; private set; } = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
-    public int CurrentConsumptionCapacity { get; private set; } = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+    public int MaxStamina { get; set; } = FixedPointResourceMath.DefaultMaximumStamina;
+    public int CurrentStamina { get; set; } = FixedPointResourceMath.DefaultMaximumStamina;
+    public int MaxCombatExertion { get; set; } = FixedPointResourceMath.DefaultMaximumCombatExertion;
+    public int CurrentCombatExertion { get; set; }
+    public int MaxConsumptionCapacity { get; set; } = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
+    public int CurrentConsumptionCapacity { get; set; } = FixedPointResourceMath.DefaultMaximumConsumptionCapacity;
     public int MinimumCurrentStamina => FixedPointResourceMath.DefaultMinimumCurrentStamina;
     public int BaseStaminaRegeneration => FixedPointResourceMath.BaseStaminaRegeneration;
     private int pendingStaminaRegenerationBonus;
@@ -471,6 +483,20 @@ public class Character : IInteractable
         return true;
     }
 
+    private bool TryCommitActionEconomy(ActionCostProfile profile, string source, out ActionCostCommitResult commitResult)
+    {
+        commitResult = null;
+
+        if (profile == null)
+        {
+            return false;
+        }
+
+        ActionCostCommitment commitment = ActionCostProfileResolver.CreateCommitment(profile, null, source);
+        commitResult = commitment.TryCommit(this, source);
+        return commitResult != null && commitResult.IsCommitted;
+    }
+
     public int GetModifiedMaximumCombatExertion(ActionEffortModifierSet modifiers = null)
     {
         ActionEffortModifierSet appliedModifiers = modifiers ?? ActionEffortModifierSet.None;
@@ -516,11 +542,16 @@ public class Character : IInteractable
         }
 
         int previousCurrentStamina = CurrentStamina;
-        CurrentStamina += amount;
-        ClampStamina($"{reason}:RegenerateStamina");
+        CurrentStamina = Mathf.Clamp(CurrentStamina + amount, MinimumCurrentStamina, MaxStamina);
         SyncPlayerStatsStaminaMirror();
 
-        LogStaminaInfo($"RegenerateStamina completed. Reason={reason}, Regen={FixedPointResourceMath.Format(amount)}, PreviousCurrent={FixedPointResourceMath.Format(previousCurrentStamina)}, Current={FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}");
+        string regenReason = previousCurrentStamina >= MaxStamina
+            ? "AlreadyAtMaximum"
+            : previousCurrentStamina < 0 && CurrentStamina >= 0
+                ? "DebtRepayment"
+                : "Applied";
+
+        GameDebugger.Instance.LogInfo($"{StaminaDiagnosticsTag} {Name}: STAMINA_REGEN Actor={Name} Reason={regenReason} Base={FixedPointResourceMath.Format(amount)} Bonus={FixedPointResourceMath.Format(0)} Requested={FixedPointResourceMath.Format(previousCurrentStamina + amount)} Applied={FixedPointResourceMath.Format(CurrentStamina - previousCurrentStamina)} Before={FixedPointResourceMath.Format(previousCurrentStamina)} After={FixedPointResourceMath.Format(CurrentStamina)}");
         return true;
     }
 
@@ -616,8 +647,8 @@ public class Character : IInteractable
 
     public void ResetMovePointsForTurn()
     {
-        // Centralized so future turn movement rules can account for status, species, injuries, encumbrance, terrain, or other modifiers.
-        MovePoints = MaxMovePoints;
+        // Legacy field retained for serialization compatibility only. Movement authority now comes from typed resource costs.
+        MovePoints = 0;
     }
 
     public void ResetTurnDecision()
@@ -634,16 +665,16 @@ public class Character : IInteractable
 
     public void ConsumeRemainingActionPointsForTurn(string source)
     {
-        if (ActionPoints <= 0)
-        {
-            return;
-        }
-
-        SpendActionPoints(ActionPoints, source);
+        GameDebugger.Instance.LogInfo($"{StaminaDiagnosticsTag} {Name}: ConsumeRemainingActionPointsForTurn is obsolete and no longer consumes AP. Source={source}");
     }
 
     private bool TryMove(Direction direction)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"{Name}.TryMove");
+
+        try
+        {
         Vector2Int sourcePosition = NestedMapPosition;
         Vector2Int targetPosition = NestedMapPosition + DirectionToVector(direction);
         int currentCellObjectCount = -1;
@@ -669,25 +700,13 @@ public class Character : IInteractable
             $"Source position: {sourcePosition}\n" +
             $"Target position: {targetPosition}\n" +
             $"Current area: {MovementAIDiagnosticsLogger.FormatArea(CurrentNestedArea)}\n" +
-            $"MovePoints before: {MovePoints}\n" +
+            $"Movement authority: TypedActionEconomy\n" +
             $"Target passable precheck: {targetPassable}\n" +
             $"Old cell occupant count: {currentCellObjectCount}\n" +
             $"New cell occupant count: {targetCellObjectCount}",
             this);
         // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
         NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_BEFORE_ENTITY_MOVE");
-
-        if (MovePoints <= 0)
-        {
-            GameDebugger.Instance.LogInfo($"{Name} cannot move {direction}; no MovePoints remain.");
-            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
-            MovementAIDiagnosticsLogger.LogWarning("Character.TryMove blocked",
-                $"Movement attempted: True\nBlocked reason: no MovePoints\nPosition changed: False\nPosition after: {NestedMapPosition}",
-                this);
-            // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
-            NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_AFTER_ENTITY_MOVE_BLOCKED_NO_MP");
-            return false;
-        }
 
         if (!IsValidMove(targetPosition))
         {
@@ -700,10 +719,19 @@ public class Character : IInteractable
             return false;
         }
 
-        ExecuteMovement(direction, targetPosition);
-        MovePoints--;
+        bool isCombatContext = IsCombatContext;
+        ActionCostProfile movementProfile = ActionCostProfileResolver.BuildForMovement(isCombatContext);
+        if (!TryCommitActionEconomy(movementProfile, $"{Name}.TryMove", out ActionCostCommitResult movementCommitResult))
+        {
+            MovementAIDiagnosticsLogger.LogWarning("Character.TryMove rejected typed movement commitment",
+                $"Movement attempted: True\nBlocked reason: Typed movement commitment rejected\nRejectionReason: {movementCommitResult?.RejectionReason ?? "Unknown"}\nPosition after: {NestedMapPosition}",
+                this);
+            NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_AFTER_ENTITY_MOVE_BLOCKED_TYPED_REJECT");
+            return false;
+        }
 
-        GameDebugger.Instance.LogInfo($"{Name} moved {direction} to {targetPosition}. Remaining MovePoints: {MovePoints}");
+        ExecuteMovement(direction, targetPosition);
+        GameDebugger.Instance.LogInfo($"{Name} moved {direction} to {targetPosition}. Movement committed via typed authority.");
         // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.TryMove end",
             $"Movement attempted: True\n" +
@@ -711,12 +739,17 @@ public class Character : IInteractable
             $"Position before: {sourcePosition}\n" +
             $"Position after: {NestedMapPosition}\n" +
             $"Position changed: {NestedMapPosition != sourcePosition}\n" +
-            $"MovePoints after: {MovePoints}\n" +
+            $"Movement profile: {movementProfile.MigrationState}/{movementProfile.ExplorationBehaviour}/{movementProfile.CombatBehaviour}\n" +
             $"Map refresh requested: False",
             this);
         // CODEXLOG002_MOVEMENT_AI: temporary nested map snapshot diagnostic.
         NestedMapDebugger.LogSnapshotForMovement(CurrentNestedArea, this, "SNAPSHOT_AFTER_ENTITY_MOVE");
         return true;
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"{Name}.TryMove");
+        }
     }
 
     private bool IsValidMove(Vector2Int targetPosition)
@@ -831,16 +864,6 @@ public class Character : IInteractable
 
     public bool MoveTowards(Vector2Int targetPos)
     {
-        if (MovePoints <= 0)
-        {
-            Debug.LogWarning($"{Name} has no MovePoints left to move.");
-            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
-            MovementAIDiagnosticsLogger.LogWarning("Character.MoveTowards blocked",
-                $"Target position: {targetPos}\nBlocked reason: no MovePoints",
-                this);
-            return false;
-        }
-
         // Determine the best direction to move towards target position
         Direction direction = GetDirection(NestedMapPosition, targetPos, true);
         // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
@@ -853,29 +876,20 @@ public class Character : IInteractable
     }
 
 
-    public void MoveRelativeToCharacter(Character target, bool moveTowards)
+    public bool MoveRelativeToCharacter(Character target, bool moveTowards)
     {
-        if (MovePoints <= 0)
-        {
-            // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
-            MovementAIDiagnosticsLogger.LogWarning("Character.MoveRelativeToCharacter blocked",
-                $"Target: {target?.Name ?? "NULL"}\nMoveTowards: {moveTowards}\nBlocked reason: no MovePoints",
-                this);
-            return;
-        }
-
         Direction direction = GetDirection(NestedMapPosition, target.NestedMapPosition, moveTowards);
         // CODEXLOG002_MOVEMENT_AI: temporary movement-attempt diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[MOVEMENT]", "Character.MoveRelativeToCharacter selected direction",
             $"Target: {target?.Name ?? "NULL"}\nTarget position: {target?.NestedMapPosition.ToString() ?? "NULL"}\nMoveTowards: {moveTowards}\nSelected direction: {direction}",
             this);
-        TryMove(direction);
+        return TryMove(direction);
     }
 
-    public void MoveTowardsPlayer() => MoveRelativeToCharacter(PlayerStats.Instance.CurrentPlayerCharacter, true);
-    public void MoveAwayFromPlayer() => MoveRelativeToCharacter(PlayerStats.Instance.CurrentPlayerCharacter, false);
-    public void MoveTowardsCharacter(Character otherCharacter) => MoveRelativeToCharacter(otherCharacter, true);
-    public void MoveAwayFromCharacter(Character otherCharacter) => MoveRelativeToCharacter(otherCharacter, false);
+    public bool MoveTowardsPlayer() => MoveRelativeToCharacter(PlayerStats.Instance.CurrentPlayerCharacter, true);
+    public bool MoveAwayFromPlayer() => MoveRelativeToCharacter(PlayerStats.Instance.CurrentPlayerCharacter, false);
+    public bool MoveTowardsCharacter(Character otherCharacter) => MoveRelativeToCharacter(otherCharacter, true);
+    public bool MoveAwayFromCharacter(Character otherCharacter) => MoveRelativeToCharacter(otherCharacter, false);
 
     public bool SimpleMovement(int cellsToMove, Direction direction)
     {
@@ -886,7 +900,7 @@ public class Character : IInteractable
             this);
         for (int i = 0; i < cellsToMove; i++)
         {
-            if (MovePoints <= 0 || !TryMove(direction))
+            if (!TryMove(direction))
             {
                 // CODEXLOG002_MOVEMENT_AI: temporary forced-movement diagnostic.
                 MovementAIDiagnosticsLogger.LogWarning("Character.SimpleMovement failed",
@@ -904,14 +918,6 @@ public class Character : IInteractable
 
     public bool MoveInRandomDirection()
     {
-        if (MovePoints <= 0)
-        {
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveInRandomDirection skipped",
-                "Selected action: None\nReason for no movement: no MovePoints available before random movement probe",
-                this);
-            return false;
-        }
-
         List<Direction> possibleDirections = Enum.GetValues(typeof(Direction))
             .Cast<Direction>()
             .Where(dir => IsValidMoveCandidate(NestedMapPosition + DirectionToVector(dir)))
@@ -1128,20 +1134,23 @@ public class Character : IInteractable
 
     public virtual bool PerformAttack(Character target, DamageType damageType, ActionCostProfile typedActionCostProfile, string source = "")
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"{Name}.PerformAttack");
+        try
+        {
         GameDebugger.Instance.LogInfo("PerformAttack has been called!");
-        int apBeforeAttack = ActionPoints;
-        bool useTypedActionEconomy = typedActionCostProfile != null &&
-                                     typedActionCostProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy;
         string actionSource = string.IsNullOrWhiteSpace(source)
             ? CombatActionResolutionDiagnosticsLogger.InferActionName(this, damageType)
             : source;
         AttackContext attackContext = CombatResolver.CreatePhysicalAttackContext(this, target, damageType, actionSource);
+        bool useTypedActionEconomy = typedActionCostProfile == null ||
+                                     typedActionCostProfile.MigrationState == ActionEconomyMigrationState.TypedActionEconomy;
 
         if (target == null)
         {
             GameDebugger.Instance.LogError($"{Name} PerformAttack: Target is NULL! Attack aborted.");
             CombatActionResolutionDiagnosticsLogger.LogWarning("Character.PerformAttack aborted because target is null",
-                $"Attacker={Name} [{IInteractableID}]\nRequestedDamageType={damageType}\nAPBefore={apBeforeAttack}\nAPAfter={ActionPoints}",
+                $"Attacker={Name} [{IInteractableID}]\nRequestedDamageType={damageType}\nStaminaBefore={FixedPointResourceMath.Format(CurrentStamina)}\nCombatExertionBefore={FixedPointResourceMath.Format(CurrentCombatExertion)}",
                 this);
             return false;
         }
@@ -1153,8 +1162,8 @@ public class Character : IInteractable
                 $"ActionName={attackContext.SourceActionName}\n" +
                 $"RequestedDamageType={damageType}\n" +
                 $"InvalidReason={precheckResult.InvalidReason}\n" +
-                $"APBefore={apBeforeAttack}\n" +
-                $"APAfter={ActionPoints}",
+                $"StaminaBefore={FixedPointResourceMath.Format(CurrentStamina)}\n" +
+                $"CombatExertionBefore={FixedPointResourceMath.Format(CurrentCombatExertion)}",
                 this, target);
             return false;
         }
@@ -1162,8 +1171,8 @@ public class Character : IInteractable
         ActionCostCommitResult typedCommitResult = null;
         if (useTypedActionEconomy)
         {
-            ActionCostCommitment commitment = ActionCostProfileResolver.CreateCommitment(typedActionCostProfile, null, actionSource);
-            typedCommitResult = commitment.TryCommit(this, actionSource);
+            ActionCostProfile resolvedTypedProfile = typedActionCostProfile ?? ActionCostProfileResolver.BuildForCombatAttackContext(attackContext);
+            typedCommitResult = ActionCostProfileResolver.CreateCommitment(resolvedTypedProfile, null, actionSource).TryCommit(this, actionSource);
             if (!typedCommitResult.IsCommitted)
             {
                 CombatActionResolutionDiagnosticsLogger.LogWarning("Character.PerformAttack rejected typed economy commitment",
@@ -1175,9 +1184,6 @@ public class Character : IInteractable
                     this, target);
                 return false;
             }
-
-            attackContext.SpendActionPoints = false;
-            attackContext.ActionPointCost = 0;
         }
 
         GameDebugger.Instance.LogInfo($"{Name} is attacking {target.Name} with {damageType} damage. Target ID: {target.IInteractableID}");
@@ -1185,7 +1191,6 @@ public class Character : IInteractable
             $"ActionName={actionSource}\n" +
             $"RequestedDamageType={damageType}\n" +
             $"Weapon={CombatActionResolutionDiagnosticsLogger.FormatItemSummary(GetMainHandItem())}\n" +
-            $"APBefore={apBeforeAttack}\n" +
             $"TypedActionEconomy={useTypedActionEconomy}\n" +
             $"StaminaBefore={FixedPointResourceMath.Format(CurrentStamina)}\n" +
             $"CombatExertionBefore={FixedPointResourceMath.Format(CurrentCombatExertion)}\n" +
@@ -1195,7 +1200,9 @@ public class Character : IInteractable
 
         Target = target;
         target.Target = this;
-        target.InCombat = true;
+        SetCombatParticipationState(CombatParticipationState.Engaged, $"Committed attack {actionSource}.");
+        target.SetCombatParticipationState(CombatParticipationState.Engaged, $"Was attacked by {Name}.");
+        target.InCombat = TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat;
         RelationshipManager.SetActiveHostility(target, this, "AttackedByTarget");
         TurnOrchestrator.Instance?.TryUpdateTurnContext();
 
@@ -1223,8 +1230,6 @@ public class Character : IInteractable
         CombatActionResolutionDiagnosticsLogger.LogEvent("[ATTACK FLOW]", "Character.PerformAttack compatibility wrapper completed",
             $"ActionName={attackContext.SourceActionName}\n" +
             $"RequestedDamageType={damageType}\n" +
-            $"APBefore={apBeforeAttack}\n" +
-            $"APAfter={ActionPoints}\n" +
             $"TypedActionEconomy={useTypedActionEconomy}\n" +
             $"StaminaAfter={FixedPointResourceMath.Format(CurrentStamina)}\n" +
             $"CombatExertionAfter={FixedPointResourceMath.Format(CurrentCombatExertion)}\n" +
@@ -1236,6 +1241,11 @@ public class Character : IInteractable
             this, target);
 
         return true;
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"{Name}.PerformAttack");
+        }
     }
 
     public virtual float CalculateAccuracyAgainst(Character target)
@@ -1347,6 +1357,28 @@ public class Character : IInteractable
         return IsAlive && IsActive;
     }
 
+    public bool IsCombatContext => TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat;
+
+    public void SetCombatParticipationState(CombatParticipationState state, string reason = null)
+    {
+        CombatParticipationState previousState = CombatParticipation;
+        CombatParticipation = state;
+
+        if (previousState != state)
+        {
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT PARTICIPATION]", "Character.SetCombatParticipationState",
+                $"Actor={Name} [{IInteractableID}]\n" +
+                $"PreviousState={previousState}\n" +
+                $"NewState={state}\n" +
+                $"Reason={reason ?? "Unspecified"}\n" +
+                $"IsCombatContext={IsCombatContext}\n" +
+                $"IsHostile={IsHostile}\n" +
+                $"Stance={Stance}\n" +
+                $"Target={Target?.Name ?? "NULL"}",
+                this);
+        }
+    }
+
     public virtual bool IsValidCombatTarget(Character target)
     {
         if (target == null || target == this)
@@ -1377,7 +1409,8 @@ public class Character : IInteractable
             $"PreviousTarget={previousTarget?.Name ?? "NULL"} [{previousTarget?.IInteractableID.ToString() ?? "NULL"}]\n" +
             $"IsHostile={IsHostile}\n" +
             $"Stance={Stance}\n" +
-            $"InCombat={InCombat}",
+            $"IsCombatContext={IsCombatContext}\n" +
+            $"CombatParticipation={CombatParticipation}",
             this, previousTarget);
     }
 
@@ -1433,7 +1466,8 @@ public class Character : IInteractable
                 $"NewTarget={replacementTarget.Name} [{replacementTarget.IInteractableID}]\n" +
                 $"IsHostile={IsHostile}\n" +
                 $"Stance={Stance}\n" +
-                $"InCombat={InCombat}",
+                $"IsCombatContext={IsCombatContext}\n" +
+                $"CombatParticipation={CombatParticipation}",
                 this, replacementTarget);
             return true;
         }
@@ -1443,7 +1477,8 @@ public class Character : IInteractable
             $"PreviousTarget={invalidTarget?.Name ?? "NULL"} [{invalidTarget?.IInteractableID.ToString() ?? "NULL"}]\n" +
             $"IsHostile={IsHostile}\n" +
             $"Stance={Stance}\n" +
-            $"InCombat={InCombat}",
+            $"IsCombatContext={IsCombatContext}\n" +
+            $"CombatParticipation={CombatParticipation}",
             this, invalidTarget);
         return false;
     }
@@ -2161,12 +2196,11 @@ public void HandleLosingLimb(BodyPart lostPart)
         bool wasInTurnBefore = InTurn;
         bool wasInCombatBefore = InCombat;
         int healthBefore = Health;
-        int actionPointsBefore = ActionPoints;
         IsAlive = false;
         IsActive = false;
         InTurn = false;
         InCombat = false;
-        ActionPoints = 0;
+        CombatParticipation = CombatParticipationState.Uninvolved;
         Debug.Log($"{Name} has died!");
         ClearThisCharacterAsTargetForOtherCombatants();
         // CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
@@ -2174,8 +2208,6 @@ public void HandleLosingLimb(BodyPart lostPart)
         CombatActionResolutionDiagnosticsLogger.LogEvent("[DEATH]", "Character.Die state transition",
             $"HealthBefore={healthBefore}\n" +
             $"HealthAfter={Health}\n" +
-            $"ActionPointsBefore={actionPointsBefore}\n" +
-            $"ActionPointsAfter={ActionPoints}\n" +
             $"IsAliveBefore={wasAliveBefore}\n" +
             $"IsAliveAfter={IsAlive}\n" +
             $"IsActiveBefore={wasActiveBefore}\n" +
@@ -2279,36 +2311,25 @@ private BodyPart GetRandomBodyPart()
         if (!IsCombatActorAvailable())
         {
             CombatActionResolutionDiagnosticsLogger.LogWarning("Character.ExecuteTurnActions skipped unavailable actor",
-                $"Actor={Name} [{IInteractableID}]\nIsAlive={IsAlive}\nIsActive={IsActive}\nInCombat={InCombat}",
+                $"Actor={Name} [{IInteractableID}]\nIsAlive={IsAlive}\nIsActive={IsActive}\nIsCombatContext={IsCombatContext}\nCombatParticipation={CombatParticipation}",
                 this);
             return;
         }
 
         Vector2Int positionBefore = NestedMapPosition;
-        int apBefore = ActionPoints;
-        int mpBefore = MovePoints;
         // CODEXLOG002_MOVEMENT_AI: temporary ExecuteTurnActions diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[EXECUTE TURN ACTIONS]", "Character.ExecuteTurnActions begin",
             $"Position before: {positionBefore}\n" +
-            $"AP before: {apBefore}\n" +
-            $"MP before: {mpBefore}\n" +
+            $"Stamina before: {FixedPointResourceMath.Format(CurrentStamina)}\n" +
+            $"CombatExertion before: {FixedPointResourceMath.Format(CurrentCombatExertion)}\n" +
+            $"ConsumptionCapacity before: {CurrentConsumptionCapacity}/{MaxConsumptionCapacity}\n" +
             $"Stance: {Stance}\n" +
             $"Status: {Status}\n" +
             $"State machine type: {MovementAIDiagnosticsLogger.FormatStateMachine(this)}\n" +
             $"Current state: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}",
             this);
-        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Starting turn. Stance: {Stance}, State: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}, Max AP: {MaxActionPoints}, Current AP: {ActionPoints}");
+        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Starting opportunity. Stance: {Stance}, State: {stateMachine?.CurrentState?.GetType().Name ?? "NULL"}, Stamina: {FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}, CombatExertion: {FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}");
         ResetTurnDecision();
-
-        // Reset Action Points
-        ActionPoints = MaxActionPoints;
-        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - AP reset to Max AP: {MaxActionPoints}");
-        if (InCombat || IsHostile || Stance == NPCStance.Hostile || this is Monster || this is Animal)
-        {
-            CombatActionResolutionDiagnosticsLogger.LogEvent("[AP RESET]", "Character.ExecuteTurnActions reset action points",
-                $"APBefore={apBefore}\nAPAfter={ActionPoints}\nResetSource=Character.ExecuteTurnActions\nCurrentState={stateMachine?.CurrentState?.GetType().Name ?? "NULL"}",
-                this);
-        }
 
         // Ensure State Machine is Initialized
         if (stateMachine == null)
@@ -2334,7 +2355,9 @@ private BodyPart GetRandomBodyPart()
 
         // Combat-time membership is a shared clock, not hostile intent.
         // Only actors already marked hostile should be forced into HostileState.
-        if (InCombat && (IsHostile || Stance == NPCStance.Hostile))
+        bool isCombatContext = IsCombatContext;
+
+        if (isCombatContext && (IsHostile || Stance == NPCStance.Hostile))
         {
             if (Stance != NPCStance.Hostile)
             {
@@ -2343,13 +2366,14 @@ private BodyPart GetRandomBodyPart()
                 stateMachine.HandleStanceChange(NPCStance.Hostile);
             }
         }
-        else if (InCombat)
+        else if (isCombatContext)
         {
             // CODEXLOG001_TURNLIFECYCLE: temporary combat participant role diagnostic.
             TurnDiagnosticsLogger.LogEvent("[COMBAT ROLE]", "Non-hostile combat-time participant kept in current state",
                 $"Role: {BaseTurnManager.GetCombatParticipantRole(this)}\n" +
                 $"Stance: {Stance}\n" +
                 $"IsHostile: {IsHostile}\n" +
+                $"CombatParticipation: {CombatParticipation}\n" +
                 $"CurrentState: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}",
                 this);
         }
@@ -2367,44 +2391,68 @@ private BodyPart GetRandomBodyPart()
         MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions updating state machine",
             $"State before update: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}\nStance: {Stance}\nTarget: {Target?.Name ?? "NULL"}",
             this);
-        stateMachine.Update();
+        CharacterDecisionResult decisionResult = stateMachine.Update();
+        int combatIterationCount = 0;
+        int combatIterationLimit = 10;
 
-        // Movement Logic
-        if (!InCombat)
+        if (decisionResult == null)
         {
-            if (LastTurnDecisionResult == CharacterTurnDecisionResult.None)
-            {
-                // CODEXLOG002_MOVEMENT_AI: temporary AI movement decision diagnostic.
-                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions calling MoveToCellsOfInterest",
-                    $"CellsOfInterest count: {CellsOfInterest?.Count ?? -1}\nPosition before call: {NestedMapPosition}",
-                    this);
-                MoveToCellsOfInterest();
-            }
-            else
-            {
-                MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions skipped CellsOfInterest movement",
-                    $"Reason for no movement: state machine already resolved NPC turn\nTurnDecisionResult: {LastTurnDecisionResult}\nTurnDecisionReason: {LastTurnDecisionReason}",
-                    this);
-            }
+            MovementAIDiagnosticsLogger.LogWarning("Character.ExecuteTurnActions missing state result",
+                $"State machine returned null\nCurrentState: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}\nIsCombatContext: {IsCombatContext}\nCombatParticipation: {CombatParticipation}",
+                this);
         }
         else
         {
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions skipped CellsOfInterest movement during combat",
-                $"Reason for no movement: combat turn actor uses combat state only\nTarget: {Target?.Name ?? "NULL"}",
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions state result",
+                $"DecisionType: {decisionResult.DecisionType}\n" +
+                $"TurnDecisionResult: {decisionResult.TurnDecisionResult}\n" +
+                $"ActionName: {decisionResult.ActionName ?? "NULL"}\n" +
+                $"WasCommitted: {decisionResult.WasCommitted}\n" +
+                $"MayContinueCombatTurn: {decisionResult.MayContinueCombatTurn}\n" +
+                $"EndsOpportunity: {decisionResult.EndsOpportunity}\n" +
+                $"Reason: {decisionResult.Reason}",
+                this);
+        }
+
+        while (isCombatContext && decisionResult != null && decisionResult.MayContinueCombatTurn && combatIterationCount < combatIterationLimit)
+        {
+            combatIterationCount++;
+            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.ExecuteTurnActions combat continuation",
+                $"Iteration: {combatIterationCount}/{combatIterationLimit}\nPreviousDecision: {decisionResult.DecisionType}\nPreviousResult: {decisionResult.TurnDecisionResult}\nRemainingStamina: {FixedPointResourceMath.Format(CurrentStamina)}\nRemainingCombatExertion: {FixedPointResourceMath.Format(CurrentCombatExertion)}",
+                this);
+
+            decisionResult = stateMachine.Update();
+            if (decisionResult == null)
+            {
+                MovementAIDiagnosticsLogger.LogWarning("Character.ExecuteTurnActions missing combat continuation result",
+                    $"Combat continuation returned null\nIteration: {combatIterationCount}\nCurrentState: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}",
+                    this);
+                break;
+            }
+
+            if (!decisionResult.MayContinueCombatTurn)
+            {
+                break;
+            }
+        }
+
+        if (combatIterationCount >= combatIterationLimit)
+        {
+            MovementAIDiagnosticsLogger.LogWarning("Character.ExecuteTurnActions combat iteration guard triggered",
+                $"Actor={Name} [{IInteractableID}]\nCurrentState={MovementAIDiagnosticsLogger.FormatCurrentState(this)}\nTarget={Target?.Name ?? "NULL"}\nRemainingStamina={FixedPointResourceMath.Format(CurrentStamina)}\nRemainingCombatExertion={FixedPointResourceMath.Format(CurrentCombatExertion)}",
                 this);
         }
 
         // Final Log for Turn Execution
-        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Turn actions executed. Remaining AP: {ActionPoints}");
+        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Turn actions executed. Remaining Stamina: {FixedPointResourceMath.Format(CurrentStamina)}");
         // CODEXLOG002_MOVEMENT_AI: temporary ExecuteTurnActions diagnostic.
         MovementAIDiagnosticsLogger.LogEvent("[EXECUTE TURN ACTIONS]", "Character.ExecuteTurnActions end",
             $"Position before: {positionBefore}\n" +
             $"Position after: {NestedMapPosition}\n" +
             $"Position changed: {NestedMapPosition != positionBefore}\n" +
-            $"AP before: {apBefore}\n" +
-            $"AP after: {ActionPoints}\n" +
-            $"MP before: {mpBefore}\n" +
-            $"MP after: {MovePoints}\n" +
+            $"Stamina after: {FixedPointResourceMath.Format(CurrentStamina)}\n" +
+            $"CombatExertion after: {FixedPointResourceMath.Format(CurrentCombatExertion)}\n" +
+            $"ConsumptionCapacity after: {CurrentConsumptionCapacity}/{MaxConsumptionCapacity}\n" +
             $"State after: {MovementAIDiagnosticsLogger.FormatCurrentState(this)}\n" +
             $"Turn decision result: {LastTurnDecisionResult}\n" +
             $"Turn decision reason: {LastTurnDecisionReason}",
@@ -2413,16 +2461,14 @@ private BodyPart GetRandomBodyPart()
 
     public void OnTurnEnd()
     {
-        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Turn ended. Stance: {Stance}, Final State: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}, Remaining AP: {ActionPoints}, Stamina: {FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}, Combat Exertion: {FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}");
-        int actionPointsBeforeEnd = ActionPoints;
+        GameDebugger.Instance.LogInfo($"[Character ID: {IInteractableID}] [{Name}] - Opportunity ended. Stance: {Stance}, Final State: {stateMachine.CurrentState?.GetType().Name ?? "NULL"}, Stamina: {FixedPointResourceMath.Format(CurrentStamina)}/{FixedPointResourceMath.Format(MaxStamina)}, Combat Exertion: {FixedPointResourceMath.Format(CurrentCombatExertion)}/{FixedPointResourceMath.Format(MaxCombatExertion)}");
 
         ApplyBuffsAndDebuffsAtTurnEnd();
-        ActionPoints = 0;
         int resolvedRegeneration = ResolveStaminaRegeneration($"{Name}.OnTurnEnd");
-        if (InCombat || this == PlayerStats.Instance?.CurrentPlayerCharacter)
+        if (isCombatContext || this == PlayerStats.Instance?.CurrentPlayerCharacter)
         {
-            CombatActionResolutionDiagnosticsLogger.LogEvent("[TURN END]", "Character.OnTurnEnd zeroed action points",
-                $"APBefore={actionPointsBeforeEnd}\nAPAfter={ActionPoints}\nStaminaAfter={FixedPointResourceMath.Format(CurrentStamina)}\nCombatExertionAfter={FixedPointResourceMath.Format(CurrentCombatExertion)}\nRegenerationApplied={FixedPointResourceMath.Format(resolvedRegeneration)}\nTurnEndSource=Character.OnTurnEnd",
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[TURN END]", "Character.OnTurnEnd completed opportunity",
+                $"StaminaAfter={FixedPointResourceMath.Format(CurrentStamina)}\nCombatExertionAfter={FixedPointResourceMath.Format(CurrentCombatExertion)}\nRegenerationApplied={FixedPointResourceMath.Format(resolvedRegeneration)}\nTurnEndSource=Character.OnTurnEnd",
                 this);
         }
     }
@@ -2471,20 +2517,7 @@ private BodyPart GetRandomBodyPart()
 
     public void SpendActionPoints(int points, string source = "Unknown")
     {
-        int actionPointsBeforeSpend = ActionPoints;
-        if (points > ActionPoints)
-        {
-            GameDebugger.Instance.LogWarning($"{Name} does not have enough Action Points. Required: {points}, Available: {ActionPoints}");
-            CombatActionResolutionDiagnosticsLogger.LogWarning("Character.SpendActionPoints rejected due to insufficient AP",
-                $"RequestedSpend={points}\nAPBefore={actionPointsBeforeSpend}\nAPAfter={ActionPoints}\nSpendSource={source}",
-                this);
-            return;
-        }
-        ActionPoints -= points;
-        GameDebugger.Instance.LogInfo($"{Name} spent {points} Action Points. Remaining AP: {ActionPoints}");
-        CombatActionResolutionDiagnosticsLogger.LogEvent("[AP SPEND]", "Character.SpendActionPoints",
-            $"RequestedSpend={points}\nAPBefore={actionPointsBeforeSpend}\nAPAfter={ActionPoints}\nSpendSource={source}",
-            this);
+        GameDebugger.Instance.LogWarning($"{StaminaDiagnosticsTag} {Name}: SpendActionPoints is obsolete and no longer affects gameplay. Source={source}, Requested={points}");
     }
 
     // Current legacy heuristic: collect candidate shelter-style cells based on simple environmental conditions.
@@ -2544,15 +2577,6 @@ private BodyPart GetRandomBodyPart()
                 "Selected action: None\nReason for no movement: CurrentNestedArea null",
                 this);
             RecordTurnDecision(CharacterTurnDecisionResult.NoActionAvailable, "CellsOfInterest movement skipped because CurrentNestedArea is null.");
-            return false;
-        }
-
-        if (MovePoints <= 0)
-        {
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "Character.MoveToCellsOfInterest no movement",
-                "Selected action: None\nReason for no movement: no MovePoints available before CellsOfInterest movement",
-                this);
-            RecordTurnDecision(CharacterTurnDecisionResult.FailedMovement, "CellsOfInterest movement skipped because no MovePoints remain.");
             return false;
         }
 
@@ -2722,7 +2746,7 @@ private BodyPart GetRandomBodyPart()
         Health = Mathf.Clamp(Health + amount, 0, MaxHealth); // Prevents over-healing or negative HP
 
         GameDebugger.Instance.LogInfo($"{Name} - Health modified by {amount} from {source}. Previous: {previousHealth}, New: {Health}");
-        if (InCombat || source != "Unknown" || amount < 0)
+        if (IsCombatContext || source != "Unknown" || amount < 0)
         {
             CombatActionResolutionDiagnosticsLogger.LogEvent("[HEALTH]", "Character.ModifyHealth",
                 $"Amount={amount}\nSource={source}\nHealthBefore={previousHealth}\nHealthAfter={Health}",
@@ -2759,20 +2783,14 @@ private BodyPart GetRandomBodyPart()
 
             if (!combatant.TryRefreshCombatTarget($"Target {Name} [{IInteractableID}] died.", out Character replacementTarget))
             {
-                combatant.IsHostile = false;
-                combatant.InCombat = false;
-                if (combatant.Stance == NPCStance.Hostile)
-                {
-                    combatant.Stance = NPCStance.Default;
-                    combatant.stateMachine?.HandleStanceChange(combatant.Stance);
-                }
+                combatant.SetCombatParticipationState(CombatParticipationState.Searching, $"Lost target {Name} and no replacement target was found.");
 
                 CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "Character.Die cleared stale combat target with no replacement",
                     $"Actor={combatant.Name} [{combatant.IInteractableID}]\n" +
                     $"ReplacementTarget={replacementTarget?.Name ?? "NULL"}\n" +
                     $"IsHostileAfter={combatant.IsHostile}\n" +
                     $"StanceAfter={combatant.Stance}\n" +
-                    $"InCombatAfter={combatant.InCombat}",
+                    $"CombatParticipationAfter={combatant.CombatParticipation}",
                     combatant, this);
             }
         }
@@ -3270,7 +3288,8 @@ private List<EquipmentSlot> GetEquipmentSlotsForBodyPart(BodyPart bodyPart)
         {
             Stance = NPCStance.Hostile;
             Target = attacker;
-            InCombat = true;
+            SetCombatParticipationState(CombatParticipationState.Engaged, $"Witnessed attack on {attackedAlly.Name} by {attacker.Name}.");
+            InCombat = IsCombatContext;
             Debug.Log($"{Name} is now hostile towards {attacker.Name}!");
         }
 

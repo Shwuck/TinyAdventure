@@ -12,6 +12,12 @@ public static class ActionEconomyExecutionRouter
             return;
         }
 
+        if (profile != null && profile.WorldTimeCost > 0)
+        {
+            EndOfTurnManager.Instance?.AddTurnProgress(profile.WorldTimeCost);
+            return;
+        }
+
         if (legacyActionPointCost > 0)
         {
             EndOfTurnManager.Instance?.AddTurnProgress(legacyActionPointCost);

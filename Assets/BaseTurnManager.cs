@@ -390,8 +390,9 @@ public abstract class BaseTurnManager : MonoBehaviour
             $"CurrentActor: {FormatTurnActor(currentData?.Character)}\n" +
             $"CurrentActorRole: {GetCombatParticipantRole(currentData?.Character, currentData?.IsPlayer ?? false)}\n" +
             $"CurrentActorIsPlayer: {currentData?.IsPlayer.ToString() ?? "NULL"}\n" +
-            $"CurrentActorAP: {currentData?.Character?.ActionPoints.ToString() ?? "NULL"}\n" +
-            $"CurrentActorMP: {currentData?.Character?.MovePoints.ToString() ?? "NULL"}\n" +
+            $"CurrentActorStamina: {FixedPointResourceMath.Format(currentData?.Character?.CurrentStamina ?? 0)}\n" +
+            $"CurrentActorCombatExertion: {FixedPointResourceMath.Format(currentData?.Character?.CurrentCombatExertion ?? 0)}\n" +
+            $"CurrentActorConsumptionCapacity: {currentData?.Character?.CurrentConsumptionCapacity.ToString() ?? "NULL"}\n" +
             $"CurrentActorInTurn: {currentData?.Character?.InTurn.ToString() ?? "NULL"}\n" +
             $"CurrentActorInCombat: {currentData?.Character?.InCombat.ToString() ?? "NULL"}\n" +
             $"CurrentActorIsHostile: {currentData?.Character?.IsHostile.ToString() ?? "NULL"}\n" +
@@ -594,12 +595,19 @@ public abstract class BaseTurnManager : MonoBehaviour
             return;
         }
 
+        TurnOrchestrator.Instance?.BeginTurnSequence($"{GetType().Name}.ContinueTurnSequence:{source}");
         isAdvancingTurnSequence = true;
 
         try
         {
             while (CanExecuteForCurrentContext("ContinueTurnSequence.Loop"))
             {
+                if (TurnOrchestrator.Instance?.HasPendingContextTransition == true)
+                {
+                    GameDebugger.Instance.LogInfo($"{GetType().Name}.ContinueTurnSequence: pending context transition detected. Halting sequence.");
+                    return;
+                }
+
                 if (!isCycleRunning)
                 {
                     if (!BeginCycleInternal($"{GetType().Name}.ContinueTurnSequence begin from {source}"))
@@ -680,12 +688,18 @@ public abstract class BaseTurnManager : MonoBehaviour
                 isPlayerTurn = false;
                 LogTurnOrderDiagnostic("[COMBAT TURN ADVANCE]", $"{GetType().Name}.ContinueTurnSequence entering NPC turn", null);
                 OnNPCTurnExecute(character);
+                if (TurnOrchestrator.Instance?.HasPendingContextTransition == true)
+                {
+                    EndTurnForCharacter(character);
+                    return;
+                }
                 EndTurnForCharacter(character);
             }
         }
         finally
         {
             isAdvancingTurnSequence = false;
+            TurnOrchestrator.Instance?.EndTurnSequence($"{GetType().Name}.ContinueTurnSequence:{source}");
         }
     }
 

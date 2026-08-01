@@ -14,12 +14,29 @@ public class TurnOrchestrator : MonoBehaviour
     public static TurnOrchestrator Instance { get; private set; }
 
     public TurnContext CurrentContext { get; private set; } = TurnContext.MainMap;
+    public bool IsActionResolutionActive => actionResolutionDepth > 0;
+    public bool HasPendingContextTransition => pendingContextTransition.HasValue;
+    public int CurrentActionResolutionId => currentActionResolutionId;
 
     // Persistent roster for the currently loaded area/nested area.
     private readonly List<Character> currentAreaRoster = new List<Character>();
 
+    private struct PendingContextTransition
+    {
+        public TurnContext TargetContext;
+        public string Reason;
+        public string Source;
+        public int RequestId;
+    }
+
     [SerializeField] private CombatTurnManager combatManager;
     [SerializeField] private ExplorationTurnManager explorationTurnManager;
+
+    private int actionResolutionDepth = 0;
+    private int turnSequenceDepth = 0;
+    private int currentActionResolutionId = 0;
+    private bool isApplyingContextTransition = false;
+    private PendingContextTransition? pendingContextTransition;
 
 	private void Awake()
 	{
@@ -49,6 +66,62 @@ public class TurnOrchestrator : MonoBehaviour
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogShutdown("TurnOrchestrator.OnApplicationQuit");
 	}
+
+	private void Update()
+	{
+		TryApplyPendingContextTransitionIfSafe("TurnOrchestrator.Update");
+	}
+
+    public void BeginActionResolution(string source)
+    {
+        actionResolutionDepth++;
+        currentActionResolutionId++;
+
+        TurnDiagnosticsLogger.LogEvent("[ACTION RESOLUTION]", "TurnOrchestrator.BeginActionResolution",
+            $"Source: {source}\n" +
+            $"ActionResolutionId: {currentActionResolutionId}\n" +
+            $"ActionResolutionDepth: {actionResolutionDepth}\n" +
+            $"PendingTransition: {DescribePendingContextTransition()}");
+    }
+
+    public void EndActionResolution(string source)
+    {
+        if (actionResolutionDepth > 0)
+        {
+            actionResolutionDepth--;
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[ACTION RESOLUTION]", "TurnOrchestrator.EndActionResolution",
+            $"Source: {source}\n" +
+            $"ActionResolutionDepth: {actionResolutionDepth}\n" +
+            $"PendingTransition: {DescribePendingContextTransition()}");
+
+        TryApplyPendingContextTransitionIfSafe(source);
+    }
+
+    public void BeginTurnSequence(string source)
+    {
+        turnSequenceDepth++;
+        TurnDiagnosticsLogger.LogEvent("[TURN SEQUENCE]", "TurnOrchestrator.BeginTurnSequence",
+            $"Source: {source}\n" +
+            $"TurnSequenceDepth: {turnSequenceDepth}\n" +
+            $"Context: {CurrentContext}");
+    }
+
+    public void EndTurnSequence(string source)
+    {
+        if (turnSequenceDepth > 0)
+        {
+            turnSequenceDepth--;
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[TURN SEQUENCE]", "TurnOrchestrator.EndTurnSequence",
+            $"Source: {source}\n" +
+            $"TurnSequenceDepth: {turnSequenceDepth}\n" +
+            $"Context: {CurrentContext}");
+
+        TryApplyPendingContextTransitionIfSafe(source);
+    }
 
 	// CODEXLOG001_TURNLIFECYCLE: temporary runtime manager-reference resolution and diagnostics.
 	private void ResolveTurnManagersForDiagnostics()
@@ -112,6 +185,148 @@ public class TurnOrchestrator : MonoBehaviour
 		TurnDiagnosticsLogger.LogEvent("[BOOT]", "TurnOrchestrator manager reference resolution", details);
 	}
 
+    private string DescribePendingContextTransition()
+    {
+        if (!pendingContextTransition.HasValue)
+        {
+            return "None";
+        }
+
+        PendingContextTransition transition = pendingContextTransition.Value;
+        return $"{transition.TargetContext} (RequestId={transition.RequestId}, Source={transition.Source}, Reason={transition.Reason})";
+    }
+
+    private static void AddActiveCharactersToRoster(IEnumerable<Character> source, INestedArea area, HashSet<int> seen, List<Character> roster)
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        foreach (Character character in source)
+        {
+            if (character == null || !character.IsActive || !character.IsAlive)
+            {
+                continue;
+            }
+
+            if (area != null && (!character.IsInNestedArea || character.CurrentNestedArea != area))
+            {
+                continue;
+            }
+
+            if (!seen.Add(character.IInteractableID))
+            {
+                continue;
+            }
+
+            roster.Add(character);
+        }
+    }
+
+    private List<Character> BuildActiveAreaRosterSnapshot(INestedArea area)
+    {
+        HashSet<int> seen = new HashSet<int>();
+        List<Character> roster = new List<Character>();
+
+        AddActiveCharactersToRoster(currentAreaRoster, area, seen, roster);
+        if (area != null)
+        {
+            AddActiveCharactersToRoster(area.GetAllCharactersInArea(), area, seen, roster);
+        }
+
+        return roster;
+    }
+
+    private bool TryApplyPendingContextTransitionIfSafe(string source)
+    {
+        if (isApplyingContextTransition || !pendingContextTransition.HasValue)
+        {
+            return false;
+        }
+
+        if (IsActionResolutionActive || turnSequenceDepth > 0)
+        {
+            Trace($"TryApplyPendingContextTransitionIfSafe deferred: source={source} depth={actionResolutionDepth}/{turnSequenceDepth}");
+            return false;
+        }
+
+        PendingContextTransition transition = pendingContextTransition.Value;
+        pendingContextTransition = null;
+        isApplyingContextTransition = true;
+
+        try
+        {
+            TurnDiagnosticsLogger.LogEvent("[CONTEXT TRANSITION]", "TurnOrchestrator.ApplyPendingContextTransition",
+                $"Source: {source}\n" +
+                $"RequestId: {transition.RequestId}\n" +
+                $"From: {CurrentContext}\n" +
+                $"To: {transition.TargetContext}\n" +
+                $"Reason: {transition.Reason}\n" +
+                $"ActionResolutionDepth: {actionResolutionDepth}\n" +
+                $"TurnSequenceDepth: {turnSequenceDepth}");
+
+            if (transition.TargetContext == TurnContext.Combat)
+            {
+                SwitchToCombatMode();
+            }
+            else if (transition.TargetContext == TurnContext.Exploration)
+            {
+                SwitchToExplorationMode();
+            }
+
+            return true;
+        }
+        finally
+        {
+            isApplyingContextTransition = false;
+        }
+    }
+
+    private void RequestContextTransition(TurnContext targetContext, string reason, string source)
+    {
+        PendingContextTransition nextTransition = new PendingContextTransition
+        {
+            TargetContext = targetContext,
+            Reason = string.IsNullOrWhiteSpace(reason) ? "Unspecified" : reason,
+            Source = string.IsNullOrWhiteSpace(source) ? "Unknown" : source,
+            RequestId = currentActionResolutionId
+        };
+
+        if (pendingContextTransition.HasValue && pendingContextTransition.Value.TargetContext == targetContext)
+        {
+            pendingContextTransition = nextTransition;
+            TurnDiagnosticsLogger.LogEvent("[CONTEXT TRANSITION]", "TurnOrchestrator.RequestContextTransition coalesced",
+                $"Source: {source}\n" +
+                $"Target: {targetContext}\n" +
+                $"Reason: {nextTransition.Reason}\n" +
+                $"RequestId: {nextTransition.RequestId}\n" +
+                $"PendingTransition: {DescribePendingContextTransition()}");
+            return;
+        }
+
+        pendingContextTransition = nextTransition;
+        TurnDiagnosticsLogger.LogEvent("[CONTEXT TRANSITION]", "TurnOrchestrator.RequestContextTransition queued",
+            $"Source: {source}\n" +
+            $"Target: {targetContext}\n" +
+            $"Reason: {nextTransition.Reason}\n" +
+            $"RequestId: {nextTransition.RequestId}\n" +
+            $"ActionResolutionDepth: {actionResolutionDepth}\n" +
+            $"TurnSequenceDepth: {turnSequenceDepth}");
+    }
+
+    private void ClearPendingContextTransition(string source)
+    {
+        if (!pendingContextTransition.HasValue)
+        {
+            return;
+        }
+
+        TurnDiagnosticsLogger.LogEvent("[CONTEXT TRANSITION]", "TurnOrchestrator.PendingContextTransition cleared",
+            $"Source: {source}\nPendingTransition: {DescribePendingContextTransition()}");
+        pendingContextTransition = null;
+    }
+
 
     #region Area Entry
 
@@ -120,6 +335,7 @@ public class TurnOrchestrator : MonoBehaviour
 		Trace("EnterMainMap: begin");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[AREA EXIT]", "TurnOrchestrator.EnterMainMap begin");
+		ClearPendingContextTransition("TurnOrchestrator.EnterMainMap");
 		CurrentContext = TurnContext.MainMap;
 		PlayerStats.Instance.UpdateCurrentNestedArea(null);
 		PlayerStats.Instance.UpdateCurrentNestedAreaID(0);
@@ -130,12 +346,14 @@ public class TurnOrchestrator : MonoBehaviour
 		if (PlayerStats.Instance.CurrentPlayerCharacter != null)
 		{
 			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = false;
+			PlayerStats.Instance.CurrentPlayerCharacter.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.EnterMainMap");
 			PlayerStats.Instance.CurrentPlayerCharacter.InTurn = false;
 		}
 		foreach (var character in currentAreaRoster)
 		{
 			if (character == null) continue;
 			character.InCombat = false;
+			character.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.EnterMainMap");
 			character.InTurn = false;
 		}
 		explorationTurnManager.ClearCharacters();
@@ -199,7 +417,9 @@ public class TurnOrchestrator : MonoBehaviour
 		currentAreaRoster.Clear();
 		Trace("EnterExplorationArea: managers cleared; registering player and occupants");
 
-		RegisterCharacter(playerCharacter);
+		playerCharacter.InCombat = false;
+		playerCharacter.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.EnterExplorationArea");
+		RegisterCharacter(playerCharacter, true);
 		bool playerRegisteredInActiveManager = DiagnosticIsCharacterRegisteredInActiveManager(playerCharacter);
 
 		int occupantsConsidered = 0;
@@ -264,7 +484,9 @@ public class TurnOrchestrator : MonoBehaviour
 					"IsAlive is currently not reliable enough to filter here; registering for diagnostics continuity.", character);
 			}
 
-			RegisterCharacter(character);
+			character.InCombat = false;
+			character.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.EnterExplorationArea");
+			RegisterCharacter(character, character == playerCharacter);
 			occupantsRegistered++;
 		}
 
@@ -292,8 +514,9 @@ public class TurnOrchestrator : MonoBehaviour
 		TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "TurnOrchestrator.EnterExplorationArea hostility check",
 			$"HasHostiles: {hasHostiles}\nContext before hostility update: {CurrentContext}");
 		TryUpdateTurnContext();
+		TryApplyPendingContextTransitionIfSafe("TurnOrchestrator.EnterExplorationArea");
 
-		if (CurrentContext == TurnContext.Exploration)
+		if (CurrentContext == TurnContext.Exploration && !HasPendingContextTransition)
 		{
 			Trace("EnterExplorationArea -> StartTurnCycle");
 			StartTurnCycle();
@@ -318,6 +541,11 @@ public class TurnOrchestrator : MonoBehaviour
 
 	public void RegisterCharacter(Character character)
 	{
+		RegisterCharacter(character, character == PlayerStats.Instance?.CurrentPlayerCharacter);
+	}
+
+	public void RegisterCharacter(Character character, bool isPlayer)
+	{
 		Trace($"RegisterCharacter: {character?.Name ?? "NULL"}");
 		if (character == null)
 		{
@@ -335,9 +563,7 @@ public class TurnOrchestrator : MonoBehaviour
 		}
 		Trace($"RegisterCharacter: {(added ? "added" : "already present")} total={currentAreaRoster.Count}");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
-		TurnDiagnosticsLogger.LogRegistration("TurnOrchestrator.CurrentAreaRoster", character, character == PlayerStats.Instance?.CurrentPlayerCharacter);
-
-		bool isPlayer = character == PlayerStats.Instance?.CurrentPlayerCharacter;
+		TurnDiagnosticsLogger.LogRegistration("TurnOrchestrator.CurrentAreaRoster", character, isPlayer);
 
 		switch (CurrentContext)
 		{
@@ -394,12 +620,12 @@ public class TurnOrchestrator : MonoBehaviour
             : new List<Character>();
     }
 
-    public List<Character> GetCombatParticipants()
-    {
-        return combatManager != null
-            ? combatManager.GetAllRegisteredCharacters()
-            : new List<Character>();
-    }
+	public List<Character> GetCombatParticipants()
+	{
+		return combatManager != null
+			? combatManager.GetAllRegisteredCharacters()
+			: new List<Character>();
+	}
 
     public List<Character> GetActiveTurnParticipants()
     {
@@ -432,6 +658,7 @@ public class TurnOrchestrator : MonoBehaviour
 		Trace("TryUpdateTurnContext: begin");
 		var area = PlayerStats.Instance.CurrentPlayerCharacter?.CurrentNestedArea;
 		area?.UpdateHostileAreaStatus();
+		Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
 		List<Character> localCharacters = area != null
 			? area.GetAllCharactersInArea().Where(character => character != null).ToList()
 			: currentAreaRoster.Where(character => character != null).ToList();
@@ -439,19 +666,19 @@ public class TurnOrchestrator : MonoBehaviour
 		PruneStaleCombatFlags(localCharacters, relationshipHostilities);
 		RelationshipManager.ApplyLocalHostilitiesToActorState(relationshipHostilities);
 		List<Character> activeHostiles = localCharacters
-			.Where(character => character.IsActive && (character.IsHostile || character.Stance == NPCStance.Hostile))
+			.Where(character => HasCombatMaintenanceSignal(character, relationshipHostilities))
 			.ToList();
 		int activeHostileCount = activeHostiles.Count;
 		int activeRelationshipHostilityCount = relationshipHostilities.Count;
 		int neutralParticipantCount = localCharacters.Count(character => character.IsActive) - activeHostileCount;
 		bool hasHostiles = activeHostileCount > 0 || activeRelationshipHostilityCount > 0;
 		bool playerInvolved = activeHostiles.Any(character =>
-			character == PlayerStats.Instance.CurrentPlayerCharacter ||
-			character.Target == PlayerStats.Instance.CurrentPlayerCharacter ||
-			PlayerStats.Instance.CurrentPlayerCharacter?.Target == character) ||
+			character == playerCharacter ||
+			character.Target == playerCharacter ||
+			playerCharacter?.Target == character) ||
 			relationshipHostilities.Any(hostility =>
-				hostility.Source == PlayerStats.Instance.CurrentPlayerCharacter ||
-				hostility.Target == PlayerStats.Instance.CurrentPlayerCharacter);
+				hostility.Source == playerCharacter ||
+				hostility.Target == playerCharacter);
 		Trace($"TryUpdateTurnContext: hasHostiles={hasHostiles}");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "TurnOrchestrator.TryUpdateTurnContext begin",
@@ -477,19 +704,28 @@ public class TurnOrchestrator : MonoBehaviour
 			$"InactiveOrRemovedCount: {localCharacters.Count(character => !character.IsActive)}\n" +
 			$"ShouldReturnToExploration: {CurrentContext == TurnContext.Combat && !hasHostiles}");
 
+		TurnContext desiredContext = CurrentContext;
 		if (CurrentContext == TurnContext.Exploration && hasHostiles)
 		{
-			Trace("TryUpdateTurnContext→SwitchToCombatMode");
-			SwitchToCombatMode();
+			desiredContext = TurnContext.Combat;
 		}
 		else if (CurrentContext == TurnContext.Combat && !hasHostiles)
 		{
-			Trace("TryUpdateTurnContext→SwitchToExplorationMode");
-			SwitchToExplorationMode();
+			desiredContext = TurnContext.Exploration;
+		}
+
+		if (desiredContext != CurrentContext)
+		{
+			Trace($"TryUpdateTurnContext→Request {desiredContext}");
+			RequestContextTransition(desiredContext, $"HasHostiles={hasHostiles}; PlayerInvolved={playerInvolved}; ActiveHostiles={activeHostileCount}; RelationshipHostilities={activeRelationshipHostilityCount}", "TurnOrchestrator.TryUpdateTurnContext");
 		}
 		else
 		{
 			Trace("TryUpdateTurnContext: no change");
+			if (pendingContextTransition.HasValue && pendingContextTransition.Value.TargetContext != desiredContext)
+			{
+				ClearPendingContextTransition("TurnOrchestrator.TryUpdateTurnContext no change");
+			}
 		}
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogTurnSummary("TurnOrchestrator.TryUpdateTurnContext completed",
@@ -503,31 +739,62 @@ public class TurnOrchestrator : MonoBehaviour
 		return playerInvolved ? "PlayerActionOrPlayerHostility" : "AreaHostility";
 	}
 
-	private bool ShouldRegisterCharacterForCombat(Character character, Character playerCharacter, List<RelationshipHostility> relationshipHostilities)
-	{
-		if (character == null || !character.IsActive || !character.IsAlive)
-		{
-			return false;
-		}
-
-		if (character == playerCharacter)
-		{
-			return true;
-		}
-
-		if (character.IsHostile || character.Stance == NPCStance.Hostile)
-		{
-			return true;
-		}
-
-		if (character.Target == playerCharacter || playerCharacter?.Target == character)
-		{
-			return true;
-		}
-
-		return relationshipHostilities != null &&
-			   relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character);
+    private static bool IsCombatConflictParticipationState(CombatParticipationState participationState)
+    {
+        return participationState == CombatParticipationState.Engaged ||
+		       participationState == CombatParticipationState.Assisting ||
+		       participationState == CombatParticipationState.Fleeing ||
+		       participationState == CombatParticipationState.Searching;
 	}
+
+    private CombatParticipationState DetermineCombatParticipationState(Character character, List<RelationshipHostility> relationshipHostilities)
+    {
+        if (character == null || !character.IsActive || !character.IsAlive)
+        {
+            return CombatParticipationState.Uninvolved;
+        }
+
+        if (character.CombatParticipation == CombatParticipationState.Fleeing)
+        {
+            return CombatParticipationState.Fleeing;
+        }
+
+        if (character.IsHostile ||
+            character.Stance == NPCStance.Hostile ||
+            character.Target != null ||
+            (relationshipHostilities != null && relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character)))
+        {
+            return CombatParticipationState.Engaged;
+        }
+
+        if (character.FollowTarget != null || character.Status == NPCStatus.Chasing)
+        {
+            return CombatParticipationState.Aware;
+        }
+
+        return CombatParticipationState.Unaware;
+    }
+
+    private bool HasCombatMaintenanceSignal(Character character, List<RelationshipHostility> relationshipHostilities)
+    {
+        if (character == null || !character.IsActive || !character.IsAlive)
+        {
+            return false;
+        }
+
+        if (IsCombatConflictParticipationState(character.CombatParticipation))
+        {
+            return true;
+        }
+
+        if (character.IsHostile || character.Stance == NPCStance.Hostile || character.Target != null)
+        {
+            return true;
+        }
+
+        return relationshipHostilities != null &&
+               relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character);
+    }
 
 	private void PruneStaleCombatFlags(List<Character> localCharacters, List<RelationshipHostility> relationshipHostilities)
 	{
@@ -540,7 +807,7 @@ public class TurnOrchestrator : MonoBehaviour
 
 		foreach (Character character in localCharacters.Where(candidate => candidate != null && candidate.IsActive && candidate.IsAlive))
 		{
-			if (!(character.IsHostile || character.Stance == NPCStance.Hostile))
+			if (!(character.IsHostile || character.Stance == NPCStance.Hostile || IsCombatConflictParticipationState(character.CombatParticipation)))
 			{
 				continue;
 			}
@@ -552,24 +819,19 @@ public class TurnOrchestrator : MonoBehaviour
 
 			if (relationshipCombatantIds.Contains(character.IInteractableID))
 			{
+				character.SetCombatParticipationState(CombatParticipationState.Searching, "Combat maintenance preserved active relationship hostility without an immediate target.");
 				continue;
 			}
 
 			character.ClearCombatTarget("TurnOrchestrator.TryUpdateTurnContext pruned stale hostile target.");
-			character.IsHostile = false;
-			character.InCombat = false;
-			if (character.Stance == NPCStance.Hostile)
-			{
-				character.Stance = NPCStance.Default;
-				character.stateMachine?.HandleStanceChange(character.Stance);
-			}
+			character.SetCombatParticipationState(CombatParticipationState.Searching, "Combat maintenance preserved hostility after losing target.");
 
 			CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "TurnOrchestrator.TryUpdateTurnContext pruned stale hostile state",
 				$"Actor={character.Name} [{character.IInteractableID}]\n" +
 				$"RelationshipCombatant={relationshipCombatantIds.Contains(character.IInteractableID)}\n" +
 				$"IsHostileAfter={character.IsHostile}\n" +
 				$"StanceAfter={character.Stance}\n" +
-				$"InCombatAfter={character.InCombat}",
+				$"CombatParticipationAfter={character.CombatParticipation}",
 				character);
 		}
 	}
@@ -591,9 +853,7 @@ public class TurnOrchestrator : MonoBehaviour
 		combatManager.DeregisterAllCharacters();
 
 		INestedArea activeArea = PlayerStats.Instance.CurrentNestedArea;
-		List<Character> localCombatParticipants = activeArea != null
-			? activeArea.GetAllCharactersInArea()
-			: currentAreaRoster.Where(character => character != null).ToList();
+		List<Character> localCombatParticipants = BuildActiveAreaRosterSnapshot(activeArea);
 		List<RelationshipHostility> localRelationshipHostilities = RelationshipManager.ScanLocalActiveHostilities(localCombatParticipants, activeArea);
 		Character playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
 		if (playerCharacter != null && !localCombatParticipants.Contains(playerCharacter))
@@ -643,14 +903,9 @@ public class TurnOrchestrator : MonoBehaviour
 				continue;
 			}
 
-			if (!ShouldRegisterCharacterForCombat(character, playerCharacter, localRelationshipHostilities))
-			{
-				wrongAreaSkipped++;
-				continue;
-			}
-
 			bool isPlayer = character == PlayerStats.Instance.CurrentPlayerCharacter;
 			character.InCombat = true;
+			character.SetCombatParticipationState(DetermineCombatParticipationState(character, localRelationshipHostilities), "TurnOrchestrator.SwitchToCombatMode roster assignment");
 			if (!currentAreaRoster.Contains(character))
 			{
 				currentAreaRoster.Add(character);
@@ -685,7 +940,7 @@ public class TurnOrchestrator : MonoBehaviour
 			$"CombatParticipantCount: {participantLines.Count}\n" +
 			$"NonCombatantExcludedCount: {Mathf.Max(0, currentAreaRoster.Count - participantLines.Count)}\n" +
 			$"ActiveTurnManager: CombatTurnManager\n" +
-			"SemanticNote: Uninvolved area characters remain in CurrentAreaRoster but do not receive turns in the current combat-manager implementation.");
+			"SemanticNote: All living active occupants in the current area are registered for combat-mode simulation; awareness and engagement remain actor-specific.");
 
 		Trace("SwitchToCombatMode→CombatTurnManager.StartTurnCycle");
 		CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "TurnOrchestrator.SwitchToCombatMode",
@@ -716,19 +971,23 @@ public class TurnOrchestrator : MonoBehaviour
 		if (PlayerStats.Instance.CurrentPlayerCharacter != null)
 		{
 			PlayerStats.Instance.CurrentPlayerCharacter.InCombat = false;
+			PlayerStats.Instance.CurrentPlayerCharacter.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.SwitchToExplorationMode");
 		}
 		foreach (var character in currentAreaRoster)
 		{
 			if (character == null) continue;
 			character.InCombat = false;
+			character.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.SwitchToExplorationMode");
 			character.InTurn = false;
 		}
 		combatManager.DeregisterAllCharacters();
 		explorationTurnManager.ClearCharacters();
 
+		INestedArea activeArea = PlayerStats.Instance.CurrentNestedArea;
+		List<Character> localExplorationParticipants = BuildActiveAreaRosterSnapshot(activeArea);
 		int explorationRestored = 0;
 		int explorationSkippedInactiveOrDead = 0;
-		foreach (var character in currentAreaRoster)
+		foreach (var character in localExplorationParticipants)
 		{
 			if (character == null)
 			{
@@ -744,7 +1003,8 @@ public class TurnOrchestrator : MonoBehaviour
 			if (character.IsInNestedArea && character.CurrentNestedArea == PlayerStats.Instance.CurrentNestedArea)
 			{
 				Trace($"SwitchToExplorationMode: register {character.Name}");
-				explorationTurnManager.RegisterCharacter(character);
+				character.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.SwitchToExplorationMode participant rebuild");
+				explorationTurnManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
 				explorationRestored++;
 			}
 		}
@@ -775,13 +1035,13 @@ public class TurnOrchestrator : MonoBehaviour
 
     #region Scene Management Utilities
 
-    public void ReevaluateCharactersInScene()
+	    public void ReevaluateCharactersInScene()
     {
         var activeArea = PlayerStats.Instance.CurrentNestedArea;
         if (activeArea == null) return;
 
         currentAreaRoster.Clear();
-        currentAreaRoster.AddRange(activeArea.GetAllCharactersInArea());
+        currentAreaRoster.AddRange(BuildActiveAreaRosterSnapshot(activeArea));
         GameDebugger.Instance.LogInfo($"Reevaluated characters in scene. Total: {currentAreaRoster.Count}");
 
         switch (CurrentContext)
@@ -790,7 +1050,9 @@ public class TurnOrchestrator : MonoBehaviour
                 explorationTurnManager.ClearCharacters();
                 foreach (var character in currentAreaRoster)
                 {
-                    explorationTurnManager.RegisterCharacter(character);
+                    character.InCombat = false;
+                    character.SetCombatParticipationState(CombatParticipationState.Uninvolved, "TurnOrchestrator.ReevaluateCharactersInScene Exploration");
+                    explorationTurnManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
                 }
                 break;
 
@@ -798,6 +1060,8 @@ public class TurnOrchestrator : MonoBehaviour
                 combatManager.DeregisterAllCharacters();
                 foreach (var character in currentAreaRoster)
                 {
+                    character.InCombat = true;
+                    character.SetCombatParticipationState(DetermineCombatParticipationState(character, RelationshipManager.ScanLocalActiveHostilities(currentAreaRoster, activeArea)), "TurnOrchestrator.ReevaluateCharactersInScene Combat");
                     combatManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
                 }
                 break;
@@ -933,9 +1197,20 @@ public class TurnOrchestrator : MonoBehaviour
 				$"Combat.Count: {DiagnosticCombatRegisteredCount}\n" +
 				$"Player: {PlayerStats.Instance?.CurrentPlayerCharacter?.Name ?? "NULL"}\n" +
 				$"Player.InTurn: {PlayerStats.Instance?.CurrentPlayerCharacter?.InTurn.ToString() ?? "NULL"}\n" +
-				$"PlayerStats.ActionPoints: {PlayerStats.Instance?.ActionPoints.ToString() ?? "NULL"}\n" +
-				$"PlayerStats.MovePoints: {PlayerStats.Instance?.MovePoints.ToString() ?? "NULL"}",
+				$"PlayerStats.Stamina: {FixedPointResourceMath.Format(PlayerStats.Instance?.Stamina ?? 0)}\n" +
+				$"PlayerStats.CombatExertion: {FixedPointResourceMath.Format(PlayerStats.Instance?.CombatExertion ?? 0)}\n" +
+				$"PlayerStats.ConsumptionCapacity: {PlayerStats.Instance?.CurrentConsumptionCapacity.ToString() ?? "NULL"}",
 				PlayerStats.Instance?.CurrentPlayerCharacter);
+
+			if (HasPendingContextTransition || IsActionResolutionActive)
+			{
+				TurnDiagnosticsLogger.LogWarning("TurnOrchestrator.PlayerTurnCompleted deferred because a context transition is pending",
+					$"CurrentContext: {CurrentContext}\n" +
+					$"PendingTransition: {DescribePendingContextTransition()}\n" +
+					$"ActionResolutionDepth: {actionResolutionDepth}\n" +
+					$"TurnSequenceDepth: {turnSequenceDepth}");
+				return;
+			}
 
 			if (CurrentContext == TurnContext.Combat)
 				combatManager.PlayerTurnCompleted();

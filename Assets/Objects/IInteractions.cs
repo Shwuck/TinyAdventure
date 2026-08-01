@@ -1876,6 +1876,10 @@ public class PunchInteraction : BaseCombatInteraction, ITypedActionEconomyProfil
 
     public override void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"PunchInteraction.ExecuteInteraction:{Name}");
+        try
+        {
         Character attacker = PlayerStats.Instance.CurrentPlayerCharacter;
         Character target = entity as Character;
         ActionCostProfile actionCostProfile = ResolveActionCostProfile(TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
@@ -1901,6 +1905,11 @@ public class PunchInteraction : BaseCombatInteraction, ITypedActionEconomyProfil
             {
                 PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("PunchInteraction.TypedActionEconomy", 1f);
             }
+        }
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"PunchInteraction.ExecuteInteraction:{Name}");
         }
     }
 
@@ -1948,6 +1957,10 @@ public class SlashInteraction : IInteraction
 
     public void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"SlashInteraction.ExecuteInteraction:{Name}");
+        try
+        {
         if (entity is Character target)
         {
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
@@ -1963,6 +1976,11 @@ public class SlashInteraction : IInteraction
                     PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("SlashInteraction.TypedActionEconomy", 1f);
                 }
             }
+        }
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"SlashInteraction.ExecuteInteraction:{Name}");
         }
     }
 
@@ -1982,6 +2000,10 @@ public class StabInteraction : IInteraction
 
     public void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"StabInteraction.ExecuteInteraction:{Name}");
+        try
+        {
         if (entity is Character target)
         {
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
@@ -1997,6 +2019,11 @@ public class StabInteraction : IInteraction
                     PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("StabInteraction.TypedActionEconomy", 1f);
                 }
             }
+        }
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"StabInteraction.ExecuteInteraction:{Name}");
         }
     }
 
@@ -2016,6 +2043,10 @@ public class BashInteraction : IInteraction
 
     public void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"BashInteraction.ExecuteInteraction:{Name}");
+        try
+        {
         if (entity is Character target)
         {
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
@@ -2031,6 +2062,11 @@ public class BashInteraction : IInteraction
                     PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("BashInteraction.TypedActionEconomy", 1f);
                 }
             }
+        }
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"BashInteraction.ExecuteInteraction:{Name}");
         }
     }
 
@@ -2050,6 +2086,10 @@ public class RendInteraction : IInteraction
 
     public void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"RendInteraction.ExecuteInteraction:{Name}");
+        try
+        {
         if (entity is Character target)
         {
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
@@ -2065,6 +2105,11 @@ public class RendInteraction : IInteraction
                     PlayerController.Instance?.CompleteExplorationTurnForTimeCostingAction("RendInteraction.TypedActionEconomy", 1f);
                 }
             }
+        }
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"RendInteraction.ExecuteInteraction:{Name}");
         }
     }
 
@@ -2084,6 +2129,10 @@ public class MagicInteraction : IInteraction
 
     public void ExecuteInteraction(IInteractable entity, PlayerInventory inventory)
     {
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"MagicInteraction.ExecuteInteraction:{Name}");
+        try
+        {
         if (entity is NPC npc)
         {
             var playerCharacter = PlayerStats.Instance.CurrentPlayerCharacter;
@@ -2092,6 +2141,17 @@ public class MagicInteraction : IInteraction
                 Debug.LogWarning("MagicInteraction: Player character is null.");
                 CombatActionResolutionDiagnosticsLogger.LogWarning("MagicInteraction.ExecuteInteraction aborted because player character is null",
                     $"ActionName={Name}\nTarget={npc?.Name ?? "NULL"}");
+                return;
+            }
+
+            ActionCostProfile magicProfile = ActionCostProfileResolver.BuildForInteraction(this, TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat);
+            ActionCostCommitResult commitResult = ActionCostProfileResolver.CreateCommitment(magicProfile, null, $"MagicInteraction.ExecuteInteraction:{Name}")
+                .TryCommit(playerCharacter, $"MagicInteraction.ExecuteInteraction:{Name}");
+            if (!commitResult.IsCommitted)
+            {
+                CombatActionResolutionDiagnosticsLogger.LogWarning("MagicInteraction.ExecuteInteraction rejected typed commitment",
+                    $"ActionName={Name}\nTarget={npc?.Name ?? "NULL"}\nReason={commitResult.RejectionReason}",
+                    playerCharacter, npc);
                 return;
             }
 
@@ -2121,7 +2181,8 @@ public class MagicInteraction : IInteraction
                     $"OriginalWeaponDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(magicDamage)}\n" +
                     $"FinalOutgoingDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(magicDamage)}\n" +
                     $"Resolver=MagicInteraction.DirectTakeDamage\n" +
-                    $"APSource=PlayerController.DeductActionPoints + EndOfTurnManager.AddTurnProgress",
+                    $"StaminaAfter={FixedPointResourceMath.Format(playerCharacter.CurrentStamina)}\n" +
+                    $"CombatExertionAfter={FixedPointResourceMath.Format(playerCharacter.CurrentCombatExertion)}",
                     playerCharacter, npc);
             }
             else
@@ -2135,11 +2196,16 @@ public class MagicInteraction : IInteraction
                     $"HitRoll={accuracyRoll}\n" +
                     $"HitResult=Miss\n" +
                     $"Resolver=MagicInteraction.DirectTakeDamage\n" +
-                    $"APSource=PlayerController.DeductActionPoints + EndOfTurnManager.AddTurnProgress",
+                    $"StaminaAfter={FixedPointResourceMath.Format(playerCharacter.CurrentStamina)}\n" +
+                    $"CombatExertionAfter={FixedPointResourceMath.Format(playerCharacter.CurrentCombatExertion)}",
                     playerCharacter, npc);
             }
         }
-        EndOfTurnManager.Instance.AddTurnProgress(ActionPointCost);
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"MagicInteraction.ExecuteInteraction:{Name}");
+        }
     }
 
     public bool IsAvailable(IInteractable entity, PlayerInventory inventory)

@@ -3,7 +3,7 @@ using UnityEngine;
 public class TakeABreathInteraction : IInteraction, ITypedActionEconomyProfileProvider
 {
     private const int RecoveryBonus = 200;
-    private const int BreathCombatExertionCost = 100;
+    private const int BreathCombatExertionCost = 300;
 
     public InteractionType Type => InteractionType.Combat;
     public string Name => "Take a Breath";

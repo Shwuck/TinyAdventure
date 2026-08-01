@@ -49,7 +49,6 @@ public class Monster : Character
         IsAlive = true;
         IsActive = true;
         IsHostile = true;
-        ActionPoints = MaxActionPoints;
         CanLeaveArea = false;
 
         foreach (var resistance in data.DamageResistances)
@@ -105,15 +104,10 @@ public class Monster : Character
 
     public void PerformAbility(Character target)
     {
-        if (ActionPoints < 3) // Example: Abilities cost 3 AP
+        TurnOrchestrator orchestrator = TurnOrchestrator.Instance;
+        orchestrator?.BeginActionResolution($"{Name}.PerformAbility");
+        try
         {
-            GameDebugger.Instance.LogWarning($"{Name} does not have enough Action Points to use an ability.");
-            CombatActionResolutionDiagnosticsLogger.LogWarning("Monster.PerformAbility rejected due to insufficient AP",
-                $"Target={target?.Name ?? "NULL"}\nAPBefore={ActionPoints}\nRequiredAP=3",
-                this, target);
-            return;
-        }
-
         if (Abilities == null || Abilities.Count == 0)
         {
             GameDebugger.Instance.LogWarning($"{Name} has no abilities, cannot perform ability attack!");
@@ -134,6 +128,37 @@ public class Monster : Character
             return;
         }
 
+        ActionCostProfile abilityCostProfile = new ActionCostProfile
+        {
+            MigrationState = ActionEconomyMigrationState.TypedActionEconomy,
+            ExplorationBehaviour = ExplorationActionBehaviour.Unavailable,
+            CombatBehaviour = CombatActionBehaviour.Flexible,
+            IsFree = false,
+            WorldTimeCost = 0,
+            LegacyActionPointCost = 0,
+            LegacyMovePointCost = 0,
+            StaminaCost = 0,
+            CombatExertionCost = FixedPointResourceMath.FromPoints(3f),
+            ConsumptionCapacityCost = 0,
+            CanOverexert = true,
+            EndsPlayerTurn = false,
+            CandidateForFutureStamina = false,
+            PredictedStaminaCost = ActionCostProfileResolver.UnknownPredictedStaminaCost,
+            IsContextual = false,
+            CostLabel = string.Empty,
+            Notes = "Typed monster ability action. Uses combat exertion only."
+        };
+
+        ActionCostCommitResult commitResult = ActionCostProfileResolver.CreateCommitment(abilityCostProfile, null, $"Monster.PerformAbility:{chosenAbility.Name}").TryCommit(this, $"Monster.PerformAbility:{chosenAbility.Name}");
+        if (!commitResult.IsCommitted)
+        {
+            GameDebugger.Instance.LogWarning($"{Name} could not commit typed combat exertion for {chosenAbility.Name}. Reason={commitResult.RejectionReason}");
+            CombatActionResolutionDiagnosticsLogger.LogWarning("Monster.PerformAbility rejected typed commitment",
+                $"Target={target?.Name ?? "NULL"}\nAbility={chosenAbility.Name}\nReason={commitResult.RejectionReason}",
+                this, target);
+            return;
+        }
+
         Dictionary<DamageType, int> damageByType = new Dictionary<DamageType, int>
     {
         { chosenAbility.Type, chosenAbility.Damage }
@@ -148,11 +173,14 @@ public class Monster : Character
             $"RequestedDamageType={chosenAbility.Type}\n" +
             $"FinalOutgoingDamage={CombatActionResolutionDiagnosticsLogger.FormatDamageDictionary(damageByType)}\n" +
             $"Resolver=Monster.PerformAbility\n" +
-            $"APBefore={ActionPoints}\n" +
-            $"APSpendSource=Monster.PerformAbility",
+            $"StaminaAfter={FixedPointResourceMath.Format(CurrentStamina)}\n" +
+            $"CombatExertionAfter={FixedPointResourceMath.Format(CurrentCombatExertion)}",
             this, target);
-
-        SpendActionPoints(3, "Monster.PerformAbility"); // Spend AP after using ability
+        }
+        finally
+        {
+            orchestrator?.EndActionResolution($"{Name}.PerformAbility");
+        }
     }
 
     #endregion
