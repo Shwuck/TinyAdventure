@@ -118,11 +118,21 @@ public static class RelationshipManager
         {
             if (hostility.Source == null || hostility.Target == null) continue;
 
+            if (hostility.Source.CombatParticipation != CombatParticipationState.Engaged &&
+                hostility.Source.CombatParticipation != CombatParticipationState.Searching &&
+                hostility.Source.CombatParticipation != CombatParticipationState.Fleeing &&
+                hostility.Source.CombatParticipation != CombatParticipationState.Assisting)
+            {
+                continue;
+            }
+
             hostility.Source.IsHostile = true;
             hostility.Source.Stance = NPCStance.Hostile;
-            hostility.Source.Target = hostility.Target;
-            hostility.Source.InCombat = true;
-            hostility.Source.SetCombatParticipationState(CombatParticipationState.Engaged, "Applied active local hostility.");
+            if (hostility.Source.Target == null || !hostility.Source.IsValidCombatTarget(hostility.Source.Target))
+            {
+                hostility.Source.Target = hostility.Target;
+            }
+            hostility.Source.InCombat = hostility.Source.IsCombatContext;
 
             // CODEXLOG004_RELATIONSHIPS: temporary relationship-to-combat-state diagnostic.
             RelationshipDiagnosticsLogger.LogEvent("[RELATIONSHIP HOSTILITY APPLIED]", "RelationshipManager.ApplyLocalHostilitiesToActorState",

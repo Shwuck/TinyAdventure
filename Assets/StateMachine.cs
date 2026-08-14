@@ -226,14 +226,13 @@ public class HostileState : IState
 
         if (!EnsureValidHostileTarget(owner, "HostileState.UpdateState"))
         {
-            return new CharacterDecisionResult
+            owner.TryContinueSearchAfterLostTarget("HostileState.UpdateState", out CharacterDecisionResult searchResult);
+            if (owner.CombatParticipation != CombatParticipationState.Searching)
             {
-                Resolved = true,
-                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
-                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
-                Reason = "No valid hostile target was available; hostility memory was retained.",
-                EndsOpportunity = true
-            };
+                owner.stateMachine.ChangeState(new IdleState(), "Hostile search expired or could not continue.");
+            }
+
+            return searchResult;
         }
 
         if (owner.Target != null && owner.IsTargetInRange(owner.Target))
@@ -356,6 +355,7 @@ public class HostileState : IState
 
         if (owner.TryRefreshCombatTarget($"{source}: current target invalid", out Character replacementTarget))
         {
+            owner.SetCombatParticipationState(CombatParticipationState.Engaged, $"{source}: reacquired hostile target.");
             CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "HostileState.UpdateState reacquired valid hostile target",
                 $"Source={source}\n" +
                 $"NewTarget={replacementTarget?.Name ?? "NULL"} [{replacementTarget?.IInteractableID.ToString() ?? "NULL"}]",
@@ -364,8 +364,14 @@ public class HostileState : IState
         }
 
         owner.ClearCombatTarget($"{source}: no valid hostile target");
-        owner.SetCombatParticipationState(CombatParticipationState.Searching, $"{source}: no valid hostile target was available.");
-        owner.RecordTurnDecision(CharacterTurnDecisionResult.NoActionAvailable, $"{source}: no valid hostile target was available; hostility retained.");
+        if (owner.CombatParticipation != CombatParticipationState.Searching)
+        {
+            owner.BeginCombatSearch(owner.LastKnownCombatOpponent, $"{source}: no valid hostile target was available.");
+        }
+        else
+        {
+            owner.RememberCombatOpponent(owner.LastKnownCombatOpponent ?? owner.Target, $"{source}: preserved ongoing search.");
+        }
         CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "HostileState.UpdateState retained hostility without target",
             $"Source={source}\n" +
             $"Actor={owner.Name} [{owner.IInteractableID}]\n" +
@@ -455,42 +461,38 @@ public class FleeingState : IState
             MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FleeingState.UpdateState no threat",
                 "Selected action: None\nReason for no movement: no valid threat source",
                 owner);
+            if (owner.CombatParticipation != CombatParticipationState.Fleeing)
+            {
+                owner.stateMachine.ChangeState(new IdleState(), "Fleeing had no threat source and exited.");
+            }
             return noThreatResult;
         }
 
-        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "FleeingState.UpdateState selected movement",
-            $"Selected action: MoveAwayFromCharacter\nThreatSource: {threatSource.Name}",
-            owner);
-        bool moved = owner.MoveAwayFromCharacter(threatSource);
-        CharacterDecisionResult result = new CharacterDecisionResult
+        if (owner.TryContinueFleeAfterDanger("FleeingState.UpdateState", out CharacterDecisionResult fleeResult))
         {
-            Resolved = true,
-            DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement,
-            TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement,
-            WasAttempted = true,
-            WasCommitted = moved,
-            PositionChanged = moved,
-            ChangedWorldState = moved,
-            Reason = moved
-                ? $"Moved away from {threatSource.Name}."
-                : $"Could not move away from {threatSource.Name}.",
-            EndsOpportunity = true,
-            ActionName = "MoveAwayFromCharacter"
-        };
-
-        if (!moved)
-        {
-            MovementAIDiagnosticsLogger.LogWarning("FleeingState.UpdateState movement failed",
-                $"Selected action: MoveAwayFromCharacter\nThreatSource: {threatSource.Name}\nFailure reason: blocked or unaffordable movement",
-                owner);
-        }
-        else
-        {
-            GameDebugger.Instance.LogInfo($"Character {owner.IInteractableID} ({owner.Name}) moved away from {threatSource.Name}. Remaining CombatExertion: {FixedPointResourceMath.Format(owner.CurrentCombatExertion)}");
+            owner.RecordTurnDecision(fleeResult.TurnDecisionResult, fleeResult.Reason);
+            return fleeResult;
         }
 
-        owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
-        return result;
+        if (owner.CombatParticipation != CombatParticipationState.Fleeing)
+        {
+            owner.stateMachine.ChangeState(new IdleState(), "Fleeing completed or expired.");
+        }
+
+        if (fleeResult == null)
+        {
+            fleeResult = new CharacterDecisionResult
+            {
+                Resolved = true,
+                DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+                TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+                Reason = "Fleeing state ended without a valid flee result.",
+                EndsOpportunity = true
+            };
+        }
+
+        owner.RecordTurnDecision(fleeResult.TurnDecisionResult, fleeResult.Reason);
+        return fleeResult;
     }
 
     public void ExitState(Character owner)
@@ -649,7 +651,15 @@ public class MonsterAggroState : IState
                 Reason = "MonsterAggroState had no target.",
                 EndsOpportunity = true
             };
-            owner.SetCombatParticipationState(CombatParticipationState.Searching, "MonsterAggroState had no target.");
+            owner.TryContinueSearchAfterLostTarget("MonsterAggroState had no target", out CharacterDecisionResult searchResult);
+            if (owner.CombatParticipation != CombatParticipationState.Searching)
+            {
+                owner.stateMachine.ChangeState(new MonsterIdleState(), "Monster aggro search expired or could not continue.");
+            }
+            else
+            {
+                noAction = searchResult;
+            }
             owner.RecordTurnDecision(noAction.TurnDecisionResult, noAction.Reason);
             return noAction;
         }
@@ -777,7 +787,15 @@ public class MonsterChaseState : IState
                 Reason = "MonsterChaseState had no target.",
                 EndsOpportunity = true
             };
-            owner.SetCombatParticipationState(CombatParticipationState.Searching, "MonsterChaseState had no target.");
+            owner.TryContinueSearchAfterLostTarget("MonsterChaseState had no target", out CharacterDecisionResult searchResult);
+            if (owner.CombatParticipation != CombatParticipationState.Searching)
+            {
+                owner.stateMachine.ChangeState(new MonsterIdleState(), "Monster chase search expired or could not continue.");
+            }
+            else
+            {
+                noAction = searchResult;
+            }
             owner.RecordTurnDecision(noAction.TurnDecisionResult, noAction.Reason);
             return noAction;
         }
@@ -797,7 +815,15 @@ public class MonsterChaseState : IState
                 Reason = "MonsterChaseState lost visibility on the target and returned to idle.",
                 EndsOpportunity = true
             };
-            owner.SetCombatParticipationState(CombatParticipationState.Searching, "MonsterChaseState lost target visibility.");
+            owner.TryContinueSearchAfterLostTarget("MonsterChaseState lost target visibility", out CharacterDecisionResult searchResult);
+            if (owner.CombatParticipation != CombatParticipationState.Searching)
+            {
+                monster.stateMachine.ChangeState(new MonsterIdleState(), "Monster chase search expired or could not continue.");
+            }
+            else
+            {
+                lostTarget = searchResult;
+            }
             owner.RecordTurnDecision(lostTarget.TurnDecisionResult, lostTarget.Reason);
             return lostTarget;
         }
@@ -904,51 +930,36 @@ public class MonsterFleeState : IState
 
         if (monster.Target != null)
         {
-            // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.UpdateState selected movement",
-                $"Selected action: MoveAwayFromTarget\nTarget: {monster.Target.Name}",
-                monster);
-            bool moved = monster.MoveAwayFromCharacter(monster.Target);
-            if (!moved)
+            if (owner.TryContinueFleeAfterDanger("MonsterFleeState.UpdateState", out CharacterDecisionResult fleeResult))
             {
-                MovementAIDiagnosticsLogger.LogWarning("MonsterFleeState.UpdateState movement failed",
-                    $"Selected action: MoveAwayFromTarget\nTarget: {monster.Target.Name}\nFailure reason: blocked or unaffordable movement",
-                    monster);
+                owner.RecordTurnDecision(fleeResult.TurnDecisionResult, fleeResult.Reason);
+                return fleeResult;
             }
-            CharacterDecisionResult result = new CharacterDecisionResult
+
+            if (owner.CombatParticipation != CombatParticipationState.Fleeing)
             {
-                Resolved = true,
-                DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement,
-                TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement,
-                WasAttempted = true,
-                WasCommitted = moved,
-                PositionChanged = moved,
-                ChangedWorldState = moved,
-                Reason = moved ? $"Moved away from {monster.Target.Name}." : $"Could not move away from {monster.Target.Name}.",
-                EndsOpportunity = true,
-                ActionName = "MoveAwayFromTarget"
-            };
-            owner.SetCombatParticipationState(CombatParticipationState.Fleeing, "MonsterFleeState resolved movement.");
-            owner.RecordTurnDecision(result.TurnDecisionResult, result.Reason);
-            return result;
+                monster.stateMachine.ChangeState(new MonsterIdleState(), "Monster flee completed or expired.");
+            }
+
+            owner.RecordTurnDecision(fleeResult.TurnDecisionResult, fleeResult.Reason);
+            return fleeResult;
         }
-        else
+        // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
+        MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.UpdateState no target",
+            "Selected action: None\nReason for no movement: target null",
+            monster);
+        CharacterDecisionResult noTarget = new CharacterDecisionResult
         {
-            // CODEXLOG002_MOVEMENT_AI: temporary AI state diagnostic.
-            MovementAIDiagnosticsLogger.LogEvent("[AI DECISION]", "MonsterFleeState.UpdateState no target",
-                "Selected action: None\nReason for no movement: target null",
-                monster);
-            CharacterDecisionResult noTarget = new CharacterDecisionResult
-            {
-                Resolved = true,
-                DecisionType = CharacterWorldDecisionType.IntentionalIdle,
-                TurnDecisionResult = CharacterTurnDecisionResult.Idled,
-                Reason = "MonsterFleeState had no target.",
-                EndsOpportunity = true
-            };
-            owner.RecordTurnDecision(noTarget.TurnDecisionResult, noTarget.Reason);
-            return noTarget;
-        }
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.IntentionalIdle,
+            TurnDecisionResult = CharacterTurnDecisionResult.Idled,
+            Reason = "MonsterFleeState had no target.",
+            EndsOpportunity = true
+        };
+        owner.SetCombatParticipationState(CombatParticipationState.Uninvolved, "MonsterFleeState had no target.");
+        monster.stateMachine.ChangeState(new MonsterIdleState(), "Monster flee ended without a target.");
+        owner.RecordTurnDecision(noTarget.TurnDecisionResult, noTarget.Reason);
+        return noTarget;
     }
 
     public void ExitState(Character owner)

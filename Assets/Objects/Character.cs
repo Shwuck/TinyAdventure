@@ -93,6 +93,11 @@ public class Character : IInteractable
     public Character Target { get; set; }
     public Character FollowTarget { get; set; }
     public CombatParticipationState CombatParticipation { get; private set; } = CombatParticipationState.Uninvolved;
+    public Character LastKnownCombatOpponent { get; private set; }
+    public Vector2Int LastKnownCombatOpponentPosition { get; private set; }
+    public int CombatSearchTurnsRemaining { get; private set; }
+    public int CombatFleeTurnsRemaining { get; private set; }
+    public int CombatAssistTurnsRemaining { get; private set; }
     public float RemainingTurnTime { get; set; } = 1.0f;
     public CharacterTurnDecisionResult LastTurnDecisionResult { get; private set; } = CharacterTurnDecisionResult.None;
     public string LastTurnDecisionReason { get; private set; } = "Unresolved";
@@ -123,6 +128,10 @@ public class Character : IInteractable
     public int BaseStaminaRegeneration => FixedPointResourceMath.BaseStaminaRegeneration;
     private int pendingStaminaRegenerationBonus;
     private int combatTakeABreathUsesRemaining = 1;
+    private const int DefaultCombatSearchTurns = 2;
+    private const int DefaultCombatFleeTurns = 3;
+    private const int DefaultCombatAssistTurns = 1;
+    private static readonly Vector2Int InvalidCombatOpponentPosition = new Vector2Int(int.MinValue, int.MinValue);
     public int Charisma;
     public int Strength;
     public int Dexterity;
@@ -1199,6 +1208,7 @@ public class Character : IInteractable
             this, target);
 
         Target = target;
+        RememberCombatOpponent(target, actionSource);
         target.Target = this;
         SetCombatParticipationState(CombatParticipationState.Engaged, $"Committed attack {actionSource}.");
         target.SetCombatParticipationState(CombatParticipationState.Engaged, $"Was attacked by {Name}.");
@@ -1359,6 +1369,244 @@ public class Character : IInteractable
 
     public bool IsCombatContext => TurnOrchestrator.Instance?.CurrentContext == TurnContext.Combat;
 
+    public void RememberCombatOpponent(Character opponent, string reason = null)
+    {
+        LastKnownCombatOpponent = opponent;
+
+        if (opponent != null && opponent.IsAlive && opponent.IsActive)
+        {
+            LastKnownCombatOpponentPosition = opponent.NestedMapPosition;
+        }
+        else
+        {
+            LastKnownCombatOpponentPosition = InvalidCombatOpponentPosition;
+        }
+
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT MEMORY]", "Character.RememberCombatOpponent",
+                $"Actor={Name} [{IInteractableID}]\n" +
+                $"Reason={reason}\n" +
+                $"RememberedOpponent={opponent?.Name ?? "NULL"} [{opponent?.IInteractableID.ToString() ?? "NULL"}]\n" +
+                $"RememberedPosition={(LastKnownCombatOpponentPosition == InvalidCombatOpponentPosition ? "NULL" : LastKnownCombatOpponentPosition.ToString())}",
+                this, opponent);
+        }
+    }
+
+    public void BeginCombatSearch(Character opponent, string reason)
+    {
+        RememberCombatOpponent(opponent, reason);
+        CombatSearchTurnsRemaining = DefaultCombatSearchTurns;
+        SetCombatParticipationState(CombatParticipationState.Searching, reason);
+    }
+
+    public void BeginCombatFlee(Character threat, string reason)
+    {
+        RememberCombatOpponent(threat, reason);
+        CombatFleeTurnsRemaining = DefaultCombatFleeTurns;
+        SetCombatParticipationState(CombatParticipationState.Fleeing, reason);
+    }
+
+    public void BeginCombatAssistance(Character threat, string reason)
+    {
+        RememberCombatOpponent(threat, reason);
+        CombatAssistTurnsRemaining = DefaultCombatAssistTurns;
+        SetCombatParticipationState(CombatParticipationState.Assisting, reason);
+    }
+
+    public void ConsumeCombatAssistanceTurn(string reason)
+    {
+        if (CombatAssistTurnsRemaining > 0)
+        {
+            CombatAssistTurnsRemaining--;
+        }
+
+        if (CombatAssistTurnsRemaining <= 0)
+        {
+            SetCombatParticipationState(CombatParticipationState.Aware, reason);
+        }
+    }
+
+    public void ExpireCombatAssistance(string reason)
+    {
+        CombatAssistTurnsRemaining = 0;
+        if (CombatParticipation == CombatParticipationState.Assisting)
+        {
+            SetCombatParticipationState(CombatParticipationState.Aware, reason);
+        }
+    }
+
+    public void ResetCombatParticipationMemory(string reason)
+    {
+        RememberCombatOpponent(null, reason);
+        CombatSearchTurnsRemaining = 0;
+        CombatFleeTurnsRemaining = 0;
+        CombatAssistTurnsRemaining = 0;
+    }
+
+    public bool TryContinueSearchAfterLostTarget(string reason, out CharacterDecisionResult result)
+    {
+        result = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+            TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+            EndsOpportunity = true,
+            ActionName = "Search"
+        };
+
+        if (CombatSearchTurnsRemaining <= 0)
+        {
+            IsHostile = false;
+            if (Stance == NPCStance.Hostile)
+            {
+                Stance = NPCStance.Neutral;
+            }
+            SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: search expired.");
+            result.Reason = "Search expired without reacquiring a target.";
+            return false;
+        }
+
+        CombatSearchTurnsRemaining--;
+        Character searchAnchor = LastKnownCombatOpponent;
+        bool hasSearchAnchor = searchAnchor != null && searchAnchor.IsAlive && searchAnchor.IsActive &&
+                               searchAnchor.CurrentNestedArea == CurrentNestedArea;
+
+        if (!hasSearchAnchor && LastKnownCombatOpponentPosition == InvalidCombatOpponentPosition)
+        {
+            if (CombatSearchTurnsRemaining <= 0)
+            {
+                IsHostile = false;
+                if (Stance == NPCStance.Hostile)
+                {
+                    Stance = NPCStance.Neutral;
+                }
+                SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: search had no anchor and expired.");
+            }
+
+            result.Reason = "Search had no remembered target location and could not make progress.";
+            return false;
+        }
+
+        Vector2Int targetPosition = hasSearchAnchor ? searchAnchor.NestedMapPosition : LastKnownCombatOpponentPosition;
+        if (targetPosition == NestedMapPosition)
+        {
+            if (TryRefreshCombatTarget($"{reason}: search reached remembered location", out Character replacementTarget))
+            {
+                SetCombatParticipationState(CombatParticipationState.Engaged, $"{reason}: reacquired target at remembered location.");
+                result.DecisionType = CharacterWorldDecisionType.PerformedAction;
+                result.TurnDecisionResult = CharacterTurnDecisionResult.CombatAction;
+                result.WasAttempted = true;
+                result.WasCommitted = true;
+                result.ChangedWorldState = true;
+                result.Reason = "Search reacquired the target.";
+                result.ActionName = "SearchReacquire";
+                return true;
+            }
+        }
+
+        bool moved = MoveTowards(targetPosition);
+        result.WasAttempted = true;
+        result.WasCommitted = moved;
+        result.PositionChanged = moved;
+        result.ChangedWorldState = moved;
+        result.DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement;
+        result.TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement;
+        result.MayContinueCombatTurn = false;
+        result.Reason = moved
+            ? $"Searched toward remembered combat position {targetPosition}."
+            : "Search attempt could not move toward the remembered combat position.";
+
+        if (CombatSearchTurnsRemaining <= 0)
+        {
+            IsHostile = false;
+            if (Stance == NPCStance.Hostile)
+            {
+                Stance = NPCStance.Neutral;
+            }
+            SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: search attempts exhausted.");
+        }
+
+        return moved;
+    }
+
+    public bool TryContinueFleeAfterDanger(string reason, out CharacterDecisionResult result)
+    {
+        result = new CharacterDecisionResult
+        {
+            Resolved = true,
+            DecisionType = CharacterWorldDecisionType.NoActionAvailable,
+            TurnDecisionResult = CharacterTurnDecisionResult.NoActionAvailable,
+            EndsOpportunity = true,
+            ActionName = "Flee"
+        };
+
+        Character threat = IsValidCombatTarget(Target) ? Target : (LastKnownCombatOpponent != null && LastKnownCombatOpponent.IsAlive ? LastKnownCombatOpponent : FollowTarget);
+        if (threat == null)
+        {
+            IsHostile = false;
+            if (Stance == NPCStance.Fleeing)
+            {
+                Stance = NPCStance.Neutral;
+            }
+            SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: flee ended because no threat was available.");
+            result.Reason = "Flee ended because no threat was available.";
+            return false;
+        }
+
+        if (CombatFleeTurnsRemaining <= 0)
+        {
+            IsHostile = false;
+            if (Stance == NPCStance.Fleeing)
+            {
+                Stance = NPCStance.Neutral;
+            }
+            SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: flee expired.");
+            result.Reason = "Flee expired without further danger.";
+            return false;
+        }
+
+        CombatFleeTurnsRemaining--;
+        int safeDistance = 4;
+        int threatDistance = Mathf.Abs(NestedMapPosition.x - threat.NestedMapPosition.x) + Mathf.Abs(NestedMapPosition.y - threat.NestedMapPosition.y);
+        if (threatDistance >= safeDistance)
+        {
+            IsHostile = false;
+            if (Stance == NPCStance.Fleeing)
+            {
+                Stance = NPCStance.Neutral;
+            }
+            SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: flee reached safety.");
+            ClearCombatTarget($"{reason}: flee reached safety.");
+            result.Reason = "Flee ended after reaching safety.";
+            return false;
+        }
+
+        bool moved = MoveAwayFromCharacter(threat);
+        result.WasAttempted = true;
+        result.WasCommitted = moved;
+        result.PositionChanged = moved;
+        result.ChangedWorldState = moved;
+        result.DecisionType = moved ? CharacterWorldDecisionType.MoveTowardsCandidate : CharacterWorldDecisionType.FailedMovement;
+        result.TurnDecisionResult = moved ? CharacterTurnDecisionResult.Moved : CharacterTurnDecisionResult.FailedMovement;
+        result.MayContinueCombatTurn = false;
+        result.Reason = moved
+            ? $"Fled away from {threat.Name}."
+            : "Flee attempt could not move away from the threat.";
+
+        if (CombatFleeTurnsRemaining <= 0)
+        {
+            IsHostile = false;
+            if (Stance == NPCStance.Fleeing)
+            {
+                Stance = NPCStance.Neutral;
+            }
+            SetCombatParticipationState(CombatParticipationState.Uninvolved, $"{reason}: flee attempts exhausted.");
+        }
+
+        return moved;
+    }
+
     public void SetCombatParticipationState(CombatParticipationState state, string reason = null)
     {
         CombatParticipationState previousState = CombatParticipation;
@@ -1402,6 +1650,7 @@ public class Character : IInteractable
     public virtual void ClearCombatTarget(string reason)
     {
         Character previousTarget = Target;
+        RememberCombatOpponent(previousTarget, reason);
         Target = null;
 
         CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "Character.ClearCombatTarget",
@@ -2783,7 +3032,7 @@ private BodyPart GetRandomBodyPart()
 
             if (!combatant.TryRefreshCombatTarget($"Target {Name} [{IInteractableID}] died.", out Character replacementTarget))
             {
-                combatant.SetCombatParticipationState(CombatParticipationState.Searching, $"Lost target {Name} and no replacement target was found.");
+                combatant.BeginCombatSearch(combatant.LastKnownCombatOpponent ?? combatant.Target, $"Lost target {Name} and no replacement target was found.");
 
                 CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "Character.Die cleared stale combat target with no replacement",
                     $"Actor={combatant.Name} [{combatant.IInteractableID}]\n" +
@@ -3284,15 +3533,11 @@ private List<EquipmentSlot> GetEquipmentSlotsForBodyPart(BodyPart bodyPart)
         RelationshipManager.SetActiveHostility(this, attacker, "WitnessedAllyAttacked");
         IsHostile = true;
 
-        if (Stance != NPCStance.Hostile)
-        {
-            Stance = NPCStance.Hostile;
-            Target = attacker;
-            SetCombatParticipationState(CombatParticipationState.Engaged, $"Witnessed attack on {attackedAlly.Name} by {attacker.Name}.");
-            InCombat = IsCombatContext;
-            Debug.Log($"{Name} is now hostile towards {attacker.Name}!");
-        }
-
+        Stance = NPCStance.Hostile;
+        Target = attacker;
+        BeginCombatAssistance(attacker, $"Witnessed attack on {attackedAlly.Name} by {attacker.Name}.");
+        InCombat = IsCombatContext;
+        Debug.Log($"{Name} is now hostile towards {attacker.Name}!");
         stateMachine?.HandleStanceChange(Stance);
     }
 

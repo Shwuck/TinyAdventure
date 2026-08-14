@@ -177,7 +177,14 @@ public class CombatTurnManager : BaseTurnManager
         {
             if (!npc.TryRefreshCombatTarget("CombatTurnManager.OnNPCTurnExecute hostile actor validation", out Character replacementTarget))
             {
-                npc.SetCombatParticipationState(CombatParticipationState.Searching, "CombatTurnManager.OnNPCTurnExecute hostile actor validation found no target.");
+                if (npc.CombatParticipation != CombatParticipationState.Searching)
+                {
+                    npc.BeginCombatSearch(npc.LastKnownCombatOpponent ?? npc.Target, "CombatTurnManager.OnNPCTurnExecute hostile actor validation found no target.");
+                }
+                else
+                {
+                    npc.RememberCombatOpponent(npc.LastKnownCombatOpponent ?? npc.Target, "CombatTurnManager.OnNPCTurnExecute hostile actor validation preserved existing search.");
+                }
                 CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT TARGET]", "CombatTurnManager.OnNPCTurnExecute retained hostile combatant without target",
                     $"Actor={npc.Name} [{npc.IInteractableID}]\n" +
                     $"ReplacementTarget={replacementTarget?.Name ?? "NULL"}\n" +
@@ -363,11 +370,7 @@ public class CombatTurnManager : BaseTurnManager
                               character != playerCharacter &&
                               character.IsAlive &&
                               character.IsActive &&
-                              (IsCombatConflictParticipant(character) ||
-                               character.IsHostile ||
-                               character.Stance == NPCStance.Hostile ||
-                               playerCharacter?.Target == character ||
-                               character.Target == playerCharacter));
+                              IsCombatConflictParticipant(character));
 
         return hasPlayer && hasOtherCombatant;
     }

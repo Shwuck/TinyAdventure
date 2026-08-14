@@ -663,22 +663,22 @@ public class TurnOrchestrator : MonoBehaviour
 			? area.GetAllCharactersInArea().Where(character => character != null).ToList()
 			: currentAreaRoster.Where(character => character != null).ToList();
 		List<RelationshipHostility> relationshipHostilities = RelationshipManager.ScanLocalActiveHostilities(localCharacters, area);
-		PruneStaleCombatFlags(localCharacters, relationshipHostilities);
+		if (CurrentContext == TurnContext.Combat)
+		{
+			PruneStaleCombatFlags(localCharacters, relationshipHostilities);
+		}
 		RelationshipManager.ApplyLocalHostilitiesToActorState(relationshipHostilities);
-		List<Character> activeHostiles = localCharacters
-			.Where(character => HasCombatMaintenanceSignal(character, relationshipHostilities))
+		List<Character> activeCombatParticipants = localCharacters
+			.Where(character => IsCombatConflictParticipationState(character.CombatParticipation))
 			.ToList();
-		int activeHostileCount = activeHostiles.Count;
+		int activeHostileCount = activeCombatParticipants.Count;
 		int activeRelationshipHostilityCount = relationshipHostilities.Count;
 		int neutralParticipantCount = localCharacters.Count(character => character.IsActive) - activeHostileCount;
-		bool hasHostiles = activeHostileCount > 0 || activeRelationshipHostilityCount > 0;
-		bool playerInvolved = activeHostiles.Any(character =>
+		bool hasHostiles = activeHostileCount > 0;
+		bool playerInvolved = activeCombatParticipants.Any(character =>
 			character == playerCharacter ||
 			character.Target == playerCharacter ||
-			playerCharacter?.Target == character) ||
-			relationshipHostilities.Any(hostility =>
-				hostility.Source == playerCharacter ||
-				hostility.Target == playerCharacter);
+			playerCharacter?.Target == character);
 		Trace($"TryUpdateTurnContext: hasHostiles={hasHostiles}");
 		// CODEXLOG001_TURNLIFECYCLE: temporary turn lifecycle diagnostic call.
 		TurnDiagnosticsLogger.LogEvent("[CONTEXT UPDATE]", "TurnOrchestrator.TryUpdateTurnContext begin",
@@ -692,7 +692,7 @@ public class TurnOrchestrator : MonoBehaviour
 			$"PlayerInvolved: {playerInvolved}\n" +
 			$"ActiveHostileCount: {activeHostileCount}\n" +
 			$"ActiveRelationshipHostilities: {activeRelationshipHostilityCount}\n" +
-			$"Hostiles: {(activeHostiles.Count > 0 ? string.Join(", ", activeHostiles.Select(character => $"{character.Name} [{character.IInteractableID}]")) : "NONE")}\n" +
+			$"Hostiles: {(activeCombatParticipants.Count > 0 ? string.Join(", ", activeCombatParticipants.Select(character => $"{character.Name} [{character.IInteractableID}]")) : "NONE")}\n" +
 			$"RelationshipHostilities: {(relationshipHostilities.Count > 0 ? string.Join(", ", relationshipHostilities.Select(RelationshipManager.FormatHostility)) : "NONE")}\n" +
 			$"ShouldStartCombat: {CurrentContext == TurnContext.Exploration && hasHostiles}");
 		// CODEXLOG001_TURNLIFECYCLE: temporary combat end diagnostic.
@@ -735,8 +735,7 @@ public class TurnOrchestrator : MonoBehaviour
 	private string GetCombatTriggerSource(bool hasHostiles, bool playerInvolved, int activeRelationshipHostilityCount)
 	{
 		if (!hasHostiles) return "None";
-		if (activeRelationshipHostilityCount > 0) return playerInvolved ? "RelationshipHostilityPlayerInvolved" : "RelationshipHostility";
-		return playerInvolved ? "PlayerActionOrPlayerHostility" : "AreaHostility";
+		return playerInvolved ? "PlayerActionOrPlayerHostility" : "ActiveCombatParticipation";
 	}
 
     private static bool IsCombatConflictParticipationState(CombatParticipationState participationState)
@@ -754,17 +753,39 @@ public class TurnOrchestrator : MonoBehaviour
             return CombatParticipationState.Uninvolved;
         }
 
-        if (character.CombatParticipation == CombatParticipationState.Fleeing)
-        {
-            return CombatParticipationState.Fleeing;
-        }
+		if (character.CombatParticipation == CombatParticipationState.Fleeing)
+		{
+			return CombatParticipationState.Fleeing;
+		}
 
-        if (character.IsHostile ||
-            character.Stance == NPCStance.Hostile ||
-            character.Target != null ||
-            (relationshipHostilities != null && relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character)))
+		if (character.CombatParticipation == CombatParticipationState.Assisting)
+		{
+			if (character.Target != null && character.IsValidCombatTarget(character.Target))
+			{
+				return CombatParticipationState.Engaged;
+			}
+
+			character.ExpireCombatAssistance("TurnOrchestrator.DetermineCombatParticipationState assistance ended without a valid target.");
+			return CombatParticipationState.Aware;
+		}
+
+		if (character.CombatParticipation == CombatParticipationState.Searching)
+		{
+			return CombatParticipationState.Searching;
+		}
+
+        bool hasRelationshipHostility = relationshipHostilities != null &&
+                                        relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character);
+        bool hasHostileTarget = character.Target != null && (character.IsHostile || character.Stance == NPCStance.Hostile || hasRelationshipHostility);
+
+        if (hasHostileTarget)
         {
             return CombatParticipationState.Engaged;
+        }
+
+        if (character.IsHostile || character.Stance == NPCStance.Hostile || hasRelationshipHostility)
+        {
+            return CombatParticipationState.Searching;
         }
 
         if (character.FollowTarget != null || character.Status == NPCStatus.Chasing)
@@ -786,28 +807,21 @@ public class TurnOrchestrator : MonoBehaviour
         {
             return true;
         }
-
-        if (character.IsHostile || character.Stance == NPCStance.Hostile || character.Target != null)
-        {
-            return true;
-        }
-
-        return relationshipHostilities != null &&
-               relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character);
+        return false;
     }
 
 	private void PruneStaleCombatFlags(List<Character> localCharacters, List<RelationshipHostility> relationshipHostilities)
 	{
-		HashSet<int> relationshipCombatantIds = relationshipHostilities != null
-			? relationshipHostilities
-				.SelectMany(hostility => new[] { hostility.Source?.IInteractableID ?? int.MinValue, hostility.Target?.IInteractableID ?? int.MinValue })
-				.Where(id => id != int.MinValue)
-				.ToHashSet()
-			: new HashSet<int>();
-
 		foreach (Character character in localCharacters.Where(candidate => candidate != null && candidate.IsActive && candidate.IsAlive))
 		{
-			if (!(character.IsHostile || character.Stance == NPCStance.Hostile || IsCombatConflictParticipationState(character.CombatParticipation)))
+			if (character.CombatParticipation == CombatParticipationState.Fleeing)
+			{
+				continue;
+			}
+
+			if (character.CombatParticipation != CombatParticipationState.Engaged &&
+			    character.CombatParticipation != CombatParticipationState.Assisting &&
+			    character.CombatParticipation != CombatParticipationState.Searching)
 			{
 				continue;
 			}
@@ -817,18 +831,39 @@ public class TurnOrchestrator : MonoBehaviour
 				continue;
 			}
 
-			if (relationshipCombatantIds.Contains(character.IInteractableID))
+			if (character.CombatParticipation == CombatParticipationState.Searching)
 			{
-				character.SetCombatParticipationState(CombatParticipationState.Searching, "Combat maintenance preserved active relationship hostility without an immediate target.");
 				continue;
 			}
 
-			character.ClearCombatTarget("TurnOrchestrator.TryUpdateTurnContext pruned stale hostile target.");
-			character.SetCombatParticipationState(CombatParticipationState.Searching, "Combat maintenance preserved hostility after losing target.");
+			if (character.CombatParticipation == CombatParticipationState.Assisting)
+			{
+				if (character.IsValidCombatTarget(character.Target))
+				{
+					character.SetCombatParticipationState(CombatParticipationState.Engaged, "TurnOrchestrator.TryUpdateTurnContext assistance resolved into active engagement.");
+					continue;
+				}
+
+				character.ExpireCombatAssistance("TurnOrchestrator.TryUpdateTurnContext assistance expired without a target.");
+				if (!(character.IsHostile || character.Stance == NPCStance.Hostile || (relationshipHostilities != null && relationshipHostilities.Any(hostility => hostility.Source == character || hostility.Target == character))))
+				{
+					continue;
+				}
+
+				character.BeginCombatSearch(character.LastKnownCombatOpponent ?? character.Target, "TurnOrchestrator.TryUpdateTurnContext assistance searching for a target.");
+				continue;
+			}
+
+			if (character.TryRefreshCombatTarget("TurnOrchestrator.TryUpdateTurnContext pruned stale hostile target", out Character replacementTarget))
+			{
+				character.SetCombatParticipationState(CombatParticipationState.Engaged, "TurnOrchestrator.TryUpdateTurnContext reacquired hostile target.");
+				continue;
+			}
+
+			character.BeginCombatSearch(character.LastKnownCombatOpponent ?? character.Target, "TurnOrchestrator.TryUpdateTurnContext pruned stale hostile target.");
 
 			CombatActionResolutionDiagnosticsLogger.LogEvent("[COMBAT CONTEXT]", "TurnOrchestrator.TryUpdateTurnContext pruned stale hostile state",
 				$"Actor={character.Name} [{character.IInteractableID}]\n" +
-				$"RelationshipCombatant={relationshipCombatantIds.Contains(character.IInteractableID)}\n" +
 				$"IsHostileAfter={character.IsHostile}\n" +
 				$"StanceAfter={character.Stance}\n" +
 				$"CombatParticipationAfter={character.CombatParticipation}",
@@ -905,7 +940,22 @@ public class TurnOrchestrator : MonoBehaviour
 
 			bool isPlayer = character == PlayerStats.Instance.CurrentPlayerCharacter;
 			character.InCombat = true;
-			character.SetCombatParticipationState(DetermineCombatParticipationState(character, localRelationshipHostilities), "TurnOrchestrator.SwitchToCombatMode roster assignment");
+			CombatParticipationState participationState = DetermineCombatParticipationState(character, localRelationshipHostilities);
+			switch (participationState)
+			{
+				case CombatParticipationState.Searching:
+					character.BeginCombatSearch(character.Target ?? character.LastKnownCombatOpponent, "TurnOrchestrator.SwitchToCombatMode roster assignment");
+					break;
+				case CombatParticipationState.Fleeing:
+					character.BeginCombatFlee(character.Target ?? character.LastKnownCombatOpponent, "TurnOrchestrator.SwitchToCombatMode roster assignment");
+					break;
+				case CombatParticipationState.Assisting:
+					character.BeginCombatAssistance(character.Target ?? character.LastKnownCombatOpponent, "TurnOrchestrator.SwitchToCombatMode roster assignment");
+					break;
+				default:
+					character.SetCombatParticipationState(participationState, "TurnOrchestrator.SwitchToCombatMode roster assignment");
+					break;
+			}
 			if (!currentAreaRoster.Contains(character))
 			{
 				currentAreaRoster.Add(character);
@@ -1061,7 +1111,22 @@ public class TurnOrchestrator : MonoBehaviour
                 foreach (var character in currentAreaRoster)
                 {
                     character.InCombat = true;
-                    character.SetCombatParticipationState(DetermineCombatParticipationState(character, RelationshipManager.ScanLocalActiveHostilities(currentAreaRoster, activeArea)), "TurnOrchestrator.ReevaluateCharactersInScene Combat");
+                    CombatParticipationState participationState = DetermineCombatParticipationState(character, RelationshipManager.ScanLocalActiveHostilities(currentAreaRoster, activeArea));
+                    switch (participationState)
+                    {
+                        case CombatParticipationState.Searching:
+                            character.BeginCombatSearch(character.Target ?? character.LastKnownCombatOpponent, "TurnOrchestrator.ReevaluateCharactersInScene Combat");
+                            break;
+                        case CombatParticipationState.Fleeing:
+                            character.BeginCombatFlee(character.Target ?? character.LastKnownCombatOpponent, "TurnOrchestrator.ReevaluateCharactersInScene Combat");
+                            break;
+                        case CombatParticipationState.Assisting:
+                            character.BeginCombatAssistance(character.Target ?? character.LastKnownCombatOpponent, "TurnOrchestrator.ReevaluateCharactersInScene Combat");
+                            break;
+                        default:
+                            character.SetCombatParticipationState(participationState, "TurnOrchestrator.ReevaluateCharactersInScene Combat");
+                            break;
+                    }
                     combatManager.RegisterCharacter(character, character == PlayerStats.Instance.CurrentPlayerCharacter);
                 }
                 break;
